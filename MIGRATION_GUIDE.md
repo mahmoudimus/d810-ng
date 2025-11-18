@@ -404,14 +404,187 @@ def test_unflatten_single_dispatcher():
     mock_emulator.resolve_target.assert_called_once()
 ```
 
+## Phase 3: Centralized OptimizerManager (NEW!)
+
+### The Problem with Scattered Optimization Logic
+
+**Before:** Each rule managed its own execution:
+```python
+class MyRule(FlowOptimizationRule):
+    def __init__(self):
+        self.mba = None  # Mutable state
+        self.cur_maturity = MMAT_ZERO
+        self.cur_maturity_pass = 0
+        self.last_pass_nb_patch_done = 0
+
+    def check_if_rule_should_be_used(self, blk):
+        if self.cur_maturity != self.mba.maturity:
+            self.cur_maturity = self.mba.maturity
+            self.cur_maturity_pass = 0
+        # ... more state management ...
+
+    def optimize(self, blk):
+        self.mba = blk.mba  # More state mutation
+        # ... actual optimization ...
+```
+
+Problems:
+- State scattered across multiple rules
+- No central coordination
+- Hard to add caching or profiling
+- Difficult to test in isolation
+
+### The Solution: OptimizerManager
+
+**src/d810/optimizers/manager.py**
+
+Centralized coordinator that:
+1. Loads and manages all rules
+2. Creates immutable OptimizationContext
+3. Applies rules in correct order
+4. Tracks statistics
+5. Provides hooks for caching and profiling
+
+```python
+class OptimizerManager:
+    """Centralized coordinator for all optimization rules."""
+
+    def __init__(self, config, log_dir):
+        self.registry = RuleRegistry()
+        self.statistics = OptimizationStatistics()
+        self.cache_loader = None  # Hook for caching
+        self.cache_saver = None
+
+    def optimize(self, mba, maturity):
+        # Create immutable context
+        context = OptimizationContext(
+            mba=mba,
+            maturity=maturity,
+            config=self.config,
+            logger=logger,
+            log_dir=self.log_dir
+        )
+
+        # Apply all rules
+        for rule in self.registry.flow_rules:
+            changes = rule.apply(context, entry_block)
+            self.statistics.record_application(rule.name, changes)
+
+        return total_changes
+```
+
+**Usage:**
+```python
+# Create manager
+manager = OptimizerManager(config={"enable_z3": True})
+
+# Register rules
+manager.register_flow_rule(UnflattenerRule(...))
+manager.register_pattern_rule(XorFromOrAndSub())
+
+# Apply optimizations
+changes = manager.optimize(mba, maturity=MMAT_GLBOPT1)
+
+# Get statistics
+print(manager.get_statistics().get_summary())
+```
+
+### Benefits
+
+**1. Easy Caching Integration:**
+```python
+def load_from_cache(mba, maturity):
+    # Load cached optimizations from SQLite
+    return cached_changes
+
+def save_to_cache(mba, maturity, changes):
+    # Save optimizations to SQLite
+    pass
+
+manager.set_cache_handlers(
+    loader=load_from_cache,
+    saver=save_to_cache
+)
+```
+
+**2. Easy Profiling:**
+```python
+import time
+
+def pre_hook(context):
+    context.start_time = time.time()
+
+def post_hook(context, changes):
+    elapsed = time.time() - context.start_time
+    print(f"Pass took {elapsed:.2f}s, made {changes} changes")
+
+manager.set_profiling_hooks(pre_hook, post_hook)
+```
+
+**3. Statistics Tracking:**
+```python
+stats = manager.get_statistics()
+print(f"Total passes: {stats.total_passes}")
+print(f"XorRule applied: {stats.rules_applied['XorRule']} times")
+print(f"Changes made: {stats.changes_made['XorRule']}")
+```
+
+**4. Testability:**
+```python
+# Testing is trivial with the manager
+def test_optimization_pipeline():
+    mock_rule = Mock(spec=OptimizationRule)
+    mock_rule.name = "TestRule"
+    mock_rule.apply.return_value = 5
+
+    manager = OptimizerManager({})
+    manager.register_flow_rule(mock_rule)
+
+    changes = manager.optimize(mock_mba, maturity=0)
+
+    assert changes == 5
+    mock_rule.apply.assert_called_once()
+```
+
+### Architecture
+
+```
+OptimizerManager
+    |
+    +-- RuleRegistry
+    |       |
+    |       +-- flow_rules []
+    |       +-- instruction_rules []
+    |       +-- pattern_rules []
+    |
+    +-- OptimizationStatistics
+    |       |
+    |       +-- rules_applied {}
+    |       +-- changes_made {}
+    |
+    +-- Hook Points
+            |
+            +-- cache_loader
+            +-- cache_saver
+            +-- pre_pass_hook
+            +-- post_pass_hook
+```
+
+This architecture makes it trivial to add:
+- Persistent caching (Phase 4)
+- Profiling and performance optimization (Phase 5)
+- Parallel rule execution
+- Custom rule loading strategies
+
 ## Next Steps
 
 Remaining refactoring tasks from `REFACTORING.md`:
 
 - [x] **Phase 1**: Declarative DSL with self-verifying rules ✅
 - [x] **Phase 2**: Decompose flow optimizations into composable services ✅
-- [ ] **Phase 3**: Create OptimizerManager to centralize the optimization loop
-- [ ] **Phase 4**: Migrate all pattern matching rules to use the DSL
-- [ ] **Phase 5**: Complete migration of flow optimization services
+- [x] **Phase 3**: Create OptimizerManager to centralize the optimization loop ✅
+- [ ] **Phase 4**: Performance optimization - Profiling and caching
+- [ ] **Phase 5**: Performance optimization - Parallel execution and heuristics
+- [ ] **Phase 6**: Migrate all pattern matching rules to use the DSL
 
 These will be tackled in future pull requests to keep changes manageable.
