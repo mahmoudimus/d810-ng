@@ -14,10 +14,30 @@ description = "This is a next generation version of D-810, an IDA Pro plugin whi
 dependencies = ["z3-solver", "typing-extensions"]
 
 [project.optional-dependencies]
-dev = ["pyinstrument"]
+dev = ["pyinstrument", "coverage[toml]", "pytest", "pytest-cov"]
+ci = ["coverage[toml]", "pytest", "pytest-cov"]
 
 [tool.setuptools]
 package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.coverage.run]
+source = ["src/d810"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]

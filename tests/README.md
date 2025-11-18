@@ -91,6 +91,48 @@ This tests:
 | `test_mba_guessing` | Complex MBA | Nested MBA expressions |
 | `tigress_minmaxarray` | Control flow flattening | Switch-based obfuscation |
 
+### Docker Testing (Recommended)
+
+Run tests in the same Docker environment as CI using real IDA Pro:
+
+```bash
+# Run all tests with IDA Pro 8.x (default):
+./test_with_docker.sh
+
+# Run all tests with IDA Pro 9.2:
+./test_with_docker.sh idapro-tests-9.2
+
+# Run only unit tests:
+./test_with_docker.sh idapro-tests unit
+
+# Run only integration tests:
+./test_with_docker.sh idapro-tests integration
+```
+
+**What Docker testing provides:**
+- ✅ Real IDA Pro environment (not mocked)
+- ✅ Same setup as GitHub Actions CI
+- ✅ Reproducible test results
+- ✅ No local IDA installation required
+- ✅ Test against multiple IDA versions (8.x and 9.2)
+- ✅ Coverage collection and reporting
+
+**Docker images used:**
+- `ghcr.io/mahmoudimus/idapro-linux:idapro-tests` - IDA Pro 8.x
+- `ghcr.io/mahmoudimus/idapro-linux:idapro-tests-9.2` - IDA Pro 9.2
+
+**Manual Docker usage:**
+```bash
+# Run unit tests manually:
+docker compose run --rm idapro-tests -m unittest discover tests/unit -p 'test_*.py' -v
+
+# Run integration tests manually:
+docker compose run --rm idapro-tests -m unittest discover tests/system -p 'test_*.py' -v
+
+# Interactive shell for debugging:
+docker compose run --rm --entrypoint bash idapro-tests
+```
+
 ### CI/CD with GitHub Actions
 
 The `.github/workflows/test-ida.yml` workflow automatically runs tests on:
@@ -98,11 +140,20 @@ The `.github/workflows/test-ida.yml` workflow automatically runs tests on:
 - Pull requests to `main` or `master`
 
 The workflow:
-1. Sets up Python and IDA Pro
-2. Installs dependencies
-3. Runs syntax checks
-4. Runs IDA Pro headless tests
-5. Uploads test results and coverage
+1. Sets up Python 3.10 and 3.11
+2. Logs into GitHub Container Registry
+3. Pulls Docker images (IDA Pro 8.x and 9.2)
+4. Runs local tests (syntax validation, no IDA required)
+5. Runs IDA Pro unit tests in Docker
+6. Runs IDA Pro integration tests against libobfuscated.dll
+7. Collects coverage data and generates reports
+8. Uploads test results and coverage to artifacts
+9. Uploads coverage to Codecov
+
+**Test matrix:**
+- Python versions: 3.10, 3.11
+- IDA Pro versions: 8.x (idapro-tests), 9.2 (idapro-tests-9.2)
+- Total combinations: 4 (2 Python × 2 IDA versions)
 
 ## Test Coverage
 
