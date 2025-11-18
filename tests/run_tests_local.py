@@ -56,6 +56,12 @@ def test_syntax_validation():
         "src/d810/optimizers/microcode/instructions/pattern_matching/rewrite_or_refactored.py",
         "src/d810/optimizers/microcode/instructions/pattern_matching/rewrite_bnot_refactored.py",
         "src/d810/optimizers/microcode/instructions/pattern_matching/rewrite_predicates_refactored.py",
+        "src/d810/optimizers/microcode/instructions/pattern_matching/rewrite_xor_refactored.py",
+        "src/d810/optimizers/microcode/instructions/pattern_matching/rewrite_neg_refactored.py",
+        "src/d810/optimizers/microcode/instructions/pattern_matching/rewrite_sub_refactored.py",
+        "src/d810/optimizers/microcode/instructions/pattern_matching/rewrite_mul_refactored.py",
+        "src/d810/optimizers/microcode/instructions/pattern_matching/rewrite_mov_refactored.py",
+        "src/d810/optimizers/microcode/instructions/pattern_matching/rewrite_cst_refactored.py",
         "tests/unit/optimizers/test_dsl_extensions.py",
     ]
 
