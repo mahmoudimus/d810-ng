@@ -576,6 +576,194 @@ This architecture makes it trivial to add:
 - Parallel rule execution
 - Custom rule loading strategies
 
+## Phase 4: Profiling and Persistent Caching (NEW!)
+
+### Performance Optimization Through Profiling
+
+**src/d810/optimizers/profiling.py**
+
+Identifies bottlenecks by measuring where time is spent:
+
+```python
+profiler = OptimizationProfiler()
+manager.set_profiling_hooks(
+    pre_hook=profiler.start_pass,
+    post_hook=profiler.end_pass
+)
+
+# After optimization
+profiler.print_summary()
+profiler.save_html_report("profile.html")
+```
+
+**Output Example:**
+```
+=============================================================
+D810 OPTIMIZATION PROFILE
+=============================================================
+Total Time: 45.230s
+Total Passes: 5
+Total Changes: 1247
+
+Top 10 Rules by Time:
+-------------------------------------------------------------
+Rule                           Time (s)    %       Calls
+-------------------------------------------------------------
+UnflattenerRule                35.120      77.6    42
+MopTrackerSearch               8.450       18.7    156
+XorFromOrAndSub                0.890       2.0     523
+...
+=============================================================
+```
+
+This data tells us:
+- `UnflattenerRule` takes 77.6% of total time
+- Focus optimization efforts there
+- Or use per-function rules to disable it where not needed
+
+### Persistent Caching with SQLite
+
+**src/d810/optimizers/caching.py**
+
+Eliminates redundant work by caching results across IDA sessions:
+
+```python
+cache = OptimizationCache("/path/to/analysis.db")
+manager.set_cache_handlers(
+    loader=cache.load_optimization_result,
+    saver=cache.save_optimization_result
+)
+
+# First run: analyze and cache
+changes = manager.optimize(mba, maturity)  # 30 seconds
+
+# Subsequent runs: load from cache
+changes = manager.optimize(mba, maturity)  # 0.1 seconds (300x faster!)
+```
+
+**Features:**
+
+1. **Function Fingerprinting:**
+   - SHA-256 hash of function bytes
+   - Detects when function changes
+   - Automatically invalidates stale cache
+
+2. **Patch Storage:**
+   - Saves optimization transformations
+   - Can replay without re-analyzing
+   - Survives IDA restarts
+
+3. **Per-Function Rule Configuration:**
+   ```python
+   # Only run unflattening on specific function
+   cache.set_function_rules(
+       function_addr=0x401000,
+       enabled_rules={"UnflattenerRule"},
+       notes="Large dispatcher, skip other rules"
+   )
+
+   # Disable problematic rule
+   cache.set_function_rules(
+       function_addr=0x402000,
+       disabled_rules={"SlowPatternRule"},
+       notes="Takes 10+ seconds on this function"
+   )
+
+   # Check if rule should run
+   if cache.should_run_rule(func_addr, "UnflattenerRule"):
+       # Run the rule
+       pass
+   ```
+
+4. **Statistics:**
+   ```python
+   stats = cache.get_statistics()
+   print(f"Functions cached: {stats['functions_cached']}")
+   print(f"Patches stored: {stats['patches_stored']}")
+   print(f"Custom rules: {stats['functions_with_custom_rules']}")
+   ```
+
+### Workflow Example
+
+**Step 1: Profile to find bottlenecks**
+```python
+profiler = OptimizationProfiler()
+manager.set_profiling_hooks(
+    pre_hook=profiler.start_pass,
+    post_hook=profiler.end_pass
+)
+
+# Run optimization
+manager.optimize(mba, maturity)
+
+# Analyze results
+profiler.save_html_report("profile.html")
+# Opens browser: UnflattenerRule takes 80% of time!
+```
+
+**Step 2: Configure per-function rules**
+```python
+cache = OptimizationCache("analysis.db")
+
+# Disable UnflattenerRule on functions that aren't flattened
+for func_addr in non_flattened_functions:
+    cache.set_function_rules(
+        function_addr=func_addr,
+        disabled_rules={"UnflattenerRule"},
+        notes="Not flattened, skip expensive analysis"
+    )
+```
+
+**Step 3: Enable caching**
+```python
+manager.set_cache_handlers(
+    loader=cache.load_optimization_result,
+    saver=cache.save_optimization_result
+)
+```
+
+**Results:**
+- First analysis: 60 seconds
+- Subsequent analyses: 2 seconds (30x faster!)
+- Per-function tuning: Even faster on large binaries
+
+### Database Schema
+
+```sql
+-- Functions: metadata and fingerprints
+CREATE TABLE functions (
+    address INTEGER PRIMARY KEY,
+    bytes_hash TEXT NOT NULL,  -- SHA-256 for validation
+    block_count INTEGER,
+    instruction_count INTEGER
+);
+
+-- Results: optimization outcomes
+CREATE TABLE results (
+    function_addr INTEGER,
+    maturity INTEGER,
+    changes_made INTEGER,
+    fingerprint TEXT,
+    PRIMARY KEY (function_addr, maturity)
+);
+
+-- Patches: transformations applied
+CREATE TABLE patches (
+    function_addr INTEGER,
+    maturity INTEGER,
+    patch_type TEXT,  -- 'redirect_edge', 'insert_block', etc.
+    patch_data TEXT   -- JSON
+);
+
+-- Function rules: per-function configuration
+CREATE TABLE function_rules (
+    function_addr INTEGER PRIMARY KEY,
+    enabled_rules TEXT,   -- JSON array
+    disabled_rules TEXT,  -- JSON array
+    notes TEXT
+);
+```
+
 ## Next Steps
 
 Remaining refactoring tasks from `REFACTORING.md`:
@@ -583,8 +771,9 @@ Remaining refactoring tasks from `REFACTORING.md`:
 - [x] **Phase 1**: Declarative DSL with self-verifying rules ✅
 - [x] **Phase 2**: Decompose flow optimizations into composable services ✅
 - [x] **Phase 3**: Create OptimizerManager to centralize the optimization loop ✅
-- [ ] **Phase 4**: Performance optimization - Profiling and caching
-- [ ] **Phase 5**: Performance optimization - Parallel execution and heuristics
-- [ ] **Phase 6**: Migrate all pattern matching rules to use the DSL
+- [x] **Phase 4**: Performance optimization - Profiling and caching ✅
+- [ ] **Phase 5**: Performance optimization - Selective scanning and parallel execution
+- [ ] **Phase 6**: Performance optimization - Heuristics and early exits
+- [ ] **Phase 7**: Migrate all pattern matching rules to use the DSL
 
 These will be tackled in future pull requests to keep changes manageable.
