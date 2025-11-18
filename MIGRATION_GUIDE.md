@@ -316,13 +316,102 @@ Both old and new styles can coexist during migration.
 - See `src/d810/optimizers/microcode/instructions/pattern_matching/rewrite_neg_refactored.py` for more examples
 - See `tests/unit/optimizers/test_verifiable_rules.py` for the test setup
 
+## Phase 2: Flow Optimization Services (NEW!)
+
+### Composable Services (`d810/optimizers/microcode/flow/flattening/services.py`)
+
+Flow optimizations have been decomposed into single-responsibility services:
+
+```python
+@dataclass(frozen=True)
+class Dispatcher:
+    """Immutable representation of a control-flow dispatcher."""
+    entry_block: mblock_t
+    state_variable: mop_t
+    comparison_values: List[int]
+    # ...
+
+class DispatcherFinder(Protocol):
+    """Protocol for finding dispatchers."""
+    def find(self, context: OptimizationContext) -> List[Dispatcher]:
+        ...
+
+class PathEmulator:
+    """Emulates paths to resolve state variables."""
+    def resolve_target(
+        self, context, from_block, dispatcher
+    ) -> mblock_t | None:
+        ...
+
+class CFGPatcher:
+    """Applies changes to the control flow graph."""
+    @staticmethod
+    def redirect_edge(context, from_block, to_block) -> int:
+        ...
+```
+
+### Refactored Unflattener (`unflattener_refactored.py`)
+
+**Before (700+ lines):**
+```python
+class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
+    # God object that does EVERYTHING:
+    # - Finding dispatchers
+    # - Emulating paths
+    # - Patching CFG
+    # - Managing state
+    # 700+ lines of tightly coupled code
+```
+
+**After (~100 lines):**
+```python
+class UnflattenerRule:
+    """Clean coordinator using composition."""
+
+    def __init__(self, finder, emulator, patcher):
+        self._finder = finder      # Dependency injection
+        self._emulator = emulator  # Easy to mock
+        self._patcher = patcher    # Easy to test
+
+    def apply(self, context, blk):
+        dispatchers = self._finder.find(context)
+
+        for dispatcher in dispatchers:
+            for pred in dispatcher.entry_block.predset:
+                target = self._emulator.resolve_target(...)
+                self._patcher.redirect_edge(...)
+```
+
+**Testing Benefits:**
+```python
+# OLD: Need IDA environment, slow, brittle
+def test_unflattening():
+    ida.open_database("obfuscated.idb")  # Requires IDA!
+    mba = get_mba(0x401000)              # Slow!
+    rule = GenericDispatcherUnflatteningRule()
+    changes = rule.optimize(mba.get_mblock(0))
+    assert changes > 0  # Vague assertion
+
+# NEW: Pure Python, fast, clear
+def test_unflatten_single_dispatcher():
+    mock_finder = Mock(spec=DispatcherFinder)
+    mock_finder.find.return_value = [mock_dispatcher]
+
+    rule = UnflattenerRule(mock_finder, mock_emulator, mock_patcher)
+    changes = rule.apply(context, entry_block)
+
+    assert changes == 1
+    mock_emulator.resolve_target.assert_called_once()
+```
+
 ## Next Steps
 
-The remaining refactoring tasks from `REFACTORING.md` include:
+Remaining refactoring tasks from `REFACTORING.md`:
 
-- [ ] Decompose flow optimization rules into composable services
-- [ ] Create OptimizerManager to centralize the optimization loop
-- [ ] Migrate all pattern matching rules to use the DSL
-- [ ] Add integration tests for the complete system
+- [x] **Phase 1**: Declarative DSL with self-verifying rules ✅
+- [x] **Phase 2**: Decompose flow optimizations into composable services ✅
+- [ ] **Phase 3**: Create OptimizerManager to centralize the optimization loop
+- [ ] **Phase 4**: Migrate all pattern matching rules to use the DSL
+- [ ] **Phase 5**: Complete migration of flow optimization services
 
 These will be tackled in future pull requests to keep changes manageable.
