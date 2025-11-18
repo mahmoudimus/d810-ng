@@ -31,9 +31,9 @@ This validates:
 - Documentation exists
 - Code metrics
 
-### IDA Pro Headless Tests
+### IDA Pro Unit Tests
 
-Run full tests in IDA Pro headless mode:
+Run unit tests in IDA Pro headless mode:
 
 ```bash
 # From IDA Pro installation directory
@@ -51,6 +51,45 @@ This tests:
 - Constrained rules structure
 - Rule registry population
 - Runtime constraint checking
+
+### IDA Pro Integration Tests
+
+Run integration tests against real obfuscated binaries:
+
+```bash
+# Using the wrapper script (recommended):
+./run_integration_tests.sh
+
+# Or manually with IDA:
+idat64 -A -S"tests/run_ida_integration_tests.py" -L"/tmp/ida_integration.log" samples/bins/libobfuscated.dll
+```
+
+This tests:
+- Full d810 optimization pipeline
+- Pattern matching rules against real MBA obfuscation
+- XOR simplification (MBA patterns → XOR)
+- Constant folding optimizations
+- Opaque predicate simplification
+- Chained arithmetic simplification
+- Individual pattern matching rules (XOR, OR, NEG, etc.)
+- Before/after comparisons
+
+**Test Binary:** `samples/bins/libobfuscated.dll`
+- Contains functions with various obfuscation patterns
+- MBA (Mixed Boolean-Arithmetic) obfuscation
+- Opaque predicates
+- Control flow flattening (Tigress samples)
+
+**Test Functions:**
+| Function | Obfuscation Type | Pattern |
+|----------|------------------|---------|
+| `test_xor` | MBA XOR | `a + b - 2*(a & b)` |
+| `test_or` | MBA OR | `(a & b) + (a ^ b)` |
+| `test_cst_simplification` | Constant folding | Complex constant expressions |
+| `test_opaque_predicate` | Opaque predicates | Always-true/false conditions |
+| `test_chained_add` | Arithmetic chains | Long chains of +/- operations |
+| `test_mba_guessing` | Complex MBA | Nested MBA expressions |
+| `tigress_minmaxarray` | Control flow flattening | Switch-based obfuscation |
 
 ### CI/CD with GitHub Actions
 

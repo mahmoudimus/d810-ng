@@ -88,25 +88,45 @@ jobs:
         print('All syntax checks passed!')
         "
 
-    - name: Run IDA Pro headless tests
+    - name: Run IDA Pro unit tests
       if: steps.cache-ida.outputs.cache-hit == 'true'
       env:
         IDADIR: ~/idapro
-        IDALOG: /tmp/ida.log
+        IDALOG: /tmp/ida_unit.log
       run: |
-        # Run IDA Pro in headless mode to execute tests
-        ~/idapro/idat64 -A -S"$PWD/tests/run_tests.py" -L"$IDALOG" &
-        IDA_PID=$!
-
-        # Wait for tests to complete (with timeout)
-        timeout 300 tail -f "$IDALOG" || true
+        # Run IDA Pro in headless mode to execute unit tests
+        ~/idapro/idat64 -A -S"$PWD/tests/run_tests.py" -L"$IDALOG"
 
         # Check if tests passed
         if grep -q "TESTS PASSED" "$IDALOG"; then
-          echo "✓ All IDA Pro tests passed!"
-          exit 0
+          echo "✓ All IDA Pro unit tests passed!"
         else
-          echo "✗ IDA Pro tests failed!"
+          echo "✗ IDA Pro unit tests failed!"
+          cat "$IDALOG"
+          exit 1
+        fi
+
+    - name: Run IDA Pro integration tests
+      if: steps.cache-ida.outputs.cache-hit == 'true'
+      env:
+        IDADIR: ~/idapro
+        IDALOG: /tmp/ida_integration.log
+      run: |
+        # Check if test binary exists
+        if [ ! -f samples/bins/libobfuscated.dll ]; then
+          echo "⚠ Test binary not found, skipping integration tests"
+          exit 0
+        fi
+
+        # Run integration tests against libobfuscated.dll
+        echo "Running integration tests against libobfuscated.dll..."
+        ~/idapro/idat64 -A -S"$PWD/tests/run_ida_integration_tests.py" -L"$IDALOG" "$PWD/samples/bins/libobfuscated.dll"
+
+        # Check if tests passed
+        if grep -q "ALL INTEGRATION TESTS PASSED" "$IDALOG"; then
+          echo "✓ All IDA Pro integration tests passed!"
+        else
+          echo "✗ IDA Pro integration tests failed!"
           cat "$IDALOG"
           exit 1
         fi
@@ -117,7 +137,11 @@ jobs:
       with:
         name: test-results-${{ matrix.ida-version }}
         path: |
-          /tmp/ida.log
+          /tmp/ida_unit.log
+          /tmp/ida_integration.log
+          /tmp/d810_integration_tests.log
+          .coverage
+          .coverage.integration
           coverage.xml
           htmlcov/
 
