@@ -12,12 +12,12 @@ Original rules from rewrite_or.py, now with:
 All rules are mathematically proven correct by Z3 SMT solver.
 """
 
-from d810.optimizers.dsl import Var, Const
+from d810.optimizers.dsl import Var, Const, when
 from d810.optimizers.rules import VerifiableRule
 
 # Create symbolic variables
-x, y, z = Var("x"), Var("y"), Var("z")
-ONE = Const("ONE", 1)
+x, y, z = Var("x_0"), Var("x_1"), Var("x_2")
+ONE = Const("1", 1)
 
 
 class Or_HackersDelight2(VerifiableRule):
@@ -230,33 +230,180 @@ class OrBnot_Factor2(VerifiableRule):
     REFERENCE = "Boolean algebra, XOR-NOT identity"
 
 
-# Note: Some rules from the original require additional checks:
-#
-# - Or_HackersDelightRule_1: requires equal_bnot_mop check
-# - Or_FactorRule_3: requires equal_bnot_mop for both x and y
-# - Or_OllvmRule_1: requires equal_bnot_mop check
-# - Or_Rule_1: requires equal_bnot_mop check
-# - Or_Rule_3: requires equal_bnot_mop for both x and y
-# - OrBnot_FactorRule_3: requires equal_bnot_mop check
-# - OrBnot_FactorRule_4: requires equal_bnot_mop check
-#
-# These can be migrated when DSL supports constraint expressions.
+# ============================================================================
+# Constrained OR Rules (using when.is_bnot)
+# ============================================================================
+
+
+class Or_HackersDelight1(VerifiableRule):
+    """Simplify: (x & ~y) + y => x | y (when ~y is verified)
+
+    Hacker's Delight pattern requiring bitwise NOT verification.
+
+    Proof (when bnot_y == ~y):
+        (x & ~y) + y = (x - (x & y)) + y
+                     = x + y - (x & y)
+                     = x | y [Hacker's Delight identity]
+    """
+
+    bnot_y = Var("bnot_x_1")
+
+    PATTERN = (x & bnot_y) + y
+    REPLACEMENT = x | y
+
+    CONSTRAINTS = [when.is_bnot("x_1", "bnot_x_1")]
+
+    DESCRIPTION = "Simplify (x & ~y) + y to x | y"
+    REFERENCE = "Hacker's Delight with bnot constraint"
+
+
+class Or_Factor3(VerifiableRule):
+    """Simplify: (x | y) | (~x ^ ~y) => x | y (when ~x and ~y verified)
+
+    Absorption pattern with double bitwise NOT verification.
+
+    Proof (when bnot_x == ~x and bnot_y == ~y):
+        (x | y) | (~x ^ ~y) = (x | y) | XNOR(x, y)
+                             = (x | y) [absorption]
+    """
+
+    bnot_x, bnot_y = Var("bnot_x_0"), Var("bnot_x_1")
+
+    PATTERN = (x | y) | (bnot_x ^ bnot_y)
+    REPLACEMENT = x | y
+
+    CONSTRAINTS = [
+        when.is_bnot("x_0", "bnot_x_0"),
+        when.is_bnot("x_1", "bnot_x_1"),
+    ]
+
+    DESCRIPTION = "Simplify (x | y) | (~x ^ ~y) to x | y"
+    REFERENCE = "Absorption with double bnot constraint"
+
+
+class Or_OLLVM1(VerifiableRule):
+    """Simplify: (x & y) | ~(~x ^ y) => x | y (when ~x is verified)
+
+    OLLVM obfuscation pattern with bitwise NOT verification.
+
+    Proof (when bnot_x == ~x):
+        (x & y) | ~(~x ^ y) = (x & y) | ~XNOR(x, y)
+                             = (x & y) | (x XOR y)  [XNOR negation]
+                             = x | y  [OR identity]
+    """
+
+    bnot_x = Var("bnot_x_0")
+
+    PATTERN = (x & y) | ~(bnot_x ^ y)
+    REPLACEMENT = x | y
+
+    CONSTRAINTS = [when.is_bnot("x_0", "bnot_x_0")]
+
+    DESCRIPTION = "Simplify (x & y) | ~(~x ^ y) to x | y"
+    REFERENCE = "OLLVM obfuscation with bnot constraint"
+
+
+class Or_Rule1(VerifiableRule):
+    """Simplify: (~x & y) | x => x | y (when ~x is verified)
+
+    Absorption pattern with bitwise NOT.
+
+    Proof (when bnot_x == ~x):
+        (~x & y) | x = (NOT x AND y) OR x
+                     = x | y [absorption: (~A & B) | A = A | B]
+    """
+
+    bnot_x = Var("bnot_x_0")
+
+    PATTERN = (bnot_x & y) | x
+    REPLACEMENT = x | y
+
+    CONSTRAINTS = [when.is_bnot("x_0", "bnot_x_0")]
+
+    DESCRIPTION = "Simplify (~x & y) | x to x | y"
+    REFERENCE = "Absorption with bnot constraint"
+
+
+class Or_Rule3(VerifiableRule):
+    """Simplify: ~(~x | ~y) | (x ^ y) => x | y (when ~x and ~y verified)
+
+    Complex pattern combining De Morgan and XOR with double bnot verification.
+
+    Proof (when bnot_x == ~x and bnot_y == ~y):
+        ~(~x | ~y) | (x ^ y) = (x & y) | (x ^ y)  [De Morgan]
+                              = x | y  [OR identity]
+    """
+
+    bnot_x, bnot_y = Var("bnot_x_0"), Var("bnot_x_1")
+
+    PATTERN = ~(bnot_x | bnot_y) | (x ^ y)
+    REPLACEMENT = x | y
+
+    CONSTRAINTS = [
+        when.is_bnot("x_0", "bnot_x_0"),
+        when.is_bnot("x_1", "bnot_x_1"),
+    ]
+
+    DESCRIPTION = "Simplify ~(~x | ~y) | (x ^ y) to x | y"
+    REFERENCE = "De Morgan + XOR with double bnot constraint"
+
+
+class OrBnot_Factor3(VerifiableRule):
+    """Simplify: (x - y) + (~x | y) => x | ~y (when ~x is verified)
+
+    Produces OR-NOT result with bitwise NOT verification.
+
+    Proof (when bnot_x == ~x):
+        (x - y) + (~x | y) = x - y + ~x + (y & ~x)
+                           = x | ~y [algebraic simplification]
+    """
+
+    bnot_x = Var("bnot_x_0")
+
+    PATTERN = (x - y) + (bnot_x | y)
+    REPLACEMENT = x | ~y
+
+    CONSTRAINTS = [when.is_bnot("x_0", "bnot_x_0")]
+
+    DESCRIPTION = "Simplify (x - y) + (~x | y) to x | ~y"
+    REFERENCE = "Complex factoring with bnot constraint"
+
+
+class OrBnot_Factor4(VerifiableRule):
+    """Simplify: (~x | y) ^ (x ^ y) => x | ~y (when ~x is verified)
+
+    Produces OR-NOT result through XOR factoring with bnot verification.
+
+    Proof (when bnot_x == ~x):
+        (~x | y) ^ (x ^ y) = [(~x | y) XOR x] XOR y
+                           = (x | ~y) [XOR algebra]
+    """
+
+    bnot_x = Var("bnot_x_0")
+
+    PATTERN = (bnot_x | y) ^ (x ^ y)
+    REPLACEMENT = x | ~y
+
+    CONSTRAINTS = [when.is_bnot("x_0", "bnot_x_0")]
+
+    DESCRIPTION = "Simplify (~x | y) ^ (x ^ y) to x | ~y"
+    REFERENCE = "XOR factoring with bnot constraint"
 
 
 """
-Phase 7 Summary
-===============
+OR Rules Migration Complete!
+==============================
 
-Total Rules Migrated: 37
-- rewrite_add_refactored.py: 7 rules
-- rewrite_and_refactored.py: 15 rules
-- rewrite_or_refactored.py: 11 rules
+Original file: rewrite_or.py
+- Total rules: 18
+- Migrated: 18 (100% complete!)
+- Remaining: 0
 
-Plus existing from Phase 1:
-- rewrite_xor_refactored.py: ~5 rules
-- rewrite_neg_refactored.py: ~5 rules
+Rule breakdown:
+- Simple rules: 11 (no constraints)
+- Constrained rules: 7 (using when.is_bnot)
 
-Total: ~43 rules migrated to declarative DSL!
+Achievement: OR rules 100% migrated! ✓
 
 Code Metrics:
 -------------
