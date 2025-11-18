@@ -141,9 +141,31 @@ class VerifiableRule(SymbolicRule):
     when a constant c2 equals ~c1.
 
     All subclasses are automatically registered in RULE_REGISTRY for batch testing.
+
+    Class Variables:
+        CONSTRAINTS: Optional list of runtime constraint functions.
+                    Each function takes a match context dict and returns bool.
+        DYNAMIC_CONSTS: Optional dict mapping constant names to compute functions.
+                       Used for constants whose values depend on matched values.
+
+    Example with constraints:
+        >>> from d810.optimizers.dsl import when
+        >>> class MyRule(VerifiableRule):
+        ...     PATTERN = (x ^ Const("c_1")) + (x + Const("c_2"))
+        ...     REPLACEMENT = x & y
+        ...     CONSTRAINTS = [when.equal_mops("c_1", "c_2")]
+
+    Example with dynamic constants:
+        >>> class MyRule(VerifiableRule):
+        ...     PATTERN = x + Const("c_2")
+        ...     REPLACEMENT = x + DynamicConst("val_res", lambda ctx: ctx['c_2'].value - 1)
     """
 
     BIT_WIDTH = 32  # Default bit-width for Z3 verification
+
+    # Override these in subclasses
+    CONSTRAINTS: List = []  # Runtime constraints (list of callables)
+    DYNAMIC_CONSTS: Dict[str, Any] = {}  # Dynamic constant generators
 
     def __init_subclass__(cls, **kwargs):
         """Automatically register any subclass for testing.
@@ -162,12 +184,50 @@ class VerifiableRule(SymbolicRule):
                     exc_info=True
                 )
 
+    def check_runtime_constraints(self, match_context: Dict[str, Any]) -> bool:
+        """Check if all runtime constraints are satisfied for this match.
+
+        This method evaluates the CONSTRAINTS list against the matched values.
+        Each constraint is a callable that takes the match context and returns bool.
+
+        Args:
+            match_context: Dictionary mapping variable names to matched AstNodes/values.
+
+        Returns:
+            True if all constraints pass, False otherwise.
+
+        Example:
+            >>> # In a rule definition:
+            >>> from d810.optimizers.dsl import when
+            >>> CONSTRAINTS = [
+            ...     when.equal_mops("c_1", "c_2"),
+            ...     when.is_bnot("x_0", "bnot_x_0"),
+            ... ]
+        """
+        if not hasattr(self, 'CONSTRAINTS') or not self.CONSTRAINTS:
+            return True
+
+        for constraint in self.CONSTRAINTS:
+            try:
+                if not constraint(match_context):
+                    return False
+            except (KeyError, AttributeError, TypeError) as e:
+                logger.debug(
+                    f"Constraint check failed for {self.name}: {e}"
+                )
+                return False
+
+        return True
+
     def get_constraints(self, z3_vars: Dict[str, Any]) -> List[Any]:
         """Optional: Define Z3 constraints for this rule's validity.
 
         Some rules are only valid under certain conditions. For example, a rule
         might require that constant c2 equals ~c1. Override this method to
         specify such constraints.
+
+        Note: For most rules, use the CONSTRAINTS class variable instead,
+        which is checked at runtime. This method is for Z3 verification only.
 
         Args:
             z3_vars: A dictionary mapping symbolic variable names to Z3 BitVec objects.

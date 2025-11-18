@@ -157,27 +157,182 @@ class Add_OLLVM3(VerifiableRule):
     REFERENCE = "OLLVM obfuscation, pattern 3"
 
 
-# Note: Some rules from the original rewrite_add.py require additional checks
-# beyond pattern matching (e.g., checking that constants are related in specific ways).
-# Those rules need custom check_candidate() methods and can't be expressed purely
-# with the DSL yet. They could be added as SymbolicRule subclasses with custom logic.
+# ============================================================================
+# Constrained Rules (using DSL extensions)
+# ============================================================================
+# The following rules use the extended DSL with constraints and dynamic constants.
 
-# Rules that are harder to express declaratively:
-# - Add_SpecialConstantRule_1: requires equal_mops_ignore_size check
-# - Add_SpecialConstantRule_2: requires c_1 & 0xFF == c_2
-# - Add_SpecialConstantRule_3: requires c_1 == ~c_2
-# - Add_OllvmRule_1: requires adding val_1 = 1 dynamically
-# - Add_OllvmRule_2: requires (val_fe + 2) & mask == 0 check
-# - Add_OllvmRule_4: needs val_fe constraint (not shown in original)
-# - AddXor_Rule_1/2: require equal_bnot_mop checks
 
-# These rules would benefit from DSL extensions for:
-# 1. Constraint expressions (e.g., "where c1 == ~c2")
-# 2. Dynamic constant generation
-# 3. Built-in mop comparison predicates
+from d810.optimizers.dsl import when, DynamicConst
 
-# For now, we've migrated the pure pattern matching rules.
-# The constrained rules can be migrated in future iterations.
+
+class Add_SpecialConstant1(VerifiableRule):
+    """Simplify: (x ^ c1) + 2*(x & c2) => x + c1 where c1 == c2
+
+    This rule is only valid when both constants have the same value.
+
+    Example:
+        (a ^ 5) + 2*(a & 5) => a + 5
+    """
+
+    PATTERN = (x ^ Const("c_1")) + TWO * (x & Const("c_2"))
+    REPLACEMENT = x + Const("c_1")
+    CONSTRAINTS = [when.equal_mops("c_1", "c_2")]
+
+    DESCRIPTION = "Simplify XOR-AND with equal constants"
+    REFERENCE = "Special constant pattern 1"
+
+
+class Add_SpecialConstant2(VerifiableRule):
+    """Simplify: ((x & 0xFF) ^ c1) + 2*(x & c2) => (x & 0xFF) + c1
+
+    where (c1 & 0xFF) == c2
+
+    Example:
+        ((a & 0xFF) ^ 0x12) + 2*(a & 0x12) => (a & 0xFF) + 0x12
+    """
+
+    PATTERN = ((x & Const("val_ff", 0xFF)) ^ Const("c_1")) + TWO * (x & Const("c_2"))
+    REPLACEMENT = (x & Const("val_ff", 0xFF)) + Const("c_1")
+
+    CONSTRAINTS = [
+        lambda ctx: (ctx['c_1'].value & 0xFF) == ctx['c_2'].value
+    ]
+
+    DESCRIPTION = "Simplify masked XOR-AND pattern"
+    REFERENCE = "Special constant pattern 2"
+
+
+class Add_SpecialConstant3(VerifiableRule):
+    """Simplify: (x ^ c1) + 2*(x | c2) => x + (c2 - 1)
+
+    where c1 == ~c2
+
+    The replacement constant is computed as c2 - 1.
+
+    Example:
+        (a ^ 0xFE) + 2*(a | 0x01) => a + 0  (since ~0x01 = 0xFE, result is 0x01 - 1 = 0)
+    """
+
+    c1, c2 = Const("c_1"), Const("c_2")
+    val_res = DynamicConst("val_res", lambda ctx: ctx['c_2'].value - 1, size_from="x")
+
+    PATTERN = (x ^ c1) + TWO * (x | c2)
+    REPLACEMENT = x + val_res
+
+    CONSTRAINTS = [when.is_bnot("c_1", "c_2")]
+
+    DESCRIPTION = "Simplify XOR-OR with inverted constants"
+    REFERENCE = "Special constant pattern 3"
+
+
+class Add_OLLVM_DynamicConst(VerifiableRule):
+    """Simplify: ~(x ^ y) + 2*(y | x) => (x + y) - 1
+
+    Dynamic constant version that adds val_1 = 1 at match time.
+
+    Example:
+        ~(a ^ b) + 2*(b | a) => (a + b) - 1
+    """
+
+    val_1 = DynamicConst("val_1", lambda ctx: 1, size_from="x")
+
+    PATTERN = ~(x ^ y) + TWO * (y | x)
+    REPLACEMENT = (x + y) - val_1
+
+    DESCRIPTION = "OLLVM pattern with dynamic constant"
+    REFERENCE = "OLLVM obfuscation, dynamic variant"
+
+
+class Add_OLLVM2(VerifiableRule):
+    """Simplify: ~(x ^ y) - (val_fe * (x | y)) => (x + y) - 1
+
+    where (val_fe + 2) & SIZE_MASK == 0
+
+    This checks that val_fe is a value such that adding 2 wraps to 0.
+
+    Example:
+        ~(a ^ b) - (0xFE * (a | b)) => (a + b) - 1
+        (since 0xFE + 2 = 0x100, which wraps to 0 for 8-bit values)
+    """
+
+    val_fe = Const("val_fe")
+    val_1 = DynamicConst("val_1", lambda ctx: 1, size_from="x")
+
+    PATTERN = ~(x ^ y) - (val_fe * (x | y))
+    REPLACEMENT = (x + y) - val_1
+
+    CONSTRAINTS = [
+        lambda ctx: (ctx['val_fe'].value + 2) & ((1 << (ctx['val_fe'].size * 8)) - 1) == 0
+    ]
+
+    DESCRIPTION = "OLLVM subtraction with size-dependent constant"
+    REFERENCE = "OLLVM obfuscation, pattern 2"
+
+
+class Add_OLLVM4(VerifiableRule):
+    """Simplify: (x ^ y) - (val_fe * (x & y)) => x + y
+
+    where val_fe must satisfy certain conditions (typically -2).
+
+    Example:
+        (a ^ b) - (0xFE * (a & b)) => a + b
+    """
+
+    val_fe = Const("val_fe")
+
+    PATTERN = (x ^ y) - (val_fe * (x & y))
+    REPLACEMENT = x + y
+
+    CONSTRAINTS = [
+        # val_fe should be -2 (0xFE for 8-bit, 0xFFFE for 16-bit, etc.)
+        lambda ctx: (ctx['val_fe'].value + 2) & ((1 << (ctx['val_fe'].size * 8)) - 1) == 0
+    ]
+
+    DESCRIPTION = "OLLVM XOR-AND pattern with negated multiplier"
+    REFERENCE = "OLLVM obfuscation, pattern 4"
+
+
+class AddXor_Constrained1(VerifiableRule):
+    """Simplify: (x - y) - 2*(x | ~y) => (x ^ y) + 2
+
+    where bnot_y == ~y
+
+    Example:
+        (a - b) - 2*(a | ~b) => (a ^ b) + 2
+    """
+
+    bnot_y = Var("bnot_y")
+    val_2 = DynamicConst("val_2", lambda ctx: 2, size_from="x")
+
+    PATTERN = (x - y) - TWO * (x | bnot_y)
+    REPLACEMENT = (x ^ y) + val_2
+
+    CONSTRAINTS = [when.is_bnot("y", "bnot_y")]
+
+    DESCRIPTION = "Simplify SUB-OR pattern to XOR"
+    REFERENCE = "AddXor pattern 1"
+
+
+class AddXor_Constrained2(VerifiableRule):
+    """Simplify: (x - y) - 2*(~(~x & y)) => (x ^ y) + 2
+
+    where bnot_x == ~x
+
+    Example:
+        (a - b) - 2*(~(~a & b)) => (a ^ b) + 2
+    """
+
+    bnot_x = Var("bnot_x")
+    val_2 = DynamicConst("val_2", lambda ctx: 2, size_from="x")
+
+    PATTERN = (x - y) - TWO * ~(bnot_x & y)
+    REPLACEMENT = (x ^ y) + val_2
+
+    CONSTRAINTS = [when.is_bnot("x", "bnot_x")]
+
+    DESCRIPTION = "Simplify SUB-NOT-AND pattern to XOR"
+    REFERENCE = "AddXor pattern 2"
 
 
 """
