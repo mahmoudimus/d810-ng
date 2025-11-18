@@ -54,6 +54,7 @@ def test_syntax_validation():
         "src/d810/optimizers/microcode/instructions/pattern_matching/rewrite_add_refactored.py",
         "src/d810/optimizers/microcode/instructions/pattern_matching/rewrite_and_refactored.py",
         "src/d810/optimizers/microcode/instructions/pattern_matching/rewrite_or_refactored.py",
+        "src/d810/optimizers/microcode/instructions/pattern_matching/rewrite_bnot_refactored.py",
         "tests/unit/optimizers/test_dsl_extensions.py",
     ]
 
