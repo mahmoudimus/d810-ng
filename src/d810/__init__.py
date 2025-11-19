@@ -1,11 +1,25 @@
 """D810 - IDA Pro deobfuscation plugin.
 
-This module imports all optimizer handlers to ensure they are registered
-with the registry before the plugin tries to access them.
+This module uses the discovery mechanism to scan and import all submodules,
+ensuring all optimizer handlers are registered before the plugin tries to
+access them.
 """
 
-# Import all optimizer handlers to trigger registration
-# This must happen before d810.manager or d810.hexrays.hexrays_hooks are imported
-import d810.optimizers.microcode.instructions  # noqa: F401
+import pathlib
+import sys
+
+# Discover and import all modules in the package during initial load
+# This ensures optimizer classes are registered before the plugin manager
+# tries to look them up from the registry
+_package_root = pathlib.Path(__file__).parent
+if _package_root.exists():
+    from d810.reloadable import _Scanner
+
+    _Scanner.scan(
+        package_path=[str(_package_root)],
+        prefix="d810.",
+        callback=None,
+        skip_packages=False,
+    )
 
 __all__ = ["optimizers"]
