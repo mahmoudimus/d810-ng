@@ -1,5 +1,6 @@
 name: Test with IDA Pro
 
+# Test workflow with IDA Pro in Docker
 on:
     push:
         branches:
