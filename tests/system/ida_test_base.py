@@ -151,7 +151,7 @@ class IDAProTestCase(CoveredIntegrationTest):
 
         # Find the binary
         cls.tests_dir = pathlib.Path(__file__).parent
-        project_root = cls.tests_dir.parent
+        project_root = cls.tests_dir.parent.parent  # Go up two levels: tests/system -> tests -> project_root
 
         # Look for binary in multiple possible locations
         possible_paths = [
