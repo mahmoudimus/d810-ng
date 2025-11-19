@@ -122,14 +122,30 @@ jobs:
                       fi
 
                       # Find IDA Pro binary
-                      IDA_BIN=\$(which idat64 || which idat || echo '')
+                      echo 'Searching for IDA Pro binary...'
+                      ls -la /app/ida/ || true
+                      find /app/ida -name 'idat*' -o -name 'ida64*' 2>/dev/null || true
+
+                      # Try common locations
+                      for ida_path in /app/ida/idat64 /app/ida/bin/idat64 /app/ida/idat /app/ida/bin/idat; do
+                          if [ -x \"\$ida_path\" ]; then
+                              IDA_BIN=\"\$ida_path\"
+                              break
+                          fi
+                      done
+
+                      if [ -z \"\${IDA_BIN:-}\" ]; then
+                          IDA_BIN=\$(which idat64 || which idat || echo '')
+                      fi
+
                       if [ -z \"\$IDA_BIN\" ]; then
                           echo '✗ IDA Pro binary not found'
+                          echo 'Searched in: /app/ida/idat64, /app/ida/bin/idat64, PATH'
                           exit 1
                       fi
 
-                      echo \"Using IDA Pro: \$IDA_BIN\"
-                      \$IDA_BIN -v || true
+                      echo \"✓ Found IDA Pro: \$IDA_BIN\"
+                      ls -la \"\$IDA_BIN\" || true
 
                       # Run integration tests through IDA Pro
                       \$IDA_BIN -A -S\"tests/run_ida_integration_tests.py\" samples/bins/libobfuscated.dll
