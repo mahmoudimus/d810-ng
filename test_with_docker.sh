@@ -109,7 +109,16 @@ run_integration_tests() {
         fi
 
         echo \"Using IDA Pro: \$IDA_BIN\"
-        \$IDA_BIN -v || true
+
+        # Set up Python environment for IDA
+        export PYTHONHOME=/app/ida/.venv
+        export PATH=/app/ida/.venv/bin:\$PATH
+        export LD_LIBRARY_PATH=/app/ida/.venv/lib:\${LD_LIBRARY_PATH:-}
+
+        echo \"Python environment:\"
+        echo \"  PYTHONHOME: \$PYTHONHOME\"
+        echo \"  Python: \$(which python || echo 'not found')\"
+        python --version 2>&1 || true
 
         # Run integration tests through IDA Pro
         echo ''

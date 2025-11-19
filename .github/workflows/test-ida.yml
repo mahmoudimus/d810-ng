@@ -147,6 +147,16 @@ jobs:
                       echo \"✓ Found IDA Pro: \$IDA_BIN\"
                       ls -la \"\$IDA_BIN\" || true
 
+                      # Set up Python environment for IDA
+                      export PYTHONHOME=/app/ida/.venv
+                      export PATH=/app/ida/.venv/bin:\$PATH
+                      export LD_LIBRARY_PATH=/app/ida/.venv/lib:\${LD_LIBRARY_PATH:-}
+
+                      echo \"Python environment:\"
+                      echo \"  PYTHONHOME: \$PYTHONHOME\"
+                      echo \"  Python binary: \$(which python || echo 'not found')\"
+                      python --version 2>&1 || true
+
                       # Run integration tests through IDA Pro
                       \$IDA_BIN -A -S\"tests/run_ida_integration_tests.py\" samples/bins/libobfuscated.dll
                   "
