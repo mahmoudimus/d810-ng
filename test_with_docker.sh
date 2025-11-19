@@ -111,12 +111,22 @@ run_integration_tests() {
         echo \"Using IDA Pro: \$IDA_BIN\"
 
         # Set up Python environment for IDA
+        # Use Python from IDA's venv to avoid version mismatch
         export PYTHONHOME=/app/ida/.venv
         export PATH=/app/ida/.venv/bin:\$PATH
-        export LD_LIBRARY_PATH=/app/ida/.venv/lib:\${LD_LIBRARY_PATH:-}
+        export LD_LIBRARY_PATH=/app/ida/.venv/lib:/app/ida:\${LD_LIBRARY_PATH:-}
+        export TVHEADLESS=1
+
+        # Point to correct Python library for IDA
+        PYTHON_LIB=\$(find /app/ida/.venv/lib -name 'libpython3.*.so*' | head -1)
+        if [ -n \"\$PYTHON_LIB\" ]; then
+            export LD_PRELOAD=\"\$PYTHON_LIB\"
+            echo \"Preloading Python library: \$PYTHON_LIB\"
+        fi
 
         echo \"Python environment:\"
         echo \"  PYTHONHOME: \$PYTHONHOME\"
+        echo \"  LD_LIBRARY_PATH: \$LD_LIBRARY_PATH\"
         echo \"  Python: \$(which python || echo 'not found')\"
         python --version 2>&1 || true
 
