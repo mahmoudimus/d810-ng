@@ -1,0 +1,19 @@
+name: Minimal Test
+
+on:
+    push:
+        branches:
+            - "claude/*"
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Echo test
+              run: echo "Workflow is running!"
+
+            - name: List files
+              run: ls -la
