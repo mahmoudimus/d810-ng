@@ -121,63 +121,9 @@ jobs:
                           exit 0
                       fi
 
-                      # Find IDA Pro binary
-                      echo 'Searching for IDA Pro binary...'
-                      ls -la /app/ida/ || true
-                      find /app/ida -name 'idat*' -o -name 'ida64*' 2>/dev/null || true
-
-                      # Try common locations
-                      for ida_path in /app/ida/idat64 /app/ida/bin/idat64 /app/ida/idat /app/ida/bin/idat; do
-                          if [ -x \"\$ida_path\" ]; then
-                              IDA_BIN=\"\$ida_path\"
-                              break
-                          fi
-                      done
-
-                      if [ -z \"\${IDA_BIN:-}\" ]; then
-                          IDA_BIN=\$(which idat64 || which idat || echo '')
-                      fi
-
-                      if [ -z \"\$IDA_BIN\" ]; then
-                          echo '✗ IDA Pro binary not found'
-                          echo 'Searched in: /app/ida/idat64, /app/ida/bin/idat64, PATH'
-                          exit 1
-                      fi
-
-                      echo \"✓ Found IDA Pro: \$IDA_BIN\"
-                      ls -la \"\$IDA_BIN\" || true
-
-                      # Set up Python environment for IDA
-                      # IDA is looking for Python 3.13, but we have Python 3.10 in the venv
-                      # Create symlink to redirect IDA's Python library loading
-
-                      # Find Python 3.10 library in venv
-                      PYTHON_310_LIB=\$(find /app/ida/.venv/lib -name 'libpython3.10.so*' -type f | head -1)
-
-                      if [ -n \"\$PYTHON_310_LIB\" ]; then
-                          echo \"Found Python 3.10 library: \$PYTHON_310_LIB\"
-
-                          # Create directory if it doesn't exist
-                          mkdir -p /usr/lib/x86_64-linux-gnu
-
-                          # Create symlink from Python 3.13 path (what IDA expects) to Python 3.10 (what we have)
-                          ln -sf \"\$PYTHON_310_LIB\" /usr/lib/x86_64-linux-gnu/libpython3.13.so.1.0
-
-                          echo \"Created symlink: /usr/lib/x86_64-linux-gnu/libpython3.13.so.1.0 -> \$PYTHON_310_LIB\"
-                      fi
-
-                      export PYTHONHOME=/app/ida/.venv
-                      export PATH=/app/ida/.venv/bin:\$PATH
-                      export LD_LIBRARY_PATH=/app/ida/.venv/lib:/app/ida:\${LD_LIBRARY_PATH:-}
-                      export TVHEADLESS=1
-
-                      echo \"Python environment:\"
-                      echo \"  PYTHONHOME: \$PYTHONHOME\"
-                      echo \"  Python: \$(which python || echo 'not found')\"
-                      python --version 2>&1 || true
-
-                      # Run integration tests through IDA Pro
-                      \$IDA_BIN -A -S\"tests/run_ida_integration_tests.py\" samples/bins/libobfuscated.dll
+                      # Run integration tests with pytest
+                      # IDAProTestCase will handle opening the database
+                      pytest tests/system -v --tb=short --cov=src/d810 --cov-report=term-missing --cov-report=html --cov-report=xml --cov-append
                   "
                   docker compose logs
 

@@ -101,50 +101,13 @@ run_integration_tests() {
             exit 0
         fi
 
-        # Find IDA Pro binary
-        IDA_BIN=\$(which idat64 || which idat || echo '')
-        if [ -z \"\$IDA_BIN\" ]; then
-            echo '✗ IDA Pro binary not found'
-            exit 1
-        fi
-
-        echo \"Using IDA Pro: \$IDA_BIN\"
-
-        # Set up Python environment for IDA
-        # IDA is looking for Python 3.13, but we have Python 3.10 in the venv
-        # Create symlink to redirect IDA's Python library loading
-
-        # Find Python 3.10 library in venv
-        PYTHON_310_LIB=\$(find /app/ida/.venv/lib -name 'libpython3.10.so*' -type f | head -1)
-
-        if [ -n \"\$PYTHON_310_LIB\" ]; then
-            echo \"Found Python 3.10 library: \$PYTHON_310_LIB\"
-
-            # Create directory if it doesn't exist
-            mkdir -p /usr/lib/x86_64-linux-gnu
-
-            # Create symlink from Python 3.13 path (what IDA expects) to Python 3.10 (what we have)
-            ln -sf \"\$PYTHON_310_LIB\" /usr/lib/x86_64-linux-gnu/libpython3.13.so.1.0
-
-            echo \"Created symlink: /usr/lib/x86_64-linux-gnu/libpython3.13.so.1.0 -> \$PYTHON_310_LIB\"
-        fi
-
-        export PYTHONHOME=/app/ida/.venv
-        export PATH=/app/ida/.venv/bin:\$PATH
-        export LD_LIBRARY_PATH=/app/ida/.venv/lib:/app/ida:\${LD_LIBRARY_PATH:-}
-        export TVHEADLESS=1
-
-        echo \"Python environment:\"
-        echo \"  PYTHONHOME: \$PYTHONHOME\"
-        echo \"  Python: \$(which python || echo 'not found')\"
-        python --version 2>&1 || true
-
-        # Run integration tests through IDA Pro
+        # Run integration tests with pytest
+        # IDAProTestCase will handle opening the database
         echo ''
         echo '========================================='
-        echo 'Running integration tests through IDA Pro...'
+        echo 'Running integration tests with pytest...'
         echo '========================================='
-        \$IDA_BIN -A -S\"tests/run_ida_integration_tests.py\" samples/bins/libobfuscated.dll
+        pytest tests/system -v --tb=short --cov=src/d810 --cov-report=term-missing --cov-report=html --cov-report=xml --cov-append
     "
 }
 
