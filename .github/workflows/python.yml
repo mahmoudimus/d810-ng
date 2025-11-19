@@ -41,9 +41,9 @@ jobs:
               run: |
                   pip install --upgrade pip setuptools wheel uv
                   uv pip install --system -e .[dev]
-            - name: Python unit tests
+            - name: Python local tests (no IDA required)
               run: |
-                  pytest tests/unit -v --tb=short
+                  python tests/run_tests_local.py
             # - name: Run all tests except system (those require ida)
             #   run: |
             #       for dir in d810/tests/*; do
