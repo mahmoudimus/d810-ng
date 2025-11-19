@@ -294,189 +294,45 @@ class TestLibDeobfuscated(IDAProTestCase):
             self.assertEqual(actual_after, expected_deobfuscated,
                            "Complex MBA should simplify to expected form")
 
-    @unittest.skip("TODO: Implement tigress_minmaxarray test - needs control flow unflattening")
     def test_tigress_minmaxarray(self):
-        """Test Tigress control flow flattening deobfuscation.
+        """Test Tigress control flow flattening deobfuscation."""
+        func_ea = idc.get_name_ea_simple("tigress_minmaxarray")
+        self.assertNotEqual(func_ea, idaapi.BADADDR, "Function 'tigress_minmaxarray' not found")
 
-        This test is currently incomplete and requires implementing
-        control flow graph unflattening verification.
-        """
-        obfuscated = textwrap.dedent(
-            """\
-            __int64 __fastcall tigress_minmaxarray(int a1, char **a2, char **a3)
-            {
-                // [COLLAPSED LOCAL DECLARATIONS. PRESS NUMPAD "+" TO EXPAND]
+        with d810_state() as state:
+            # BEFORE: Decompile without d810
+            state.stop_d810()
+            decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+            self.assertIsNotNone(decompiled_before, "Decompilation failed for tigress_minmaxarray")
 
-                v11 = a3;
-                v10 = a2;
-                v9 = a1;
-                global_argc = a1;
-                global_argv = a2;
-                global_envp = a3;
-                v4 = 0xB;
-                while ( 2 )
-                {
-                    switch ( v4 )
-                    {
-                        case 0:
-                            v8[v7 - 1] = *v10[v7];
-                            ++v7;
-                            v4 = 0x17;
-                            continue;
+            actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
-                        case 1:
-                            v6 = v8[v7];
-                            v4 = 0x10;
-                            continue;
+            # ASSERT: Control flow flattening is present (switch statements with dispatcher)
+            self.assertIn("switch", actual_before, "Should have switch statement from control flow flattening")
+            self.assertIn("case", actual_before, "Should have case statements")
+            # Count switch cases - flattened code has many cases
+            case_count_before = actual_before.count("case ")
+            self.assertGreater(case_count_before, 10, "Flattened code should have many switch cases")
 
-                        case 3:
-                            ++v7;
-                            v4 = 0xF;
-                            continue;
+            # AFTER: Decompile with d810
+            state.start_d810()
+            decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+            self.assertIsNotNone(decompiled_after, "Decompilation with d810 failed")
 
-                        case 4:
-                            if ( v9 >= 0xB )
-                                v4 = 0xD;
-                            else
-                                v4 = 9;
+            actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
-                            continue;
+            # ASSERT: Control flow was unflattened
+            # After unflattening, should have natural control flow (for loops, if statements)
+            # instead of dispatcher pattern
+            case_count_after = actual_after.count("case ")
+            self.assertLess(case_count_after, case_count_before,
+                          f"Unflattening MUST reduce switch cases ({case_count_before} → {case_count_after})")
 
-                        case 7:
-                            (*(void (**)(const char *, ...))&_ImageBase.e_magic)("Largest element: %d\n", v6);
-                            v5 = v8[0];
-                            v7 = 1;
-                            v4 = 0xF;
-                            continue;
-
-                        case 8:
-                            if ( v6 >= v8[v7] )
-                                v4 = 0x10;
-                            else
-                                v4 = 1;
-
-                            continue;
-
-                        case 9:
-                            v12 = 1;
-                            break;
-
-                        case 0xB:
-                            v4 = 4;
-                            continue;
-
-                        case 0xC:
-                            v6 = v8[0];
-                            v7 = 1;
-                            v4 = 0x11;
-                            continue;
-
-                        case 0xD:
-                            v7 = 1;
-                            v4 = 0x17;
-                            continue;
-
-                        case 0xE:
-                            if ( v5 <= v8[v7] )
-                                v4 = 3;
-                            else
-                                v4 = 0x12;
-
-                            continue;
-
-                        case 0xF:
-                            if ( v7 >= v9 - 1 )
-                                v4 = 0x16;
-                            else
-                                v4 = 0xE;
-
-                            continue;
-
-                        case 0x10:
-                            ++v7;
-                            v4 = 0x11;
-                            continue;
-
-                        case 0x11:
-                            if ( v7 >= v9 - 1 )
-                                v4 = 7;
-                            else
-                                v4 = 8;
-
-                            continue;
-
-                        case 0x12:
-                            v5 = v8[v7];
-                            v4 = 3;
-                            continue;
-
-                        case 0x13:
-                            v12 = 0;
-                            break;
-
-                        case 0x16:
-                            (*(void (**)(const char *, ...))&_ImageBase.e_magic)("Smallest element: %d\n", v5);
-                            v4 = 0x13;
-                            continue;
-
-                        case 0x17:
-                            if ( v7 >= v9 )
-                                v4 = 0xC;
-                            else
-                                v4 = 0;
-
-                            continue;
-
-                        default:
-                            continue;
-                    }
-
-                    return v12;
-                }
-            }"""
-        )
-
-        deobfuscated = textwrap.dedent(
-            """\
-            __int64 __fastcall tigress_minmaxarray(int a1, char **a2, char **a3)
-            {
-                // [COLLAPSED LOCAL DECLARATIONS. PRESS NUMPAD "+" TO EXPAND]
-
-                v12 = a3;
-                v11 = a2;
-                v10 = a1;
-                global_argc = a1;
-                global_argv = a2;
-                global_envp = a3;
-                if ( a1 < 0xB )
-                {
-                    return 1;
-                }
-                else
-                {
-                    for ( i = 1; i < v10; ++i )
-                        v9[i - 1] = *v11[i];
-
-                    v5 = v9[0];
-                    for ( j = 1; j < v10 - 1; ++j )
-                    {
-                        if ( v5 < v9[j] )
-                            v5 = v9[j];
-                    }
-
-                    (*(void (**)(const char *, ...))&_ImageBase.e_magic)("Largest element: %d\n", v5);
-                    v4 = v9[0];
-                    for ( k = 1; k < v10 - 1; ++k )
-                    {
-                        if ( v4 > v9[k] )
-                            v4 = v9[k];
-                    }
-
-                    (*(void (**)(const char *, ...))&_ImageBase.e_magic)("Smallest element: %d\n", v4);
-                    return 0;
-                }
-            }"""
-        )
+            # Should have more natural control structures
+            for_count_after = actual_after.count("for (")
+            if_count_after = actual_after.count("if (")
+            self.assertGreater(for_count_after + if_count_after, 0,
+                             "Unflattened code should have natural control flow (for/if)")
 
 
 if __name__ == "__main__":
