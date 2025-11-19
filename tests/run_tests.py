@@ -13,6 +13,8 @@ The script will:
 4. Report results and exit
 """
 
+import idapro  # MUST be first import to initialize IDA Python environment
+
 import sys
 import os
 import traceback
