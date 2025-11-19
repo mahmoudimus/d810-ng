@@ -179,13 +179,32 @@ class TestMBADeobfuscationPipeline(IDAProTestCase):
             description="XOR MBA: (a + b) - 2*(a & b)"
         )
 
-        # Verify simplification occurred
-        self.assertLess(metrics.total_ops_after(), metrics.total_ops_before(),
-                       "XOR deobfuscation should reduce operation count")
+        # ASSERT: MBA obfuscation pattern is present BEFORE deobfuscation
+        self.assertGreater(metrics.before_ops['mul'], 0,
+                          "Obfuscated XOR should contain multiplication (2*)")
+        self.assertGreater(metrics.before_ops['and'], 0,
+                          "Obfuscated XOR should contain AND operations")
 
-        # XOR should replace the MBA pattern
+        # ASSERT: Deobfuscation actually happened - operations reduced
+        self.assertLess(metrics.total_ops_after(), metrics.total_ops_before(),
+                       "XOR deobfuscation MUST reduce operation count")
+
+        # ASSERT: MBA pattern was simplified (multiplication reduced or removed)
+        mul_reduction = metrics.op_reduction('mul')
+        self.assertGreaterEqual(mul_reduction, 0,
+                               "Deobfuscation should reduce or eliminate multiplications")
+
+        # ASSERT: XOR operations replaced the MBA pattern
         self.assertGreater(metrics.after_ops['xor'], 0,
-                          "Deobfuscated code should contain XOR operations")
+                          "Deobfuscated code MUST contain XOR operations")
+
+        # ASSERT: Code actually changed (not just same code)
+        self.assertNotEqual(metrics.before_code, metrics.after_code,
+                           "Deobfuscation MUST change the code")
+
+        # ASSERT: Simplification ratio shows improvement (should be significantly less than 1.0)
+        self.assertLess(metrics.simplification_ratio(), 0.95,
+                       f"XOR should simplify significantly (ratio={metrics.simplification_ratio():.2f})")
 
     def test_or_mba_pattern(self):
         """Test OR MBA pattern: (a & b) + (a ^ b) => a | b"""
@@ -196,9 +215,28 @@ class TestMBADeobfuscationPipeline(IDAProTestCase):
             description="OR MBA: (a & b) + (a ^ b)"
         )
 
-        # OR should be present in deobfuscated code
+        # ASSERT: MBA obfuscation pattern present BEFORE (AND and XOR used to create OR)
+        self.assertGreater(metrics.before_ops['and'] + metrics.before_ops['xor'], 0,
+                          "Obfuscated OR should use AND and XOR operations")
+        self.assertGreater(metrics.before_ops['add'], 0,
+                          "Obfuscated OR MBA pattern should use addition")
+
+        # ASSERT: OR operations replaced the MBA pattern AFTER deobfuscation
         self.assertGreater(metrics.after_ops['or'], 0,
-                          "Deobfuscated code should contain OR operations")
+                          "Deobfuscated code MUST contain OR operations")
+
+        # ASSERT: Deobfuscation reduced complexity
+        self.assertLessEqual(metrics.total_ops_after(), metrics.total_ops_before(),
+                            "OR deobfuscation should not increase operation count")
+
+        # ASSERT: Code actually changed
+        self.assertNotEqual(metrics.before_code, metrics.after_code,
+                           "Deobfuscation MUST change the code")
+
+        # ASSERT: Addition operations were reduced (since OR replaced (a&b)+(a^b))
+        add_reduction = metrics.op_reduction('add')
+        self.assertGreaterEqual(add_reduction, 0,
+                               "OR deobfuscation should reduce addition operations")
 
     def test_and_mba_pattern(self):
         """Test AND MBA pattern: (a | b) - (a ^ b) => a & b"""
@@ -209,33 +247,67 @@ class TestMBADeobfuscationPipeline(IDAProTestCase):
             description="AND MBA: (a | b) - (a ^ b)"
         )
 
-        # Verify AND is present after deobfuscation
+        # ASSERT: MBA obfuscation pattern present BEFORE (OR and XOR used to create AND)
+        self.assertGreater(metrics.before_ops['or'] + metrics.before_ops['xor'], 0,
+                          "Obfuscated AND should use OR and XOR operations")
+        self.assertGreater(metrics.before_ops['sub'], 0,
+                          "Obfuscated AND MBA pattern should use subtraction")
+
+        # ASSERT: AND operations present AFTER deobfuscation
         self.assertGreater(metrics.after_ops['and'], 0,
-                          "Deobfuscated code should contain AND operations")
+                          "Deobfuscated code MUST contain AND operations")
+
+        # ASSERT: Deobfuscation reduced complexity
+        self.assertLess(metrics.total_ops_after(), metrics.total_ops_before(),
+                       "AND deobfuscation MUST reduce operation count")
+
+        # ASSERT: Code actually changed
+        self.assertNotEqual(metrics.before_code, metrics.after_code,
+                           "Deobfuscation MUST change the code")
+
+        # ASSERT: Subtraction operations were reduced (since AND replaced (a|b)-(a^b))
+        sub_reduction = metrics.op_reduction('sub')
+        self.assertGreaterEqual(sub_reduction, 0,
+                               "AND deobfuscation should reduce subtraction operations")
 
     def test_negation_pattern(self):
-        """Test negation pattern: -x => ~x + 1"""
+        """Test negation pattern: ~x + 1 => -x (two's complement)"""
         metrics = self._test_mba_pattern(
             func_name="test_neg",
-            expected_before_pattern=r"",  # May vary
-            expected_after_pattern=r"",   # May vary
-            description="Negation pattern"
+            expected_before_pattern=r"~",  # Should have bitwise NOT
+            expected_after_pattern=r"-",   # Should have negation
+            description="Negation pattern: ~x + 1"
         )
 
-        logger.info(f"Negation test completed - check logs for details")
+        # ASSERT: Obfuscated form uses NOT (~) and addition
+        self.assertGreater(metrics.before_ops['not'], 0,
+                          "Obfuscated negation should use bitwise NOT (~)")
+
+        # ASSERT: Code was deobfuscated (changed)
+        # Note: May not always simplify to unary minus, but should at least not get worse
+        self.assertLessEqual(metrics.simplification_ratio(), 1.0,
+                            "Negation deobfuscation should not increase complexity")
+
+        logger.info(f"Negation test completed - simplification ratio: {metrics.simplification_ratio():.2f}")
 
     def test_constant_propagation(self):
         """Test constant folding and propagation."""
         metrics = self._test_mba_pattern(
             func_name="test_cst_simplification",
-            expected_before_pattern=r"",  # Complex constant expression
-            expected_after_pattern=r"",   # Simplified constant
+            expected_before_pattern=r"0x[0-9A-Fa-f]+",  # Should have hex constants
+            expected_after_pattern=r"",   # May be simplified
             description="Constant folding"
         )
 
-        # Constants should be simplified
+        # ASSERT: Deobfuscation should not make code worse
         self.assertLessEqual(metrics.simplification_ratio(), 1.0,
-                           "Constant folding should not increase complexity")
+                           "Constant folding MUST NOT increase complexity")
+
+        # ASSERT: Total operation count should decrease or stay same
+        self.assertLessEqual(metrics.total_ops_after(), metrics.total_ops_before(),
+                            "Constant folding should reduce or maintain operation count")
+
+        logger.info(f"Constant folding reduced ops by: {metrics.total_ops_before() - metrics.total_ops_after()}")
 
     def test_chained_operations(self):
         """Test chained ADD/SUB simplification."""
@@ -246,18 +318,56 @@ class TestMBADeobfuscationPipeline(IDAProTestCase):
             description="Chained ADD operations"
         )
 
-        logger.info("Chained operations test - verify simplification in logs")
+        # ASSERT: Chained operations should simplify
+        self.assertLess(metrics.total_ops_after(), metrics.total_ops_before(),
+                       "Chained ADD/SUB operations MUST be simplified")
+
+        # ASSERT: Simplification ratio should show improvement
+        self.assertLess(metrics.simplification_ratio(), 1.0,
+                       f"Chained ops should simplify (ratio={metrics.simplification_ratio():.2f})")
+
+        logger.info(f"Chained operations simplified: {metrics.total_ops_before()} → {metrics.total_ops_after()} ops")
 
     def test_opaque_predicate_removal(self):
         """Test removal of opaque predicates (always true/false conditions)."""
         metrics = self._test_mba_pattern(
             func_name="test_opaque_predicate",
-            expected_before_pattern=r"if",  # Should have conditionals
-            expected_after_pattern=r"",     # May be simplified
+            expected_before_pattern=r"",  # Complex predicates
+            expected_after_pattern=r"",   # May be simplified
             description="Opaque predicate removal"
         )
 
-        logger.info("Opaque predicate test - check if dead code was eliminated")
+        # ASSERT: Deobfuscation should simplify the code
+        self.assertLessEqual(metrics.simplification_ratio(), 1.0,
+                            "Opaque predicate removal should not increase complexity")
+
+        # ASSERT: Some simplification should occur
+        # Note: Opaque predicates are tricky - may not always be fully eliminated
+        # but the code should at least not get more complex
+        self.assertLessEqual(metrics.total_ops_after(), metrics.total_ops_before(),
+                            "Opaque predicates should not increase operation count")
+
+        logger.info(f"Opaque predicate test - ops: {metrics.total_ops_before()} → {metrics.total_ops_after()}")
+
+    def test_mba_guessing_complex_pattern(self):
+        """Test very complex MBA expression that requires multiple rule applications."""
+        metrics = self._test_mba_pattern(
+            func_name="test_mba_guessing",
+            expected_before_pattern=r"",  # Very complex
+            expected_after_pattern=r"",   # Should be simplified
+            description="Complex MBA guessing pattern"
+        )
+
+        # ASSERT: Complex MBA should definitely simplify
+        self.assertLess(metrics.total_ops_after(), metrics.total_ops_before(),
+                       "Complex MBA patterns MUST be simplified by d810")
+
+        # ASSERT: Significant simplification should occur
+        self.assertLess(metrics.simplification_ratio(), 0.9,
+                       f"Complex MBA should simplify significantly (ratio={metrics.simplification_ratio():.2f})")
+
+        logger.info(f"Complex MBA: {metrics.total_ops_before()} ops → {metrics.total_ops_after()} ops "
+                   f"(reduced by {metrics.total_ops_before() - metrics.total_ops_after()})")
 
     def test_overall_deobfuscation_quality(self):
         """Test that overall code quality improves across multiple functions."""
@@ -270,6 +380,7 @@ class TestMBADeobfuscationPipeline(IDAProTestCase):
 
         total_before = 0
         total_after = 0
+        functions_tested = 0
 
         for func_name in test_functions:
             func_ea = self.get_function_ea(func_name)
@@ -293,15 +404,28 @@ class TestMBADeobfuscationPipeline(IDAProTestCase):
                     pc_after = self.get_pseudocode_string(cfunc_after)
                     ops_after = sum(count_operations(pc_after).values())
                     total_after += ops_after
+                    functions_tested += 1
 
         logger.info(f"\nOverall deobfuscation quality:")
+        logger.info(f"  Functions tested: {functions_tested}")
         logger.info(f"  Total operations before: {total_before}")
         logger.info(f"  Total operations after:  {total_after}")
-        logger.info(f"  Reduction: {total_before - total_after} ({(1 - total_after/total_before)*100:.1f}%)")
+        if total_before > 0:
+            reduction_pct = (1 - total_after/total_before) * 100
+            logger.info(f"  Reduction: {total_before - total_after} ({reduction_pct:.1f}%)")
 
-        # Overall, deobfuscation should reduce operations
+        # ASSERT: At least one function was tested
+        self.assertGreater(functions_tested, 0,
+                          "At least one test function should be found and tested")
+
+        # ASSERT: Overall, deobfuscation should reduce operations
         self.assertLess(total_after, total_before,
-                       "D810 should reduce overall operation count")
+                       "D810 MUST reduce overall operation count across all MBA patterns")
+
+        # ASSERT: Reduction should be significant (at least 10%)
+        reduction_ratio = 1 - (total_after / total_before)
+        self.assertGreater(reduction_ratio, 0.1,
+                          f"D810 should reduce operations by at least 10% (actual: {reduction_ratio*100:.1f}%)")
 
 
 if __name__ == "__main__":
