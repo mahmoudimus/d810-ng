@@ -15,17 +15,14 @@ import warnings
 # Suppress warnings during IDA module imports
 with warnings.catch_warnings():
     warnings.filterwarnings("ignore")
-    try:
-        import idaapi
-        import idc
-        import ida_auto
-        import ida_bytes
-        import ida_funcs
-        import ida_hexrays
-        import ida_name
-        IDA_AVAILABLE = True
-    except ImportError:
-        IDA_AVAILABLE = False
+    import idapro
+    import idaapi
+    import idc
+    import ida_auto
+    import ida_bytes
+    import ida_funcs
+    import ida_hexrays
+    import ida_name
 
 # Import coverage if available
 try:
@@ -37,6 +34,8 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+IDA_AVAILABLE = True
 
 
 class CoverageTestCase(unittest.TestCase):
@@ -146,23 +145,15 @@ class IDAProTestCase(CoveredIntegrationTest):
 
         logger.info(f"Copied binary to temp location: {cls.temp_binary_path}")
 
-        # Open database (create new IDB)
-        logger.info(f"Opening database for {cls.temp_binary_path}...")
-
-        # Use idapro.open_database() for idalib
-        try:
-            import idapro
-            result = idapro.open_database(str(cls.temp_binary_path), True)
-        except (ImportError, AttributeError) as e:
-            # Fallback for older IDA versions or when running inside IDA
-            logger.warning(f"idapro.open_database not available ({e}), assuming database already open")
-            result = 0
+        # Open database once for all tests
+        logger.info(f"Opening database {cls.temp_binary_path}...")
+        result = idapro.open_database(str(cls.temp_binary_path), True)
+        logger.debug(f"Open result: {result}")
 
         if result != 0:
             raise unittest.SkipTest(f"Failed to open database. Result code: {result}")
 
         # Run auto analysis
-        logger.info("Running auto-analysis...")
         idaapi.auto_wait()
         cls.database_opened = True
 
@@ -192,20 +183,15 @@ class IDAProTestCase(CoveredIntegrationTest):
     def tearDownClass(cls):
         """Close database and clean up temporary directory."""
         if cls.database_opened:
-            logger.info("Closing database...")
-            try:
-                import idapro
-                idapro.close_database()
-            except (ImportError, AttributeError):
-                # idapro not available or running inside IDA
-                pass
+            logger.debug("Closing database...")
+            idapro.close_database()
             cls.database_opened = False
 
         if cls.tempdir and cls.tempdir.exists():
-            logger.info("Cleaning up temporary directory...")
-            shutil.rmtree(cls.tempdir, ignore_errors=True)
+            logger.debug("Cleaning up temporary directory...")
+            shutil.rmtree(cls.tempdir)
 
-        # Call parent tearDownClass to stop coverage
+        # Call parent tearDownClass to stop coverage and generate reports
         super().tearDownClass()
 
     def get_function_ea(self, func_name):
