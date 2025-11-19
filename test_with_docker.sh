@@ -81,7 +81,7 @@ run_unit_tests() {
         echo '========================================='
         echo 'Running IDA Pro unit tests...'
         echo '========================================='
-        python -m unittest discover tests/unit -p 'test_*.py' -v
+        pytest tests/unit -v --tb=short
     "
 }
 
@@ -101,25 +101,12 @@ run_integration_tests() {
             exit 0
         fi
 
-        # Run integration tests against libobfuscated.dll
-        export COVERAGE_FILE=.coverage.integration
-        python -m coverage run --source=src/d810 -m unittest discover tests/system -p 'test_*.py' -v
-
-        # Combine coverage
-        if [ -f .coverage ]; then
-            coverage combine .coverage .coverage.integration || true
-        else
-            mv .coverage.integration .coverage || true
-        fi
-
-        # Generate coverage report
+        # Run integration tests against libobfuscated.dll with coverage
         echo ''
         echo '========================================='
-        echo 'Coverage Report'
+        echo 'Running integration tests with coverage...'
         echo '========================================='
-        coverage report -m
-        coverage html
-        coverage xml
+        pytest tests/system -v --tb=short --cov=src/d810 --cov-report=term-missing --cov-report=html --cov-report=xml --cov-append
 
         echo ''
         echo 'Coverage HTML report: htmlcov/index.html'

@@ -92,8 +92,8 @@ jobs:
                       echo '========================================='
                       echo 'Running IDA Pro unit tests...'
                       echo '========================================='
-                      # Run IDA unit tests (discover pattern matches our naming)
-                      python -m unittest discover tests/unit -p 'test_*.py' -v
+                      # Run IDA unit tests with pytest
+                      pytest tests/unit -v --tb=short
                   "
                   docker compose logs
 
@@ -114,21 +114,8 @@ jobs:
                           exit 0
                       fi
 
-                      # Run integration tests against libobfuscated.dll
-                      export COVERAGE_FILE=.coverage.integration
-                      python -m coverage run --source=src/d810 -m unittest discover tests/system -p 'test_*.py' -v
-
-                      # Combine coverage from unit and integration tests
-                      if [ -f .coverage ]; then
-                          coverage combine .coverage .coverage.integration || true
-                      else
-                          mv .coverage.integration .coverage || true
-                      fi
-
-                      # Generate coverage report
-                      coverage report -m
-                      coverage html
-                      coverage xml
+                      # Run integration tests against libobfuscated.dll with coverage
+                      pytest tests/system -v --tb=short --cov=src/d810 --cov-report=term-missing --cov-report=html --cov-report=xml --cov-append
                   "
                   docker compose logs
 
