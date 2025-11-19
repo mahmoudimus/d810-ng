@@ -5,7 +5,7 @@ import idaapi
 import idc
 
 from .ida_test_base import IDAProTestCase
-from .stutils import d810_state, pseudocode_to_string
+from .stutils import d810_state, pseudocode_to_string, setup_libobfuscated_function_names
 
 
 class TestLibDeobfuscated(IDAProTestCase):
@@ -27,6 +27,9 @@ class TestLibDeobfuscated(IDAProTestCase):
             raise unittest.SkipTest("Hex-Rays decompiler plugin not available")
 
         idaapi.change_hexrays_config("COLLAPSE_LVARS = YES")
+
+        # Set up function names for libobfuscated.dll since they're not exported
+        setup_libobfuscated_function_names()
 
     @classmethod
     def tearDownClass(cls):

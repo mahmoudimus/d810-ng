@@ -2,6 +2,7 @@ import contextlib
 import os
 
 import idaapi
+import idc
 
 from d810.manager import D810State
 
@@ -12,6 +13,43 @@ def pseudocode_to_string(pseudo_code: idaapi.strvec_t) -> str:
     ]
 
     return os.linesep.join(converted_obj)
+
+
+def setup_libobfuscated_function_names():
+    """
+    Set up function names for libobfuscated.dll based on the IDA Pro function table.
+    This is needed because the DLL doesn't export function names, so we need to
+    manually assign them in IDA's database.
+    """
+    # Function addresses from IDA Pro function table for libofuscated.dll
+    # Format: name -> address
+    function_map = {
+        "constant_folding_test1": 0x180001000,
+        "constant_folding_test2": 0x1800015C0,
+        "outlined_helper_1": 0x1800016A0,
+        "outlined_helper_2": 0x1800016D0,
+        "AntiDebug_ExceptionFilter": 0x180001710,
+        "test_chained_add": 0x180006630,
+        "test_cst_simplification": 0x180006680,
+        "test_opaque_predicate": 0x180006780,
+        "test_xor": 0x180006920,
+        "test_mba_guessing": 0x1800069A0,
+        "test_function_ollvm_fla_bcf_sub": 0x180006B40,
+        "tigress_minmaxarray": 0x180009490,
+        "unwrap_loops": 0x180009730,
+        "unwrap_loops_2": 0x1800097E0,
+        "unwrap_loops_3": 0x1800098C0,
+        "while_switch_flattened": 0x1800099F0,
+        "NtCurrentTeb": 0x180009B30,
+    }
+
+    for name, addr in function_map.items():
+        # Set the function name at the given address
+        idc.set_name(addr, name, idc.SN_NOWARN | idc.SN_NOCHECK)
+        # Make sure it's recognized as a function
+        if not idc.get_func_attr(addr, idc.FUNCATTR_START):
+            idc.create_insn(addr)
+            idaapi.add_func(addr)
 
 
 @contextlib.contextmanager

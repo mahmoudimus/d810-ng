@@ -116,7 +116,12 @@ ifeq ($(CC),cc)
 endif
 RM = del /Q  # Windows delete command
 else
+# Use MinGW for cross-compiling to Windows
+ifeq ($(TARGET_OS),windows)
+CC = x86_64-w64-mingw32-gcc
+else
 CC = gcc  # C compiler for Unix-like systems
+endif
 RM = rm -f   # rm command
 endif
 
@@ -164,6 +169,11 @@ else
     else
         # Unix-like: PIC required for shared libraries
         CFLAGS = -fPIC -Wall -Wextra $(ARCH_FLAGS) -O0 -g -Iinclude -fno-inline -fno-builtin
+    endif
+
+    # For Windows DLL exports when cross-compiling with GCC/MinGW (non-MSVC)
+    ifeq ($(TARGET_OS),windows)
+        LDFLAGS += -Wl,--export-all-symbols
     endif
 endif
 
