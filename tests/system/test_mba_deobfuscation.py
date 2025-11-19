@@ -5,12 +5,13 @@ This module provides comprehensive tests that verify:
 - Specific rule applications
 - MBA pattern simplifications
 - Microcode transformations
+- Rule firing metrics (which rules fired, how many times)
 """
 
 import logging
 import re
 import unittest
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 try:
     import idaapi
@@ -22,6 +23,13 @@ except ImportError:
 from .ida_test_base import IDAProTestCase
 from .stutils import d810_state, pseudocode_to_string
 
+# Import profiling infrastructure
+try:
+    from d810.optimizers.profiling import OptimizationProfiler
+    PROFILING_AVAILABLE = True
+except ImportError:
+    PROFILING_AVAILABLE = False
+    OptimizationProfiler = None
 
 logger = logging.getLogger(__name__)
 
@@ -63,13 +71,14 @@ def extract_return_expression(pseudocode: str) -> str:
 class DeobfuscationMetrics:
     """Track metrics before and after deobfuscation."""
 
-    def __init__(self, before: str, after: str):
+    def __init__(self, before: str, after: str, profiler: Optional['OptimizationProfiler'] = None):
         self.before_code = before
         self.after_code = after
         self.before_ops = count_operations(before)
         self.after_ops = count_operations(after)
         self.before_return = extract_return_expression(before)
         self.after_return = extract_return_expression(after)
+        self.profiler = profiler
 
     def total_ops_before(self) -> int:
         return sum(self.before_ops.values())
@@ -87,6 +96,37 @@ class DeobfuscationMetrics:
     def op_reduction(self, op_name: str) -> int:
         """Number of operations removed for a specific operation."""
         return self.before_ops.get(op_name, 0) - self.after_ops.get(op_name, 0)
+
+    def get_rules_fired(self) -> Dict[str, int]:
+        """Get which rules fired and how many times.
+
+        Returns:
+            Dict mapping rule name to number of times it was applied (with changes > 0)
+        """
+        if not self.profiler or not PROFILING_AVAILABLE:
+            return {}
+
+        rules_with_changes = {}
+        for rule_name, profile in self.profiler.rule_profiles.items():
+            if profile.changes_made > 0:
+                rules_with_changes[rule_name] = profile.changes_made
+
+        return rules_with_changes
+
+    def log_rule_metrics(self):
+        """Log detailed rule firing metrics."""
+        if not self.profiler or not PROFILING_AVAILABLE:
+            logger.info("Profiling not available")
+            return
+
+        rules_fired = self.get_rules_fired()
+        if rules_fired:
+            logger.info(f"\nRules that fired ({len(rules_fired)} total):")
+            for rule_name, changes in sorted(rules_fired.items(), key=lambda x: x[1], reverse=True):
+                profile = self.profiler.rule_profiles[rule_name]
+                logger.info(f"  {rule_name}: {changes} changes, {profile.call_count} calls")
+        else:
+            logger.info("No rules fired with changes")
 
 
 @unittest.skipUnless(IDA_AVAILABLE, "IDA Pro API not available")
@@ -141,6 +181,16 @@ class TestMBADeobfuscationPipeline(IDAProTestCase):
             pseudocode_before = self.get_pseudocode_string(cfunc_before)
             logger.info(f"\n{'='*60}\n{description} - BEFORE d810:\n{'='*60}\n{pseudocode_before}")
 
+            # Enable profiling to track rule applications
+            profiler = None
+            if PROFILING_AVAILABLE and hasattr(state, 'manager') and state.manager:
+                profiler = OptimizationProfiler()
+                state.manager.set_profiling_hooks(
+                    pre_hook=profiler.start_pass,
+                    post_hook=profiler.end_pass
+                )
+                logger.debug("Profiling enabled for rule tracking")
+
             # Get optimized (deobfuscated) pseudocode
             state.start_d810()
             cfunc_after = self.decompile_function(func_ea, no_cache=True)
@@ -149,8 +199,8 @@ class TestMBADeobfuscationPipeline(IDAProTestCase):
             pseudocode_after = self.get_pseudocode_string(cfunc_after)
             logger.info(f"\n{'='*60}\n{description} - AFTER d810:\n{'='*60}\n{pseudocode_after}")
 
-            # Create metrics
-            metrics = DeobfuscationMetrics(pseudocode_before, pseudocode_after)
+            # Create metrics with profiler data
+            metrics = DeobfuscationMetrics(pseudocode_before, pseudocode_after, profiler)
 
             # Log metrics
             logger.info(f"\nMetrics for {func_name}:")
@@ -158,6 +208,9 @@ class TestMBADeobfuscationPipeline(IDAProTestCase):
             logger.info(f"  Simplification ratio: {metrics.simplification_ratio():.2%}")
             logger.info(f"  Return expression before: {metrics.before_return}")
             logger.info(f"  Return expression after:  {metrics.after_return}")
+
+            # Log rule firing metrics
+            metrics.log_rule_metrics()
 
             # Verify pattern transformations
             if expected_before_pattern:
