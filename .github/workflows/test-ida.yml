@@ -148,22 +148,31 @@ jobs:
                       ls -la \"\$IDA_BIN\" || true
 
                       # Set up Python environment for IDA
-                      # Use Python from IDA's venv to avoid version mismatch
+                      # IDA is looking for Python 3.13, but we have Python 3.10 in the venv
+                      # Create symlink to redirect IDA's Python library loading
+
+                      # Find Python 3.10 library in venv
+                      PYTHON_310_LIB=\$(find /app/ida/.venv/lib -name 'libpython3.10.so*' -type f | head -1)
+
+                      if [ -n \"\$PYTHON_310_LIB\" ]; then
+                          echo \"Found Python 3.10 library: \$PYTHON_310_LIB\"
+
+                          # Create directory if it doesn't exist
+                          mkdir -p /usr/lib/x86_64-linux-gnu
+
+                          # Create symlink from Python 3.13 path (what IDA expects) to Python 3.10 (what we have)
+                          ln -sf \"\$PYTHON_310_LIB\" /usr/lib/x86_64-linux-gnu/libpython3.13.so.1.0
+
+                          echo \"Created symlink: /usr/lib/x86_64-linux-gnu/libpython3.13.so.1.0 -> \$PYTHON_310_LIB\"
+                      fi
+
                       export PYTHONHOME=/app/ida/.venv
                       export PATH=/app/ida/.venv/bin:\$PATH
                       export LD_LIBRARY_PATH=/app/ida/.venv/lib:/app/ida:\${LD_LIBRARY_PATH:-}
                       export TVHEADLESS=1
 
-                      # Point to correct Python library for IDA
-                      PYTHON_LIB=\$(find /app/ida/.venv/lib -name 'libpython3.*.so*' | head -1)
-                      if [ -n \"\$PYTHON_LIB\" ]; then
-                          export LD_PRELOAD=\"\$PYTHON_LIB\"
-                          echo \"Preloading Python library: \$PYTHON_LIB\"
-                      fi
-
                       echo \"Python environment:\"
                       echo \"  PYTHONHOME: \$PYTHONHOME\"
-                      echo \"  LD_LIBRARY_PATH: \$LD_LIBRARY_PATH\"
                       echo \"  Python: \$(which python || echo 'not found')\"
                       python --version 2>&1 || true
 
