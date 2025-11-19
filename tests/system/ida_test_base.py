@@ -149,13 +149,13 @@ class IDAProTestCase(CoveredIntegrationTest):
         # Open database (create new IDB)
         logger.info(f"Opening database for {cls.temp_binary_path}...")
 
-        # Use ida_auto for proper database opening in newer IDA versions
+        # Use idapro.open_database() for idalib
         try:
-            # Try the newer API first
-            result = idaapi.open_database(str(cls.temp_binary_path), True)
-        except AttributeError:
-            # Fallback for older IDA versions
-            logger.warning("open_database not available, database should already be open")
+            import idapro
+            result = idapro.open_database(str(cls.temp_binary_path), True)
+        except (ImportError, AttributeError) as e:
+            # Fallback for older IDA versions or when running inside IDA
+            logger.warning(f"idapro.open_database not available ({e}), assuming database already open")
             result = 0
 
         if result != 0:
@@ -194,9 +194,10 @@ class IDAProTestCase(CoveredIntegrationTest):
         if cls.database_opened:
             logger.info("Closing database...")
             try:
-                idaapi.close_database()
-            except AttributeError:
-                # Database might not support closing in this IDA version
+                import idapro
+                idapro.close_database()
+            except (ImportError, AttributeError):
+                # idapro not available or running inside IDA
                 pass
             cls.database_opened = False
 
