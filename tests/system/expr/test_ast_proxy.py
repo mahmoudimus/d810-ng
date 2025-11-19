@@ -1,8 +1,15 @@
 import unittest
 
+try:
+    import idaapi
+    IDA_AVAILABLE = idaapi.IDA_SDK_VERSION is not None
+except (ImportError, AttributeError):
+    IDA_AVAILABLE = False
+
 from d810.expr.ast import AstConstant, AstLeaf, AstProxy, get_constant_mop
 
 
+@unittest.skipUnless(IDA_AVAILABLE, "IDA Pro not available")
 class TestAstProxyForwarding(unittest.TestCase):
     """Validate that AstProxy correctly forwards attribute access and implements clone-on-write."""
 

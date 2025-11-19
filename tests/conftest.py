@@ -21,11 +21,18 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root / "tests"))
 
-# Try to import IDA modules early to ensure they're available
+# Try to import IDA modules and check if we're in an actual IDA session
 try:
     import idaapi
-    IDA_AVAILABLE = True
-    print(f"✓ IDA Pro available: {idaapi.get_kernel_version()}")
+    # Check if we're actually in an IDA session (not just modules loaded)
+    # get_kernel_version() will work even outside IDA, so check for database
+    try:
+        _ = idaapi.get_root_filename()  # This will fail if not in IDA session
+        IDA_AVAILABLE = True
+        print(f"✓ IDA Pro session active: {idaapi.get_kernel_version()}")
+    except:
+        IDA_AVAILABLE = False
+        print("⚠ IDA modules loaded but not in IDA session - system tests will be skipped")
 except ImportError:
     IDA_AVAILABLE = False
     print("⚠ IDA Pro not available - only non-IDA tests will run")
