@@ -7,6 +7,15 @@ import sys
 import os
 from pathlib import Path
 
+# Only import idapro if we're not running inside IDA already
+if not any(sys.executable.endswith(x) for x in ["ida.exe", "ida64.exe", "idaq.exe", "idaq64.exe", "idat.exe", "idat64.exe"]):
+    try:
+        import idapro  # Initialize IDA Python environment
+        print("✓ idapro module initialized")
+    except ImportError:
+        print("⚠ idapro module not available - tests may fail if IDA modules are required")
+        pass
+
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
@@ -37,7 +46,8 @@ def pytest_collection_modifyitems(config, items):
     if IDA_AVAILABLE:
         return
 
-    skip_ida = pytest.mark.skip(reason="IDA Pro not available")
+    import pytest as _pytest
+    skip_ida = _pytest.mark.skip(reason="IDA Pro not available")
     for item in items:
         if "system" in str(item.fspath) or "integration" in str(item.fspath):
             item.add_marker(skip_ida)
