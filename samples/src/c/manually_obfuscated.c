@@ -43,6 +43,30 @@ long test_xor(long a, long b, long c, long *d) {
   return d[0] + d[1];
 }
 
+long test_or(long a, long b, long c, long *d) {
+  // MBA pattern for OR: (a & b) + (a ^ b) => a | b
+  d[0] = (a & b) + (a ^ b);
+  d[1] = (b & c) + (b ^ c);
+  d[2] = ((a + 1) & (b - 2)) + ((a + 1) ^ (b - 2));
+  return d[0] + d[1] + d[2];
+}
+
+long test_and(long a, long b, long c, long *d) {
+  // MBA pattern for AND: (a | b) - (a ^ b) => a & b
+  d[0] = (a | b) - (a ^ b);
+  d[1] = (b | c) - (b ^ c);
+  d[2] = ((a * 2) | (b + c)) - ((a * 2) ^ (b + c));
+  return d[0] + d[1] + d[2];
+}
+
+long test_neg(long a, long *d) {
+  // Negation pattern: -x can be expressed as ~x + 1 (two's complement)
+  d[0] = ~a + 1;
+  d[1] = ~(a + 5) + 1;
+  d[2] = ~(a * 2) + 1;
+  return d[0] + d[1] + d[2];
+}
+
 long test_mba_guessing(long a, long b, long c, long d) {
   return (((((~(((a ^ ~d) + ((a | d) + (a | d))) + 1) | a) +
              (((a ^ ~d) + ((a | d) + (a | d))) + 1)) +
