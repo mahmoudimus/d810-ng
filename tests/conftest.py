@@ -7,14 +7,14 @@ import sys
 import os
 from pathlib import Path
 
-# Only import idapro if we're not running inside IDA already
-if not any(sys.executable.endswith(x) for x in ["ida.exe", "ida64.exe", "idaq.exe", "idaq64.exe", "idat.exe", "idat64.exe"]):
-    try:
-        import idapro  # Initialize IDA Python environment
-        print("✓ idapro module initialized")
-    except ImportError:
-        print("⚠ idapro module not available - tests may fail if IDA modules are required")
-        pass
+# Try to import idapro first to initialize IDA Python environment
+try:
+    import idapro
+    print("✓ idapro module initialized")
+except ImportError:
+    # idapro not available - likely running outside IDA environment
+    # This is OK, tests will skip if IDA modules aren't available
+    pass
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
