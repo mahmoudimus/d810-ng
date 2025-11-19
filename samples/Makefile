@@ -101,7 +101,19 @@ override TARGET_ARCH :=
 
 # Host tool choices (used for commands like rm/cc on the build machine)
 ifeq ($(OS),Windows_NT)
-CC = clang  # Use clang on Windows host
+# Auto-detect Windows compiler: try MSVC first, then GCC, then Clang
+ifeq ($(CC),cc)
+    # CC not set, auto-detect
+    ifeq ($(shell where cl.exe 2>nul),)
+        ifeq ($(shell where gcc.exe 2>nul),)
+            CC = clang  # Fallback to clang
+        else
+            CC = gcc
+        endif
+    else
+        CC = cl  # MSVC
+    endif
+endif
 RM = del /Q  # Windows delete command
 else
 CC = gcc  # C compiler for Unix-like systems
@@ -135,27 +147,53 @@ else
 LDFLAGS = -shared -Wl,--unresolved-symbols=ignore-in-shared-libs $(ARCH_FLAGS)
 endif
 
-ifeq ($(OS),Windows_NT)
-CFLAGS = -Wall -Wextra $(ARCH_FLAGS) -O0 -g -Iinclude -fno-inline -fno-builtin -fno-vectorize -fno-slp-vectorize  # C flags for Windows (no -fPIC)
+# Compiler and linker flags - detect compiler type
+ifeq ($(CC),cl)
+    # MSVC compiler flags
+    CFLAGS = /nologo /Od /Zi /Iinclude /D_CRT_SECURE_NO_WARNINGS /MD
+    LDFLAGS = /nologo /DLL /DEBUG
+    # Use .def file for exports if it exists
+    ifneq (,$(wildcard libobfuscated.def))
+        LDFLAGS += /DEF:libobfuscated.def
+    endif
 else
-# Add include directory and include arch flags so the compiler receives
-# normalized flags (e.g. -m64) instead of a raw arch token. Disable optimizations fully.
-CFLAGS = -fPIC -Wall -Wextra $(ARCH_FLAGS) -O0 -g -Iinclude -fno-inline -fno-builtin -fno-vectorize -fno-slp-vectorize    # C flags for Unix-like systems
+    # GCC/Clang compiler flags
+    ifeq ($(OS),Windows_NT)
+        # Windows with GCC/Clang: disable optimizations, no -fPIC
+        CFLAGS = -Wall -Wextra $(ARCH_FLAGS) -O0 -g -Iinclude -fno-inline -fno-builtin
+    else
+        # Unix-like: PIC required for shared libraries
+        CFLAGS = -fPIC -Wall -Wextra $(ARCH_FLAGS) -O0 -g -Iinclude -fno-inline -fno-builtin
+    endif
 endif
 
 # C sources are now under src/c
 SRCS = $(wildcard src/c/*.c)
-OBJS = $(SRCS:.c=.o)
+
+# Object files - extension depends on compiler
+ifeq ($(CC),cl)
+    OBJS = $(SRCS:.c=.obj)
+else
+    OBJS = $(SRCS:.c=.o)
+endif
 
 .PHONY: all
 all: ${TARGET_LIB}
 
+# Build target - different for MSVC vs GCC/Clang
+ifeq ($(CC),cl)
 $(TARGET_LIB): $(OBJS)
-	$(CC) ${LDFLAGS} -o $@ $^
+	$(CC) $(LDFLAGS) /Fe:$@ $^
 
-# Explicit compile rule to avoid implicit one that uses built-in TARGET_ARCH
+%.obj: %.c
+	$(CC) $(CFLAGS) /c /Fo:$@ $<
+else
+$(TARGET_LIB): $(OBJS)
+	$(CC) $(LDFLAGS) -o $@ $^
+
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
+endif
 
 $(SRCS:.c=.d):%.d:%.c
 	$(CC) $(CFLAGS) -MM $< >$@
@@ -164,6 +202,10 @@ $(SRCS:.c=.d):%.d:%.c
 
 .PHONY: clean
 clean:
-	-$(RM) ${TARGET_LIB} ${TARGET_LIB_IDA} ${OBJS} $(SRCS:.c=.d)
+ifeq ($(OS),Windows_NT)
+	-$(RM) $(TARGET_LIB) $(subst /,\,$(OBJS)) $(subst /,\,$(SRCS:.c=.obj)) $(subst /,\,$(SRCS:.c=.o)) $(subst /,\,$(SRCS:.c=.d)) 2>nul
+else
+	-$(RM) $(TARGET_LIB) $(TARGET_LIB_IDA) $(OBJS) $(SRCS:.c=.obj) $(SRCS:.c=.o) $(SRCS:.c=.d)
+endif
 
 
