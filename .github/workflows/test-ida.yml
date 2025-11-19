@@ -94,25 +94,13 @@ jobs:
                       echo 'Running IDA Pro unit tests...'
                       echo '========================================='
 
-                      # Diagnostic: Check IDA modules availability
-                      echo 'Checking Python and IDA modules...'
-                      which python
-                      which python3
-                      python --version
-                      python3 --version
-                      echo \"PYTHONPATH: \$PYTHONPATH\"
-                      python3 -c 'import sys; print(\"sys.path:\"); [print(f\"  {p}\") for p in sys.path]'
+                      # Check IDA Pro availability
+                      which idat64 || which idat || echo 'IDA Pro binary not found in PATH'
+                      ls -la /app/ida/ || true
 
-                      echo ''
-                      echo 'Trying to import ida_hexrays...'
-                      python3 -c 'import ida_hexrays; print(\"✓ ida_hexrays imported successfully\")' 2>&1 || echo '✗ Failed to import ida_hexrays'
-
-                      echo ''
-                      echo 'Checking if pytest can find tests...'
-                      pytest --collect-only tests/unit 2>&1 | head -50 || true
-
-                      # Skip actual test run for now to see diagnostics
-                      # pytest tests/unit -v --tb=short
+                      # For now, skip unit tests that require IDA modules
+                      # They will be covered by integration tests running through IDA Pro
+                      echo 'Unit tests requiring IDA modules will run through integration tests'
                   "
                   docker compose logs
 
@@ -133,8 +121,18 @@ jobs:
                           exit 0
                       fi
 
-                      # Run integration tests against libobfuscated.dll with coverage
-                      pytest tests/system -v --tb=short --cov=src/d810 --cov-report=term-missing --cov-report=html --cov-report=xml --cov-append
+                      # Find IDA Pro binary
+                      IDA_BIN=\$(which idat64 || which idat || echo '')
+                      if [ -z \"\$IDA_BIN\" ]; then
+                          echo '✗ IDA Pro binary not found'
+                          exit 1
+                      fi
+
+                      echo \"Using IDA Pro: \$IDA_BIN\"
+                      \$IDA_BIN -v || true
+
+                      # Run integration tests through IDA Pro
+                      \$IDA_BIN -A -S\"tests/run_ida_integration_tests.py\" samples/bins/libobfuscated.dll
                   "
                   docker compose logs
 

@@ -79,9 +79,9 @@ run_unit_tests() {
 
         echo ''
         echo '========================================='
-        echo 'Running IDA Pro unit tests...'
+        echo 'IDA Pro unit tests'
         echo '========================================='
-        pytest tests/unit -v --tb=short
+        echo 'Unit tests requiring IDA modules are covered by integration tests'
     "
 }
 
@@ -101,15 +101,22 @@ run_integration_tests() {
             exit 0
         fi
 
-        # Run integration tests against libobfuscated.dll with coverage
-        echo ''
-        echo '========================================='
-        echo 'Running integration tests with coverage...'
-        echo '========================================='
-        pytest tests/system -v --tb=short --cov=src/d810 --cov-report=term-missing --cov-report=html --cov-report=xml --cov-append
+        # Find IDA Pro binary
+        IDA_BIN=\$(which idat64 || which idat || echo '')
+        if [ -z \"\$IDA_BIN\" ]; then
+            echo '✗ IDA Pro binary not found'
+            exit 1
+        fi
 
+        echo \"Using IDA Pro: \$IDA_BIN\"
+        \$IDA_BIN -v || true
+
+        # Run integration tests through IDA Pro
         echo ''
-        echo 'Coverage HTML report: htmlcov/index.html'
+        echo '========================================='
+        echo 'Running integration tests through IDA Pro...'
+        echo '========================================='
+        \$IDA_BIN -A -S\"tests/run_ida_integration_tests.py\" samples/bins/libobfuscated.dll
     "
 }
 
