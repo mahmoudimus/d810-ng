@@ -69,6 +69,42 @@ This file tracks session context for continuity across conversations.
 - Branch is up to date with origin
 - All changes committed and pushed
 
+**GitHub Credentials & CI Monitoring**:
+- GitHub PAT Token: Available from user (stored in environment variable `GH_TOKEN`)
+  - Token starts with: `github_pat_11AAAJ65A0s...`
+- Repository: `mahmoudimus/d810-ng`
+- Pull Request being monitored: **PR #4**
+  - Branch: `claude/fix-function-exports-01LGn9MJtJhLGUZphKWtsEfX`
+  - Fixes: Function export issues for libobfuscated.dll tests
+
+**How to Check CI Status**:
+```bash
+# Set GitHub token (ask user for full token if needed)
+export GH_TOKEN="<github-pat-token>"
+
+# Check PR status using gh CLI
+gh pr view 4 --repo mahmoudimus/d810-ng
+
+# Check workflow runs
+gh run list --repo mahmoudimus/d810-ng --branch claude/fix-function-exports-01LGn9MJtJhLGUZphKWtsEfX
+
+# Watch specific workflow run (get run ID from list command)
+gh run watch <run-id> --repo mahmoudimus/d810-ng
+```
+
+**CI Test Failures We Fixed**:
+1. `KeyError: 'chainoptimizer'` - Optimizer classes not registered
+2. MBA tests failing - Functions not found (test_xor, test_or, test_and, test_neg)
+
+**Previous CI Failure Output**:
+```
+FAILED tests/system/test_mba_deobfuscation.py::TestMBADeobfuscationPipeline::test_xor - Skipping test_xor - not found
+FAILED tests/system/test_mba_deobfuscation.py::TestMBADeobfuscationPipeline::test_or - Skipping test_or - not found
+FAILED tests/system/test_mba_deobfuscation.py::TestMBADeobfuscationPipeline::test_and - Skipping test_and - not found
+FAILED tests/system/test_mba_deobfuscation.py::TestMBADeobfuscationPipeline::test_neg - Skipping test_neg - not found
+ERROR tests/system/test_libdeobfuscated.py::TestLibDeobfuscated::test_AntiDebug_ExceptionFilter - KeyError: 'chainoptimizer'
+```
+
 **Files Modified in This Session**:
 - `src/D810.py`: Updated reload() to use _reload_package_with_graph()
 - `src/d810/__init__.py`: Removed discovery code, kept minimal
