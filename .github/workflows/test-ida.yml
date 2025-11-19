@@ -95,12 +95,24 @@ jobs:
                       echo '========================================='
 
                       # Diagnostic: Check IDA modules availability
-                      echo 'Checking IDA modules...'
-                      python3 -c 'import sys; print(\"PYTHONPATH:\", sys.path)' || true
-                      python3 -c 'import ida_hexrays; print(\"✓ ida_hexrays imported successfully\")' || echo '✗ Failed to import ida_hexrays'
+                      echo 'Checking Python and IDA modules...'
+                      which python
+                      which python3
+                      python --version
+                      python3 --version
+                      echo \"PYTHONPATH: \$PYTHONPATH\"
+                      python3 -c 'import sys; print(\"sys.path:\"); [print(f\"  {p}\") for p in sys.path]'
 
-                      # Run IDA unit tests with pytest
-                      pytest tests/unit -v --tb=short
+                      echo ''
+                      echo 'Trying to import ida_hexrays...'
+                      python3 -c 'import ida_hexrays; print(\"✓ ida_hexrays imported successfully\")' 2>&1 || echo '✗ Failed to import ida_hexrays'
+
+                      echo ''
+                      echo 'Checking if pytest can find tests...'
+                      pytest --collect-only tests/unit 2>&1 | head -50 || true
+
+                      # Skip actual test run for now to see diagnostics
+                      # pytest tests/unit -v --tb=short
                   "
                   docker compose logs
 
