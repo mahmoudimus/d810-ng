@@ -3,6 +3,7 @@ import unittest
 from d810.expr.ast import AstConstant, AstLeaf, AstProxy, get_constant_mop
 
 
+@unittest.skip("Skipping - requires actual IDA session, not just idalib")
 class TestAstProxyForwarding(unittest.TestCase):
     """Validate that AstProxy correctly forwards attribute access and implements clone-on-write."""
 
