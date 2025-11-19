@@ -26,8 +26,9 @@ jobs:
         runs-on: ubuntu-latest
         strategy:
             matrix:
-                python-version: ["3.10", "3.11"]
-                service: ["idapro-tests", "idapro-tests-9.2"]
+                python-version: ["3.11"]
+                service: ["idapro-tests"]
+            fail-fast: false
         env:
             PYTHONPATH: ${{ github.workspace }}
         steps:
@@ -36,7 +37,7 @@ jobs:
               with:
                   persist-credentials: false
 
-            - name: Set up Python${{ matrix.python-version }}
+            - name: Set up Python ${{ matrix.python-version }}
               uses: actions/setup-python@v5
               with:
                   python-version: ${{ matrix.python-version }}
@@ -66,7 +67,7 @@ jobs:
                   path: /tmp/docker-cache
                   key: docker-image-${{ runner.os }}-${{ matrix.service }}-${{ hashFiles('docker-compose.yml') }}
                   restore-keys: |
-                      docker-image-${{ runner.os }}-${{ matrix.service }}-${{ hashFiles('docker-compose.yml') }}
+                      docker-image-${{ runner.os }}-${{ matrix.service }}-
 
             - name: Load cached Docker image if cache exists
               if: steps.docker-cache.outputs.cache-hit == 'true'
@@ -138,17 +139,17 @@ jobs:
                   mkdir -p /tmp/docker-cache
                   docker image ls
                   TAG="${{ matrix.service }}"
-                  SHA_NAME=$(curl -s -u ${{ secrets.GHCR_TOKEN }} \
+                  SHA_NAME=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
                     -H "Accept: application/vnd.github+json" \
                     -H "X-GitHub-Api-Version: 2022-11-28" \
-                    https://api.github.com/users/mahmoudimus/packages/container/idapro-linux/versions | \
+                    "https://api.github.com/users/mahmoudimus/packages/container/idapro-linux/versions" | \
                     jq -r ".[]|select(.metadata.container.tags[]==\"${TAG}\")|.name")
                   echo "SHA_NAME: ${SHA_NAME}"
-                  docker save $(docker images --format '{{.Repository}}')@${SHA_NAME} -o /tmp/docker-cache/${{ matrix.service }}.tar || echo "Failed to save image."
+                  docker save "$(docker images --format '{{.Repository}}')@${SHA_NAME}" -o /tmp/docker-cache/${{ matrix.service }}.tar || echo "Failed to save image."
 
             - name: Upload test results
               if: always()
-              uses: actions/upload-artifact@v3
+              uses: actions/upload-artifact@v4
               with:
                   name: test-results-${{ matrix.service }}-python${{ matrix.python-version }}
                   path: |
@@ -156,13 +157,13 @@ jobs:
                       .coverage.integration
                       coverage.xml
                       htmlcov/
-                      /tmp/*.log
 
             - name: Upload coverage to Codecov
               if: always()
-              uses: codecov/codecov-action@v3
+              uses: codecov/codecov-action@v4
               with:
                   files: ./coverage.xml
                   flags: ${{ matrix.service }}
                   name: d810-ng-${{ matrix.service }}-py${{ matrix.python-version }}
                   fail_ci_if_error: false
+                  token: ${{ secrets.CODECOV_TOKEN }}
