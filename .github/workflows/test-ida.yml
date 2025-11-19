@@ -93,6 +93,12 @@ jobs:
                       echo '========================================='
                       echo 'Running IDA Pro unit tests...'
                       echo '========================================='
+
+                      # Diagnostic: Check IDA modules availability
+                      echo 'Checking IDA modules...'
+                      python3 -c 'import sys; print(\"PYTHONPATH:\", sys.path)' || true
+                      python3 -c 'import ida_hexrays; print(\"✓ ida_hexrays imported successfully\")' || echo '✗ Failed to import ida_hexrays'
+
                       # Run IDA unit tests with pytest
                       pytest tests/unit -v --tb=short
                   "
