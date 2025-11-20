@@ -201,6 +201,11 @@ class DynamicConst:
         # Use 0 as placeholder - actual value computed at match time
         self._placeholder = SymbolicExpression(AstConstant(name, 0))
 
+    @property
+    def node(self):
+        """Expose the placeholder's node for Z3 verification."""
+        return self._placeholder.node
+
     def __add__(self, other):
         return self._placeholder + other
 
