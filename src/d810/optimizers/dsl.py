@@ -25,7 +25,6 @@ from ida_hexrays import (
     m_mul,
     m_neg,
     m_or,
-    m_sar,
     m_shl,
     m_shr,
     m_sub,
@@ -94,11 +93,6 @@ class SymbolicExpression:
         """Right shift: self >> other -> m_shr node."""
         from d810.expr.ast import AstNode
         return SymbolicExpression(AstNode(m_shr, self.node, other.node))
-
-    def sar(self, other: SymbolicExpression) -> SymbolicExpression:
-        """Arithmetic right shift: self.sar(other) -> m_sar node."""
-        from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(m_sar, self.node, other.node))
 
     def __invert__(self) -> SymbolicExpression:
         """Bitwise NOT: ~self -> m_bnot node."""
@@ -206,11 +200,6 @@ class DynamicConst:
         from d810.expr.ast import AstConstant
         # Use 0 as placeholder - actual value computed at match time
         self._placeholder = SymbolicExpression(AstConstant(name, 0))
-
-    @property
-    def node(self):
-        """Expose the placeholder's node for Z3 verification."""
-        return self._placeholder.node
 
     def __add__(self, other):
         return self._placeholder + other

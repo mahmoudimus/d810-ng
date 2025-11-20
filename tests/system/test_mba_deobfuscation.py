@@ -21,7 +21,7 @@ except ImportError:
     IDA_AVAILABLE = False
 
 from .ida_test_base import IDAProTestCase
-from .stutils import d810_state, pseudocode_to_string, setup_libobfuscated_function_names
+from .stutils import d810_state, pseudocode_to_string
 
 # Import profiling infrastructure
 try:
@@ -150,9 +150,6 @@ class TestMBADeobfuscationPipeline(IDAProTestCase):
         # Initialize Hex-Rays
         if not idaapi.init_hexrays_plugin():
             raise unittest.SkipTest("Hex-Rays decompiler plugin not available")
-
-        # Set up function names for libobfuscated.dll since they're not exported
-        setup_libobfuscated_function_names()
 
         logger.info("Hex-Rays initialized for MBA deobfuscation tests")
 

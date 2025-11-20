@@ -70,18 +70,6 @@ class D810Manager:
                 f.write(self.profiler.output_html())
             return output_path
 
-    def set_profiling_hooks(self, pre_hook=None, post_hook=None) -> None:
-        """Set profiling hooks for tracking optimization passes.
-
-        Args:
-            pre_hook: Called before each optimization pass
-            post_hook: Called after each optimization pass
-        """
-        # Store hooks for use during optimization passes
-        # These can be used by tests or other monitoring code
-        self.pre_pass_hook = pre_hook
-        self.post_pass_hook = post_hook
-
     def start(self):
         if self._started:
             self.stop()

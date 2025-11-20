@@ -1,8 +1,11 @@
 """D810 - IDA Pro deobfuscation plugin.
 
-Module discovery happens:
-- In test setup (IDAProTestCase.setUpClass)
-- During plugin reload (D810.py reload() method)
+This module imports all optimizer handlers to ensure they are registered
+with the registry before the plugin tries to access them.
 """
 
-__all__ = []
+# Import all optimizer handlers to trigger registration
+# This must happen before d810.manager or d810.hexrays.hexrays_hooks are imported
+import d810.optimizers.microcode.instructions  # noqa: F401
+
+__all__ = ["optimizers"]

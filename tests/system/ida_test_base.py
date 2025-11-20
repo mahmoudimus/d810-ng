@@ -113,17 +113,6 @@ class IDAProTestCase(CoveredIntegrationTest):
         if not IDA_AVAILABLE:
             raise unittest.SkipTest("IDA Pro API not available")
 
-        # Discover and load all d810 modules to ensure optimizer classes are registered
-        # Import d810 first to ensure it's in sys.modules, then use its __path__
-        import d810
-        from d810.reloadable import _Scanner
-        _Scanner.scan(
-            package_path=d810.__path__,
-            prefix="d810.",
-            callback=None,
-            skip_packages=False,
-        )
-
         if cls.binary_name is None:
             raise ValueError("Subclasses must set binary_name class variable")
 

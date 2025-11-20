@@ -199,7 +199,8 @@ class D810Plugin(ReloadablePlugin):
 
     @_compat.override
     def run(self, args):
-        self.reload()
+        with self.plugin_setup_reload():
+            self.reload()
 
     @_compat.override
     def term(self):
@@ -208,30 +209,39 @@ class D810Plugin(ReloadablePlugin):
 
     @_compat.override
     def reload(self):
-        """Hot-reload the *entire* package.
+        """Hot-reload the *entire* package with priority-based reloading.
 
-        The method delegates to a standalone helper, ``_reload_package_with_graph``, that:
+        This method creates a fresh Reloader instance on each reload to ensure
+        the reloader itself is reloadable. The reloader:
 
-        1. Builds a static import graph for every Python source living under
-           the plugin directory.
-        2. Detects strongly-connected components (true import cycles).
-        3. Produces a deterministic topological order of those components.
-        4. Reloads modules in that order, guaranteeing that **all in-package
-           dependencies are reloaded before the code that relies on them**.
+        1. Scans all modules in the package and builds a dependency graph
+        2. Detects strongly-connected components (import cycles)
+        3. Produces a topological order respecting dependencies
+        4. Reloads priority modules first (reloadable, then registry)
+        5. Reloads remaining modules in dependency order
 
-        Modules whose names match prefixes in ``d810.registry`` are skipped.
-        The helper prints a concise warning listing only the *core* cycles it
-        found; modules merely *blocked* by a cycle are ordered automatically.
+        The reloadable module itself is reloaded first, ensuring we always
+        use the latest Reloader class definition.
         """
-        from d810.reloadable import _reload_package_with_graph
+        # Import the reloadable module and get the Reloader class.
+        # This happens on every reload, so if reloadable.py changes,
+        # we'll see it after reloading the reloadable module.
+        import d810.reloadable
 
-        with self.plugin_setup_reload():
-            _reload_package_with_graph(
-                pkg_path=d810.__path__,
-                base_package=self.base_package_name,
-                skip_prefixes=(f"{self.base_package_name}.registry",),
-                suppress_errors=self.suppress_reload_errors,
-            )
+        # Create a NEW Reloader instance to pick up any changes to the class
+        reloader = d810.reloadable.Reloader(
+            base_package=self.base_package_name,
+            pkg_path=d810.__path__,
+            skip_prefixes=(f"{self.base_package_name}.registry",),
+            priority_prefixes=(
+                f"{self.base_package_name}.reloadable",  # Reload reloader first
+                f"{self.base_package_name}.registry",    # Then registry (if not skipped)
+            ),
+            suppress_errors=self.suppress_reload_errors,
+        )
+
+        # Perform the reload
+        reloader.reload_all()
 
 
 def PLUGIN_ENTRY():
