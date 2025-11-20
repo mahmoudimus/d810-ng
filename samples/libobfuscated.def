@@ -1,0 +1,11 @@
+LIBRARY libobfuscated
+EXPORTS
+    test_chained_add
+    test_cst_simplification
+    test_opaque_predicate
+    test_xor
+    test_or
+    test_and
+    test_neg
+    test_mba_guessing
+    tigress_minmaxarray

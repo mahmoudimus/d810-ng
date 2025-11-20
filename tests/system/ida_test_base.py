@@ -116,9 +116,42 @@ class IDAProTestCase(CoveredIntegrationTest):
         if cls.binary_name is None:
             raise ValueError("Subclasses must set binary_name class variable")
 
+        # Check if a database is already open (from conftest.py or previous test)
+        try:
+            current_db = idaapi.get_root_filename()
+            if current_db:
+                print(f"  ℹ Database already open: {current_db}")
+                print(f"  ℹ Expected binary: {cls.binary_name}")
+
+                # Check if the open database matches our expected binary
+                if cls.binary_name in current_db or current_db.endswith(cls.binary_name):
+                    print(f"  ✓ Database matches expected binary - reusing existing database")
+                    cls.database_opened = False  # We didn't open it, so don't close it
+                    cls.tempdir = None
+                    cls.temp_binary_path = None
+
+                    # Still need to set up min/max EA
+                    cls.min_ea = idaapi.inf_get_min_ea()
+                    cls.max_ea = idaapi.inf_get_max_ea()
+
+                    # Call parent setUpClass to start coverage
+                    super().setUpClass()
+                    print(f"{'='*60}\n")
+                    return
+                else:
+                    print(f"  ⚠ Wrong database open - will attempt to close and reopen")
+                    try:
+                        idapro.close_database()
+                    except:
+                        pass
+        except:
+            # No database open or API not available
+            print("  ℹ No database currently open")
+            pass
+
         # Find the binary
         cls.tests_dir = pathlib.Path(__file__).parent
-        project_root = cls.tests_dir.parent
+        project_root = cls.tests_dir.parent.parent  # Go up two levels: tests/system -> tests -> project_root
 
         # Look for binary in multiple possible locations
         possible_paths = [
