@@ -313,6 +313,20 @@ class BlockOptimizerManager(optblock_t):
                         "Rule {0} matched: {1} patches".format(cfg_rule.name, nb_patch)
                     )
                     self.cfg_rules_usage_info[cfg_rule.name].append(nb_patch)
+
+                    # Record instrumentation if context is available
+                    from d810.optimizers.instrumentation import get_current_deobfuscation_context
+                    ctx = get_current_deobfuscation_context()
+                    if ctx is not None:
+                        ctx.record_flow_rule_execution(
+                            rule_name=cfg_rule.name,
+                            changes=nb_patch,
+                            maturity=self.current_maturity,
+                            # Try to extract flow-specific metadata from rule name
+                            dispatchers=1 if "unflatten" in cfg_rule.name.lower() else 0,
+                            edges_unflattened=nb_patch if "unflatten" in cfg_rule.name.lower() else 0,
+                        )
+
                     return nb_patch
         return 0
 
