@@ -27,7 +27,7 @@ class TestLibDeobfuscated(IDAProTestCase):
             raise unittest.SkipTest("Hex-Rays decompiler plugin not available")
 
         idaapi.change_hexrays_config("COLLAPSE_LVARS = YES")
-        idaapi.change_hexrays_config("HEXNUMS = YES")  # Display constants in hexadecimal
+        idaapi.change_hexrays_config("DEFAULT_RADIX = 16")  # Display constants in hexadecimal
 
         # Set up function names for libobfuscated.dll since they're not exported
         setup_libobfuscated_function_names()
