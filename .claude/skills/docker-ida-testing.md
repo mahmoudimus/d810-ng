@@ -178,15 +178,43 @@ docker pull ghcr.io/mahmoudimus/idapro-linux:idapro-tests
 
 ### Tests fail with import errors
 
-**Problem**: `ModuleNotFoundError` or similar import errors
+**Problem**: `ModuleNotFoundError: No module named 'ida_hexrays'` or similar import errors
 
-**Solution**: Ensure package is installed in editable mode:
+**Root Cause**: Two possibilities:
+1. Package not installed in editable mode
+2. Standalone scripts not importing `idapro` first
+
+**Solution 1: Ensure package installation**
 ```bash
 docker-compose run --rm idapro-tests bash -c "
     pip install -e .[dev]
     # Then run tests
 "
 ```
+
+**Solution 2: Import idapro first in standalone scripts**
+
+**⚠️ CRITICAL: `import idapro` vs `import idaapi`**
+
+When using IDA library (idalib) from standalone Python scripts:
+- ✅ **MUST** import `idapro` FIRST before any IDA modules
+- ✅ After `import idapro`, you can use `idaapi` and other `ida_*` modules
+- ❌ **NEVER** import `idaapi` or `ida_*` modules before `import idapro`
+
+```python
+# ❌ WRONG - Will fail with ModuleNotFoundError
+from d810.optimizers.dsl import *  # Imports ida_hexrays internally - FAILS!
+
+# ✅ CORRECT - Import idapro first
+import idapro  # ← CRITICAL: First import!
+from d810.optimizers.dsl import *  # Now works
+```
+
+**Two execution contexts:**
+1. **Inside IDA Pro** (GUI/headless): `import idaapi` works directly
+2. **Standalone Python with idalib**: `import idapro` MUST come first
+
+**See**: https://docs.hex-rays.com/user-guide/idalib#using-the-ida-library-python-module
 
 ### Container exits immediately
 
