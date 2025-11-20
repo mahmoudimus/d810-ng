@@ -11,7 +11,7 @@ eliminating the need for manual test cases for every rule.
 from __future__ import annotations
 
 import abc
-from typing import Any, Dict, List
+from typing import Any, Dict, List, TYPE_CHECKING
 
 try:
     import z3
@@ -24,14 +24,9 @@ from d810.expr.z3_utils import z3_prove_equivalence
 from d810.optimizers.core import OptimizationContext
 from d810.optimizers.dsl import SymbolicExpression
 
-# Import the pattern matching rule base class for registry integration
-try:
+# Import PatternMatchingRule only for type checking to avoid circular imports
+if TYPE_CHECKING:
     from d810.optimizers.microcode.instructions.pattern_matching.handler import PatternMatchingRule
-    PATTERN_MATCHING_AVAILABLE = True
-except ImportError:
-    # If we can't import it during module load, VerifiableRule won't inherit from it
-    PatternMatchingRule = object
-    PATTERN_MATCHING_AVAILABLE = False
 
 logger = getLogger(__name__)
 
@@ -142,7 +137,7 @@ class SymbolicRule(abc.ABC):
         )
 
 
-class VerifiableRule(SymbolicRule, PatternMatchingRule):
+class VerifiableRule(SymbolicRule):
     """A symbolic rule that can verify its own correctness with constraints.
 
     This class extends both SymbolicRule (for Z3 verification) and PatternMatchingRule
@@ -412,3 +407,44 @@ def isabstract(cls) -> bool:
         True if the class has any unimplemented abstract methods.
     """
     return bool(getattr(cls, "__abstractmethods__", None))
+
+
+# Dynamically add PatternMatchingRule to VerifiableRule's bases to avoid circular imports.
+# This happens AFTER all classes in this module are defined, so when pattern_matching modules
+# import VerifiableRule, it exists but doesn't yet have PatternMatchingRule in its MRO.
+# Then, after all modules are loaded, this code runs and completes the inheritance chain.
+try:
+    from d810.optimizers.microcode.instructions.pattern_matching.handler import PatternMatchingRule
+
+    # Add PatternMatchingRule to VerifiableRule's bases if not already there
+    if PatternMatchingRule not in VerifiableRule.__bases__:
+        # Replace the bases tuple to include PatternMatchingRule
+        VerifiableRule.__bases__ = (SymbolicRule, PatternMatchingRule)
+        logger.debug("Successfully added PatternMatchingRule to VerifiableRule's bases")
+
+        # NOW that VerifiableRule has the correct bases, import the refactored rule modules
+        # so they register properly with the correct MRO
+        try:
+            from d810.optimizers.microcode.instructions.pattern_matching import (
+                rewrite_add_refactored,
+                rewrite_and_refactored,
+                rewrite_bnot_refactored,
+                rewrite_cst_refactored,
+                rewrite_mov_refactored,
+                rewrite_mul_refactored,
+                rewrite_neg_refactored,
+                rewrite_or_refactored,
+                rewrite_predicates_refactored,
+                rewrite_sub_refactored,
+                rewrite_xor_refactored,
+            )
+            logger.debug("Successfully loaded refactored rule modules")
+        except ImportError as e2:
+            logger.warning(f"Could not load refactored rule modules: {e2}")
+
+except ImportError as e:
+    logger.warning(
+        f"Could not import PatternMatchingRule to complete VerifiableRule inheritance: {e}. "
+        "VerifiableRule subclasses will not be registered with d810's pattern matching system."
+    )
+
