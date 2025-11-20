@@ -142,3 +142,81 @@ ERROR tests/system/test_libdeobfuscated.py::TestLibDeobfuscated::test_AntiDebug_
 - `src/d810/__init__.py`: Kept minimal (no discovery code)
 
 **Next**: Monitor CI for workflow run on commit `88169ea`
+
+---
+
+### Session: 2025-11-20 (GitHub CLI setup and actual error discovery)
+
+**Status**: Installed GitHub CLI to properly monitor CI, discovered actual test failures
+
+**Problem with WebFetch**: WebFetch tool was incorrectly reporting all workflow runs as "Passing" when they were actually failing. This led to confusion about the actual state of CI tests.
+
+**Solution - GitHub CLI Installation**:
+
+Downloaded and installed GitHub CLI manually:
+```bash
+cd /tmp
+curl -sSL https://github.com/cli/cli/releases/download/v2.62.0/gh_2.62.0_linux_amd64.tar.gz -o gh.tar.gz
+tar -xzf gh.tar.gz
+# Binary available at: /tmp/gh_2.62.0_linux_amd64/bin/gh
+```
+
+**How to Use GitHub CLI for Monitoring**:
+
+1. **List recent workflow runs for a branch**:
+```bash
+export GH_TOKEN="<github-pat-token>"
+/tmp/gh_2.62.0_linux_amd64/bin/gh run list \
+  --repo mahmoudimus/d810-ng \
+  --branch claude/fix-function-exports-01LGn9MJtJhLGUZphKWtsEfX \
+  --limit 5
+```
+
+2. **View failed run logs**:
+```bash
+/tmp/gh_2.62.0_linux_amd64/bin/gh run view <run-id> \
+  --repo mahmoudimus/d810-ng \
+  --log-failed
+```
+
+3. **Watch a run in real-time**:
+```bash
+/tmp/gh_2.62.0_linux_amd64/bin/gh run watch <run-id> \
+  --repo mahmoudimus/d810-ng
+```
+
+**Actual CI Status Discovered**:
+All recent runs are **FAILING**, not passing:
+- Run #19521802579 (commit 7f67f82): **failure** - 2m39s
+- Run #19521762990 (commit 2693a7d): **failure** - 2m17s
+- Run #19521373076 (commit 729044b): **failure** - 2m23s
+- Run #19521361267 (commit 88169ea): **failure** - 2m17s
+
+**Real Error Found**:
+```
+Error while loading extension d810.optimizers.microcode.instructions.pattern_matching.rewrite_add_refactored: 'DynamicConst' object has no attribute 'node'
+```
+
+This error occurs for ALL refactored pattern matching modules:
+- rewrite_add_refactored
+- rewrite_and_refactored
+- rewrite_cst_refactored
+- rewrite_predicates_refactored
+- rewrite_sub_refactored
+- rewrite_xor_refactored
+
+**Commits Made This Session**:
+1. `7f67f82`: Added `set_profiling_hooks()` method to D810Manager (fixed AttributeError)
+2. `2693a7d`: Used `d810.__path__` for module discovery path
+
+**Root Cause**: The `DynamicConst` class is missing a `node` attribute that the pattern matching refactored modules expect. This is preventing the optimizer extensions from loading correctly.
+
+**Test Results Summary**:
+- 6 tests FAILED in TestLibDeobfuscated
+- 32 tests PASSED or SKIPPED
+- Failures due to pattern matching rules not loading (DynamicConst.node error)
+
+**Next Steps**:
+- Investigate DynamicConst class and why it's missing the `node` attribute
+- Fix the pattern matching refactored modules to work with current DynamicConst implementation
+- Ensure all optimizer extensions load correctly
