@@ -107,13 +107,19 @@ def set_current_deobfuscation_context(ctx: Optional[DeobfuscationContext]):
 
 
 @contextlib.contextmanager
-def d810_state():
+def d810_state(*, all_rules=False):
     """Context manager for D810 state with instrumentation support.
 
     This provides access to D810's deobfuscation engine and creates
     a DeobfuscationContext to track all optimization activity.
 
+    Args:
+        all_rules: If True, load ALL available rules (ignoring project config).
+                   This is useful for testing refactored rules that aren't yet
+                   in project configurations. Default: False (use project config).
+
     Usage:
+        # Normal usage (project config filtering):
         with d810_state() as state:
             state.stop_d810()
             # ... decompile without d810 ...
@@ -121,15 +127,30 @@ def d810_state():
             state.start_d810()
             # ... decompile with d810 ...
 
+        # Testing with all rules (no filtering):
+        with d810_state(all_rules=True) as state:
+            # All registered rules will be active, including refactored ones
+            state.start_d810()
+            # ...
+
             # Access instrumentation
             ctx = get_current_deobfuscation_context()
-            assert ctx.rule_fired("UnflattenerTigress")
+            assert ctx.rule_fired("Xor_HackersDelight1")  # Refactored rule!
     """
     global _current_deobfuscation_context
 
     state = D810State()  # singleton
     if not (was_loaded := state.is_loaded()):
         state.load(gui=False)
+
+    # Override rule selection for testing
+    if all_rules:
+        # Bypass project config filtering - use ALL registered rules
+        # This allows testing of refactored rules that aren't in configs yet
+        state.current_ins_rules = state.known_ins_rules
+        state.current_blk_rules = state.known_blk_rules
+        logger.debug(f"all_rules=True: Loaded {len(state.current_ins_rules)} instruction rules (bypassing project config)")
+
     if not (was_started := state.manager.started):
         state.start_d810()
 

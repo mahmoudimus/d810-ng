@@ -119,7 +119,8 @@ class TestRuleFiring(IDAProTestCase):
         func_ea = idc.get_name_ea_simple(func_name)
         self.assertNotEqual(func_ea, idaapi.BADADDR, f"Function '{func_name}' not found")
 
-        with d810_state() as state:
+        # Use all_rules=True to test refactored DSL rules that aren't in project configs yet
+        with d810_state(all_rules=True) as state:
             # BEFORE: Decompile without d810
             state.stop_d810()
             decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
