@@ -25,20 +25,13 @@ from d810.optimizers.core import OptimizationContext
 from d810.optimizers.dsl import SymbolicExpression
 
 # Import the pattern matching rule base class for registry integration
-# This will be imported lazily to avoid circular dependencies
-_PatternMatchingRule = None
-
-def _get_pattern_matching_rule():
-    """Lazy import of PatternMatchingRule to avoid circular dependencies."""
-    global _PatternMatchingRule
-    if _PatternMatchingRule is None:
-        try:
-            from d810.optimizers.microcode.instructions.pattern_matching.handler import PatternMatchingRule
-            _PatternMatchingRule = PatternMatchingRule
-        except ImportError:
-            # If we can't import it, use a dummy base class
-            _PatternMatchingRule = object
-    return _PatternMatchingRule
+try:
+    from d810.optimizers.microcode.instructions.pattern_matching.handler import PatternMatchingRule
+    PATTERN_MATCHING_AVAILABLE = True
+except ImportError:
+    # If we can't import it during module load, VerifiableRule won't inherit from it
+    PatternMatchingRule = object
+    PATTERN_MATCHING_AVAILABLE = False
 
 logger = getLogger(__name__)
 
@@ -149,26 +142,29 @@ class SymbolicRule(abc.ABC):
         )
 
 
-class VerifiableRule(SymbolicRule):
+class VerifiableRule(SymbolicRule, PatternMatchingRule):
     """A symbolic rule that can verify its own correctness with constraints.
 
-    This class extends SymbolicRule to support rules that are only valid under
-    certain conditions (constraints). For example, a rule might only be valid
-    when a constant c2 equals ~c1.
+    This class extends both SymbolicRule (for Z3 verification) and PatternMatchingRule
+    (for d810 integration). It provides a bridge between the declarative DSL approach
+    and d810's existing pattern matching infrastructure.
 
-    All subclasses are automatically registered in RULE_REGISTRY for batch testing
-    and with PatternMatchingRule's registry so d810 can use them.
-
-    This class provides an adapter layer: DSL-based rules (PATTERN/REPLACEMENT)
-    are converted to AstNode format for compatibility with d810's existing system.
+    All subclasses are automatically registered via Registrant metaclass.
 
     Class Variables:
-        PATTERN: DSL-based pattern (SymbolicExpression)
-        REPLACEMENT: DSL-based replacement (SymbolicExpression)
+        PATTERN: DSL-based pattern (SymbolicExpression from dsl module)
+        REPLACEMENT: DSL-based replacement (SymbolicExpression from dsl module)
         CONSTRAINTS: Optional list of runtime constraint functions.
                     Each function takes a match context dict and returns bool.
         DYNAMIC_CONSTS: Optional dict mapping constant names to compute functions.
                        Used for constants whose values depend on matched values.
+
+    Example:
+        >>> from d810.optimizers.dsl import Var, Const
+        >>> x, y = Var("x_0"), Var("x_1")
+        >>> class Xor_HackersDelight1(VerifiableRule):
+        ...     PATTERN = (x | y) - (x & y)
+        ...     REPLACEMENT = x ^ y
 
     Example with constraints:
         >>> from d810.optimizers.dsl import when
@@ -185,81 +181,97 @@ class VerifiableRule(SymbolicRule):
 
     BIT_WIDTH = 32  # Default bit-width for Z3 verification
 
-    # Override these in subclasses
-    PATTERN: SymbolicExpression = None  # DSL pattern
-    REPLACEMENT: SymbolicExpression = None  # DSL replacement
+    # Override these in subclasses - DSL format
+    # These are class variables, not instance variables
+    # PATTERN: SymbolicExpression = None
+    # REPLACEMENT: SymbolicExpression = None
     CONSTRAINTS: List = []  # Runtime constraints (list of callables)
     DYNAMIC_CONSTS: Dict[str, Any] = {}  # Dynamic constant generators
 
-    # Adapter properties: convert DSL format to PatternMatchingRule format
-    @property
-    def pattern_ast(self):
-        """Get the pattern as an AstNode (for PatternMatchingRule compatibility)."""
-        if hasattr(self.__class__, 'PATTERN') and self.__class__.PATTERN is not None:
-            return self.__class__.PATTERN.node
-        return None
-
-    @property
-    def replacement_ast(self):
-        """Get the replacement as an AstNode (for PatternMatchingRule compatibility)."""
-        if hasattr(self.__class__, 'REPLACEMENT') and self.__class__.REPLACEMENT is not None:
-            return self.__class__.REPLACEMENT.node
-        return None
-
     def __init_subclass__(cls, **kwargs):
-        """Automatically register any subclass for testing and with PatternMatchingRule.
+        """Automatically register any subclass and convert DSL patterns to AstNodes.
 
         This magic method is called whenever a class inherits from VerifiableRule.
         It:
-        1. Adds the rule to the global RULE_REGISTRY for testing
-        2. Creates a PatternMatchingRule adapter and registers it with d810
+        1. Renames PATTERN/REPLACEMENT to _dsl_pattern/_dsl_replacement (internal storage)
+        2. Creates PATTERN/REPLACEMENT_PATTERN properties that return AstNodes
+        3. Instantiates and adds the rule to the global registry for testing
+
+        Note: Registration with d810's PatternMatchingRule registry happens automatically
+        via the Registrant metaclass since we inherit from PatternMatchingRule.
         """
         super().__init_subclass__(**kwargs)
+
+        # Capture and convert DSL patterns to internal storage
+        # Subclasses set PATTERN/REPLACEMENT as class vars (SymbolicExpression)
+        # We move them to _dsl_pattern/_dsl_replacement so the properties work
+        if 'PATTERN' in cls.__dict__ and hasattr(cls.__dict__['PATTERN'], 'node'):
+            cls._dsl_pattern = cls.__dict__['PATTERN']
+            # Remove the class variable so it doesn't shadow our property
+            delattr(cls, 'PATTERN')
+
+        if 'REPLACEMENT' in cls.__dict__ and hasattr(cls.__dict__['REPLACEMENT'], 'node'):
+            cls._dsl_replacement = cls.__dict__['REPLACEMENT']
+            delattr(cls, 'REPLACEMENT')
+
         # Only register concrete classes, not abstract ones
         if not isabstract(cls):
             try:
                 # Add to testing registry
-                RULE_REGISTRY.append(cls())
-
-                # Create an adapter that bridges VerifiableRule to PatternMatchingRule
-                PatternMatchingRuleBase = _get_pattern_matching_rule()
-                if PatternMatchingRuleBase is not object:
-                    # Create adapter class that inherits from PatternMatchingRule
-                    adapter_name = f"{cls.__name__}_Adapter"
-
-                    # Define the adapter's PATTERN property
-                    def make_pattern_property(verifiable_rule_cls):
-                        @property
-                        def PATTERN(self):
-                            return verifiable_rule_cls.PATTERN.node
-                        return PATTERN
-
-                    # Define the adapter's REPLACEMENT_PATTERN property
-                    def make_replacement_property(verifiable_rule_cls):
-                        @property
-                        def REPLACEMENT_PATTERN(self):
-                            return verifiable_rule_cls.REPLACEMENT.node
-                        return REPLACEMENT_PATTERN
-
-                    # Create the adapter class dynamically
-                    adapter_class = type(
-                        adapter_name,
-                        (PatternMatchingRuleBase,),
-                        {
-                            'PATTERN': make_pattern_property(cls),
-                            'REPLACEMENT_PATTERN': make_replacement_property(cls),
-                            '__module__': cls.__module__,
-                            '__doc__': cls.__doc__,
-                        }
-                    )
-
-                    # The adapter will auto-register itself via Registrant's __init_subclass__
-                    logger.debug(f"Created adapter {adapter_name} for {cls.__name__}")
+                instance = cls()
+                RULE_REGISTRY.append(instance)
+                logger.debug(f"Registered {cls.__name__} for testing (total: {len(RULE_REGISTRY)})")
             except Exception as e:
                 logger.warning(
-                    f"Failed to register rule {cls.__name__}: {e}",
+                    f"Failed to register rule {cls.__name__} for testing: {e}",
                     exc_info=True
                 )
+
+    # Implement SymbolicRule abstract properties
+    @property
+    def pattern(self) -> SymbolicExpression:
+        """The symbolic pattern to match (SymbolicRule interface).
+
+        Returns the DSL SymbolicExpression for Z3 verification.
+        """
+        # Look up the MRO for _dsl_pattern (set by __init_subclass__)
+        for cls in type(self).__mro__:
+            if hasattr(cls, '_dsl_pattern'):
+                return cls._dsl_pattern
+        return None
+
+    @property
+    def replacement(self) -> SymbolicExpression:
+        """The symbolic replacement expression (SymbolicRule interface).
+
+        Returns the DSL SymbolicExpression for Z3 verification.
+        """
+        # Look up the MRO for _dsl_replacement (set by __init_subclass__)
+        for cls in type(self).__mro__:
+            if hasattr(cls, '_dsl_replacement'):
+                return cls._dsl_replacement
+        return None
+
+    # Implement PatternMatchingRule interface by converting DSL to AstNode
+    @property
+    def PATTERN(self):
+        """Get the pattern as an AstNode (PatternMatchingRule interface).
+
+        Converts from DSL SymbolicExpression to AstNode for d810.
+        """
+        if self.pattern is not None:
+            return self.pattern.node
+        return None
+
+    @property
+    def REPLACEMENT_PATTERN(self):
+        """Get the replacement as an AstNode (PatternMatchingRule interface).
+
+        Converts from DSL SymbolicExpression to AstNode for d810.
+        """
+        if self.replacement is not None:
+            return self.replacement.node
+        return None
 
     def check_runtime_constraints(self, match_context: Dict[str, Any]) -> bool:
         """Check if all runtime constraints are satisfied for this match.
