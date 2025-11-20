@@ -6,7 +6,7 @@ import idaapi
 import idc
 
 from d810.manager import D810State
-from src.d810.optimizers.instrumentation import DeobfuscationContext
+from d810.optimizers.instrumentation import DeobfuscationContext
 
 # Global context for tracking deobfuscation during tests
 _current_deobfuscation_context: Optional[DeobfuscationContext] = None
