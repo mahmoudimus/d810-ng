@@ -129,6 +129,91 @@ tests/system/test_rule_tracking.py
 
 **Root cause identified:** Unconditional GUI import at module level causes failure in headless test environments.
 
+**6. Create Minimal Reproducible Test (When Root Cause Unclear)**
+
+When evidence gathering and tracing don't reveal the root cause, create a **focused standalone test** that isolates the problem.
+
+**Why this works:**
+- Removes noise from full test suite
+- Forces you to understand exactly what's needed
+- Adds detailed logging at each step
+- Makes it easy to experiment with fixes
+
+**Example (d810-ng refactored rules not firing):**
+
+**Problem:** NEW VerifiableRule subclasses registered (161 rules) but not firing during deobfuscation.
+
+**Minimal test approach:**
+```python
+# tests/debug_rule_firing.py
+import idapro
+import sys
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+sys.path.insert(0, '/home/user/d810-ng/src')
+
+print("STEP 1: Check VerifiableRule inheritance")
+from d810.optimizers.rules import VerifiableRule
+print(f"VerifiableRule.__bases__: {VerifiableRule.__bases__}")
+print(f"Is subclass of PatternMatchingRule? {issubclass(VerifiableRule, PatternMatchingRule)}")
+
+print("\nSTEP 2: Check registered rules")
+from d810.optimizers.microcode.instructions.handler import InstructionOptimizationRule
+all_rules = InstructionOptimizationRule.all()
+xor_rules = [r for r in all_rules if 'Xor_HackersDelight' in r.__name__]
+print(f"Found XOR rules: {[r.__name__ for r in xor_rules]}")
+
+print("\nSTEP 3: Check if rule has required methods")
+if xor_rules:
+    rule = xor_rules[0]()
+    for method in ['match', 'check', 'replace', 'check_candidate']:
+        print(f"  {method}: {'✓' if hasattr(rule, method) else '✗'}")
+
+print("\nSTEP 4: Try to add rule to optimizer")
+from d810.optimizers.microcode.instructions.pattern_matching.handler import PatternOptimizer
+opt = PatternOptimizer(log_dir="/tmp/debug")
+if xor_rules:
+    rule = xor_rules[0]()
+    success = opt.add_rule(rule)
+    print(f"add_rule() returned: {success}")
+    print(f"Rule in optimizer.rules: {rule in opt.rules}")
+```
+
+**Results from minimal test:**
+```
+STEP 3: Check if rule has required methods
+  match: ✗
+  replace: ✗
+  check: ✗
+  check_candidate: ✗  ← ROOT CAUSE FOUND!
+  get_replacement: ✓
+```
+
+**Root cause revealed:** VerifiableRule missing `check_candidate()` method required by GenericPatternRule interface.
+
+**Minimal test checklist:**
+- [ ] Start with imports only (verify basic loading works)
+- [ ] Add step-by-step verification (inheritance, registration, methods)
+- [ ] Use print statements liberally at EACH step
+- [ ] Test ONE specific failing case (e.g., specific rule class)
+- [ ] Check both existence (does it exist?) and behavior (does it work?)
+- [ ] Compare working vs broken examples side-by-side in same test
+
+**When to use minimal tests:**
+- ✓ Evidence gathering shows components exist but don't work
+- ✓ Stack traces don't point to obvious issues
+- ✓ Need to verify assumptions about interfaces/APIs
+- ✓ Debugging integration between multiple systems
+- ✓ "It should work but doesn't" scenarios
+
+**When NOT to use minimal tests:**
+- ✗ Error message clearly points to line/file
+- ✗ Stack trace shows obvious issue (typo, missing import, etc.)
+- ✗ Problem is environment-specific (use CI debugging instead)
+
 ### Phase 2: Pattern Analysis
 
 **1. Find Working Examples**
