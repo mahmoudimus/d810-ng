@@ -222,6 +222,15 @@ class VerifiableRule(SymbolicRule):
                     exc_info=True
                 )
 
+    # Implement rule name property (required by OptimizationRule)
+    @property
+    def name(self) -> str:
+        """Return the rule name (class name by default).
+
+        This is used by d810's optimizer to track which rules fire.
+        """
+        return self.__class__.__name__
+
     # Implement SymbolicRule abstract properties
     @property
     def pattern(self) -> SymbolicExpression:
@@ -267,6 +276,42 @@ class VerifiableRule(SymbolicRule):
         if self.replacement is not None:
             return self.replacement.node
         return None
+
+    def check_candidate(self, candidate) -> bool:
+        """Check if a candidate AstNode matches this rule's constraints.
+
+        This implements the GenericPatternRule interface, allowing VerifiableRule
+        to work with PatternMatchingRule's matching system.
+
+        The candidate is an AstNode that has already matched the PATTERN structure.
+        This method checks additional runtime constraints (CONSTRAINTS list).
+
+        Args:
+            candidate: An AstNode that structurally matches PATTERN
+
+        Returns:
+            True if all constraints are satisfied, False otherwise
+        """
+        # If no constraints, candidate is valid
+        if not hasattr(self, 'CONSTRAINTS') or not self.CONSTRAINTS:
+            return True
+
+        # Build match context from candidate's matched variables
+        # The candidate has a dictionary mapping variable names to matched mops
+        if not hasattr(candidate, 'get_z3_vars') and not hasattr(candidate, 'mop_dict'):
+            # If candidate doesn't have variable bindings yet, assume it's valid
+            # The actual constraint checking will happen during replacement
+            return True
+
+        # Get the variable bindings from the candidate
+        match_context = {}
+        if hasattr(candidate, 'mop_dict'):
+            match_context = candidate.mop_dict
+        elif hasattr(candidate, 'get_z3_vars'):
+            match_context = candidate.get_z3_vars({})
+
+        # Check all runtime constraints
+        return self.check_runtime_constraints(match_context)
 
     def check_runtime_constraints(self, match_context: Dict[str, Any]) -> bool:
         """Check if all runtime constraints are satisfied for this match.
