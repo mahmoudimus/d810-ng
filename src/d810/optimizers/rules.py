@@ -24,6 +24,22 @@ from d810.expr.z3_utils import z3_prove_equivalence
 from d810.optimizers.core import OptimizationContext
 from d810.optimizers.dsl import SymbolicExpression
 
+# Import the pattern matching rule base class for registry integration
+# This will be imported lazily to avoid circular dependencies
+_PatternMatchingRule = None
+
+def _get_pattern_matching_rule():
+    """Lazy import of PatternMatchingRule to avoid circular dependencies."""
+    global _PatternMatchingRule
+    if _PatternMatchingRule is None:
+        try:
+            from d810.optimizers.microcode.instructions.pattern_matching.handler import PatternMatchingRule
+            _PatternMatchingRule = PatternMatchingRule
+        except ImportError:
+            # If we can't import it, use a dummy base class
+            _PatternMatchingRule = object
+    return _PatternMatchingRule
+
 logger = getLogger(__name__)
 
 # Global registry of all verifiable rules for automated testing
