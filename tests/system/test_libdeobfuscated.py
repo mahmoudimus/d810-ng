@@ -305,24 +305,26 @@ class TestLibDeobfuscated(IDAProTestCase):
         self.assertNotEqual(func_ea, idaapi.BADADDR, "Function 'tigress_minmaxarray' not found")
 
         with d810_state() as state:
-            # BEFORE: Decompile without d810
-            state.stop_d810()
-            decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
-            self.assertIsNotNone(decompiled_before, "Decompilation failed for tigress_minmaxarray")
+            with state.for_project("example_libobfuscated.json"):
+                # BEFORE: Decompile without d810
+                state.stop_d810()
+                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                self.assertIsNotNone(decompiled_before, "Decompilation failed for tigress_minmaxarray")
 
-            actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
+                actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
-            # ASSERT: Control flow flattening is present (switch statements with dispatcher)
-            self.assertIn("switch", actual_before, "Should have switch statement from control flow flattening")
-            self.assertIn("case", actual_before, "Should have case statements")
-            # Count switch cases - flattened code has many cases
-            case_count_before = actual_before.count("case ")
-            self.assertGreater(case_count_before, 10, "Flattened code should have many switch cases")
+                # ASSERT: Control flow flattening is present (switch statements with dispatcher)
+                self.assertIn("switch", actual_before, "Should have switch statement from control flow flattening")
+                self.assertIn("case", actual_before, "Should have case statements")
+                # Count switch cases - flattened code has many cases
+                case_count_before = actual_before.count("case ")
+                self.assertGreater(case_count_before, 10, "Flattened code should have many switch cases")
 
-            # AFTER: Decompile with d810
-            state.start_d810()
-            decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
-            self.assertIsNotNone(decompiled_after, "Decompilation with d810 failed")
+                # AFTER: Decompile with d810 using example_libobfuscated.json config
+                # This config includes UnflattenerTigressIndirect for tigress_minmaxarray
+                state.start_d810()
+                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                self.assertIsNotNone(decompiled_after, "Decompilation with d810 failed")
 
             actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
