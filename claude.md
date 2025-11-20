@@ -220,3 +220,90 @@ This error occurs for ALL refactored pattern matching modules:
 - Investigate DynamicConst class and why it's missing the `node` attribute
 - Fix the pattern matching refactored modules to work with current DynamicConst implementation
 - Ensure all optimizer extensions load correctly
+
+---
+
+### Session: 2025-11-20 (Debugging test_libdeobfuscated.py failures)
+
+**Goal**: Fix all failing tests in `tests/system/test_libdeobfuscated.py`
+
+**Test File**: https://github.com/mahmoudimus/d810-ng/blob/claude/fix-function-exports-01LGn9MJtJhLGUZphKWtsEfX/tests/system/test_libdeobfuscated.py
+
+**Current Status**: 6 tests failing due to pattern matching modules not loading
+
+**Root Cause**: `DynamicConst` object missing `node` attribute causing all refactored pattern matching modules to fail loading.
+
+**Debugging Plan**:
+
+1. **Investigate DynamicConst**:
+   - [ ] Find where DynamicConst is defined
+   - [ ] Understand what the `node` attribute should be
+   - [ ] Check why it's missing in current implementation
+   - [ ] Review how it's used in refactored modules
+
+2. **Fix Pattern Matching Module Loading**:
+   - [ ] Fix rewrite_add_refactored.py
+   - [ ] Fix rewrite_and_refactored.py
+   - [ ] Fix rewrite_cst_refactored.py
+   - [ ] Fix rewrite_predicates_refactored.py
+   - [ ] Fix rewrite_sub_refactored.py
+   - [ ] Fix rewrite_xor_refactored.py
+
+3. **Verify Individual Test Fixes**:
+   - [ ] test_cst_simplification (expects "0x222E69C0" in output)
+   - [ ] test_deobfuscate_opaque_predicate
+   - [ ] test_simplify_chained_add
+   - [ ] test_simplify_mba_guessing
+   - [ ] test_simplify_xor
+   - [ ] test_tigress_minmaxarray
+
+4. **Monitor CI After Each Fix**:
+   - [ ] Commit fix
+   - [ ] Push to remote
+   - [ ] Check workflow run with: `gh run list --repo mahmoudimus/d810-ng --branch <branch> --limit 1`
+   - [ ] View logs with: `gh run view <run-id> --log-failed`
+   - [ ] Verify test passes
+
+5. **Final Validation**:
+   - [ ] All 6 tests in test_libdeobfuscated.py passing
+   - [ ] No new test failures introduced
+   - [ ] CI workflow completely green
+
+**How to Monitor Progress**:
+```bash
+# Set token
+export GH_TOKEN="<github-pat-token>"
+
+# Check latest run status
+/tmp/gh_2.62.0_linux_amd64/bin/gh run list \
+  --repo mahmoudimus/d810-ng \
+  --branch claude/fix-function-exports-01LGn9MJtJhLGUZphKWtsEfX \
+  --limit 1
+
+# View failed logs (if needed)
+/tmp/gh_2.62.0_linux_amd64/bin/gh run view <run-id> --repo mahmoudimus/d810-ng --log-failed
+```
+
+**Progress Tracking**:
+- Current commit: 0593027
+- Latest run: #19522270841 (commit 0593027)
+- Tests to fix: 6 in TestLibDeobfuscated
+
+**Fixes Applied**:
+- [x] Fixed DynamicConst missing `.node` attribute (commit 9650dac)
+- [x] Added `sar()` method to SymbolicExpression (commit a9b01dc)
+- [x] Imported `m_sar` from ida_hexrays (commit 0593027)
+- [x] All pattern matching modules now load successfully!
+
+**Module Loading Status**: ✅ ALL CLEAR - No "Error while loading" messages
+
+**Remaining Test Failures** (all in test_libdeobfuscated.py):
+1. test_cst_simplification - Constants not being simplified as expected
+2. test_deobfuscate_opaque_predicate - Opaque predicates not resolved
+3. test_simplify_chained_add - Complex expressions not optimized
+4. test_simplify_mba_guessing - MBA patterns not simplified
+5. test_simplify_xor - XOR patterns not optimized
+6. test_tigress_minmaxarray - Control flow not unflattened
+
+**Next**: Investigate why deobfuscation isn't producing expected output
+
