@@ -285,32 +285,35 @@ class TestRuleFiring(IDAProTestCase):
 
         # Check registry for refactored rules
         try:
-            from d810.optimizers.microcode.instructions.pattern_matching.handler import (
-                PatternMatchingRule,
+            from d810.optimizers.microcode.instructions.handler import (
+                InstructionOptimizationRule,
+            )
+            from d810.optimizers.rules import VerifiableRule
+
+            # Get all registered instruction optimization rules
+            # InstructionOptimizationRule inherits from Registrant, so it has .all()
+            registered_rules = InstructionOptimizationRule.all()
+
+            logger.info(f"\nTotal registered instruction optimization rules: {len(registered_rules)}")
+
+            # Find refactored rules (instances of VerifiableRule)
+            # Filter to only classes (not instances) that are subclasses of VerifiableRule
+            refactored_rules = [
+                rule for rule in registered_rules
+                if isinstance(rule, type) and issubclass(rule, VerifiableRule)
+            ]
+
+            logger.info(f"Refactored (VerifiableRule) rules found: {len(refactored_rules)}")
+            for rule in refactored_rules[:10]:  # Show first 10
+                logger.info(f"  - {rule.__name__}")
+
+            self.assertGreater(
+                len(refactored_rules), 0, "Should have VerifiableRule subclasses registered"
             )
 
-            # Get all registered pattern matching rules
-            registered_rules = []
-            # Try to get rules from the registry
-            if hasattr(PatternMatchingRule, "get_all_rules"):
-                registered_rules = PatternMatchingRule.get_all_rules()
         except (ImportError, AttributeError) as e:
-            logger.warning(f"Could not access pattern matching registry: {e}")
-            registered_rules = []
-        logger.info(f"\nTotal registered pattern matching rules: {len(registered_rules)}")
-
-        # Find refactored rules
-        refactored_rules = [
-            rule for rule in registered_rules if "Refactored" in rule.__name__
-        ]
-
-        logger.info(f"Refactored rules found: {len(refactored_rules)}")
-        for rule in refactored_rules[:10]:  # Show first 10
-            logger.info(f"  - {rule.__name__}")
-
-        self.assertGreater(
-            len(refactored_rules), 0, "Should have refactored rules registered"
-        )
+            logger.error(f"Could not access instruction optimization registry: {e}")
+            self.fail(f"Registry access failed: {e}")
 
 
 if __name__ == "__main__":
