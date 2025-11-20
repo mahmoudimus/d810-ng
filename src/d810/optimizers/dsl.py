@@ -25,6 +25,7 @@ from ida_hexrays import (
     m_mul,
     m_neg,
     m_or,
+    m_sar,
     m_shl,
     m_shr,
     m_sub,
