@@ -1,0 +1,113 @@
+{
+  "test_xor": {
+    "description": "XOR pattern simplification",
+    "total_rules_fired": 1,
+    "total_changes": 0,
+    "old_rules_fired": [
+      "Xor_HackersDelightRule_3"
+    ],
+    "new_rules_fired": [],
+    "old_count": 1,
+    "new_count": 0,
+    "rules_detail": {
+      "Xor_HackersDelightRule_3": {
+        "fire_count": 2,
+        "total_changes": 0,
+        "source": "PatternOptimizer (OLD)"
+      }
+    }
+  },
+  "test_chained_add": {
+    "description": "Arithmetic chain simplification",
+    "total_rules_fired": 1,
+    "total_changes": 3,
+    "old_rules_fired": [],
+    "new_rules_fired": [],
+    "old_count": 0,
+    "new_count": 0,
+    "rules_detail": {
+      "ArithmeticChain": {
+        "fire_count": 3,
+        "total_changes": 3,
+        "source": "Instrumentation (NEW or Other)"
+      }
+    }
+  },
+  "test_mba_guessing": {
+    "description": "MBA pattern simplification",
+    "total_rules_fired": 5,
+    "total_changes": 0,
+    "old_rules_fired": [
+      "AddXor_Rule_1",
+      "Add_HackersDelightRule_2",
+      "Add_OllvmRule_1",
+      "And_HackersDelightRule_2",
+      "BnotXor_FactorRule_1"
+    ],
+    "new_rules_fired": [],
+    "old_count": 5,
+    "new_count": 0,
+    "rules_detail": {
+      "AddXor_Rule_1": {
+        "fire_count": 1,
+        "total_changes": 0,
+        "source": "PatternOptimizer (OLD)"
+      },
+      "Add_HackersDelightRule_2": {
+        "fire_count": 3,
+        "total_changes": 0,
+        "source": "PatternOptimizer (OLD)"
+      },
+      "Add_OllvmRule_1": {
+        "fire_count": 6,
+        "total_changes": 0,
+        "source": "PatternOptimizer (OLD)"
+      },
+      "And_HackersDelightRule_2": {
+        "fire_count": 3,
+        "total_changes": 0,
+        "source": "PatternOptimizer (OLD)"
+      },
+      "BnotXor_FactorRule_1": {
+        "fire_count": 6,
+        "total_changes": 0,
+        "source": "PatternOptimizer (OLD)"
+      }
+    }
+  },
+  "test_opaque_predicate": {
+    "description": "Opaque predicate removal",
+    "total_rules_fired": 4,
+    "total_changes": 1,
+    "old_rules_fired": [
+      "BnotOr_FactorRule_1",
+      "Bnot_XorRule_1",
+      "Xor_HackersDelightRule_1"
+    ],
+    "new_rules_fired": [],
+    "old_count": 3,
+    "new_count": 0,
+    "rules_detail": {
+      "BnotOr_FactorRule_1": {
+        "fire_count": 1,
+        "total_changes": 0,
+        "source": "PatternOptimizer (OLD)"
+      },
+      "Bnot_XorRule_1": {
+        "fire_count": 1,
+        "total_changes": 0,
+        "source": "PatternOptimizer (OLD)"
+      },
+      "Xor_HackersDelightRule_1": {
+        "fire_count": 1,
+        "total_changes": 0,
+        "source": "PatternOptimizer (OLD)"
+      },
+      "Z3ConstantOptimization": {
+        "fire_count": 1,
+        "total_changes": 1,
+        "source": "Instrumentation (NEW or Other)"
+      }
+    }
+  }
+}
