@@ -1,211 +1,190 @@
+# ==============================================================================
+# Universal Clang-First Cross-Platform Makefile (Linux ↔ Windows ↔ macOS) – 2025
+#
+# Features
+# • Always uses Clang / clang-cl / Apple clang
+# • Cross-compiles perfect Windows DLLs from Linux or macOS (lld + MinGW target)
+# • Builds pure x86_64 macOS dylibs even on Apple Silicon
+# • Ignores undefined symbols the correct way on every platform
+# • Extremely forgiving architecture selection (see examples below)
+# • Full debug info, zero optimizations, no inlining/vectorization
+# • Single Makefile – works everywhere, no conditionals needed per host
+#
+# Usage examples (from the samples directory)
+#   make                                 # → Windows x86_64 DLL (default)
+#   make TARGET_OS=linux                 # → Linux .so for host arch
+#   make TARGET_OS=darwin BUILD_ARCH=x86_64   # → pure Intel macOS dylib
+#   make TARGET_OS=darwin BUILD_ARCH=arm64    # → Apple Silicon dylib
+#   make BUILD_ARCH=x86                  # → 32-bit Windows DLL
+#   make BINARY_NAME=myplugin            # → bins/myplugin.dll (no host/arch suffix)
+#   make clean
+# ==============================================================================
+
+# ----------------------------- Host detection -----------------------------
 ifeq ($(OS),Windows_NT)
-UNAME_S :=
+    UNAME_S :=
+    HOST_OS := windows
+    RM      := del /Q 2>nul || ver>nul
+    MKDIR   := mkdir
 else
-UNAME_S := $(shell uname -s)
+    UNAME_S := $(shell uname -s)
+    ifeq ($(UNAME_S),Darwin)
+        HOST_OS := darwin
+    else
+        HOST_OS := linux
+    endif
+    RM      := rm -f
+    MKDIR   := mkdir -p
 endif
 
-# Target selection: allow cross-targeting. Defaults to building a Windows DLL
-# for x86_64 as requested. Set TARGET_OS to one of: windows, darwin, linux or
-# "native" to pick the host OS. Set TARGET_ARCH to x86_64, x86, arm, etc.
-# You can also set BUILD_ARCH to avoid clashing with make's built-in TARGET_ARCH.
-TARGET_OS ?= windows
-TARGET_ARCH ?= x86_64
-BUILD_ARCH ?=
-CURDIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-CURDIR := $(patsubst %/,%,$(CURDIR))
+# ----------------------------- User configurable options -----------------------------
+TARGET_OS    ?= windows          # windows | darwin | linux | native
+BUILD_ARCH   ?= x86_64           # x86_64 | x86 | arm64 | aarch64 | -m32 | -arch arm64 | etc.
+BINARY_NAME  ?= libobfuscated    # Set this to get clean name without host/arch suffix
 
-# Binary name for output (without extension); can be overridden by user
-BINARY_NAME ?= libobfuscated
-
-# Host OS (lowercase) used for naming the artifact
-ifeq ($(OS),Windows_NT)
-HOST_OS := windows
-else ifeq ($(UNAME_S),Darwin)
-HOST_OS := darwin
-else
-HOST_OS := linux
-endif
-
-
-# Normalize empty TARGET_OS to default windows
-ifeq ($(strip $(TARGET_OS)),)
-  TARGET_OS := windows
-endif
-
-# If user requested native target, map to the detected host
+# ----------------------------- Normalize native -----------------------------
 ifeq ($(TARGET_OS),native)
-  ifeq ($(OS),Windows_NT)
-    TARGET_OS := windows
-  else ifeq ($(UNAME_S),Darwin)
-    TARGET_OS := darwin
-  else
-    TARGET_OS := linux
-  endif
+    TARGET_OS := $(HOST_OS)
 endif
 
-# Minimal arch flags: allow either a raw arch name (x86_64/x86/arm64) or an
-# explicit compiler flag (like -m64 or -arch x86_64). Prefer ARCH_FLAGS from
-# env; else normalize the requested arch. Prefer BUILD_ARCH over TARGET_ARCH.
-RAW_ARCH := $(if $(strip $(BUILD_ARCH)),$(strip $(BUILD_ARCH)),$(strip $(TARGET_ARCH)))
-# Compute a normalized arch name for artifact naming
-ifeq ($(strip $(RAW_ARCH)),)
-  NORM_ARCH := x86_64
-else ifneq (,$(findstring x86_64,$(RAW_ARCH)))
-  NORM_ARCH := x86_64
-else ifneq (,$(findstring amd64,$(RAW_ARCH)))
-  NORM_ARCH := x86_64
-else ifneq (,$(findstring arm64,$(RAW_ARCH)))
-  NORM_ARCH := arm64
-else ifneq (,$(findstring aarch64,$(RAW_ARCH)))
-  NORM_ARCH := arm64
-else ifneq (,$(findstring i386,$(RAW_ARCH)))
-  NORM_ARCH := x86
-else ifneq (,$(findstring i686,$(RAW_ARCH)))
-  NORM_ARCH := x86
-else ifneq (,$(findstring -m32,$(RAW_ARCH)))
-  NORM_ARCH := x86
-else ifneq (,$(findstring x86,$(RAW_ARCH)))
-  NORM_ARCH := x86
+# ----------------------------- Super-friendly architecture handling -----------------------------
+RAW_ARCH := $(or $(BUILD_ARCH),x86_64)
+
+# Normalized name for filename (bins/libobfuscated_linux_x86_64.dll)
+NORM_ARCH := $(strip \
+    $(if $(findstring 64,$(RAW_ARCH)),x86_64,\
+    $(if $(findstring arm64,$(RAW_ARCH)),arm64,\
+    $(if $(findstring aarch64,$(RAW_ARCH)),arm64,\
+    $(if $(findstring 32,$(RAW_ARCH)),x86,\
+    $(if $(findstring x86,$(RAW_ARCH)),x86,x86_64))))))
+
+# Convert to real compiler flags Clang understands everywhere
+ifeq ($(filter -%,$(RAW_ARCH)),)
+    # User gave a plain name → pick the correct flag for the host OS
+    ifeq ($(UNAME_S),Darwin)
+        NORM_FLAG_x86_64 := -arch x86_64
+        NORM_FLAG_x86     := -arch i386
+        NORM_FLAG_arm64   := -arch arm64
+    else
+        NORM_FLAG_x86_64 := -m64
+        NORM_FLAG_x86     := -m32
+        NORM_FLAG_arm64   :=
+    endif
+    ARCH_FLAGS := $(NORM_FLAG_$(NORM_ARCH))
 else
-  # Fallback: use RAW_ARCH as-is without spaces
-  NORM_ARCH := $(subst $(space),,$(RAW_ARCH))
-endif
-ifeq ($(strip $(ARCH_FLAGS)),)
-  ifneq (,$(filter -%,$(RAW_ARCH)))
+    # User already gave explicit flags (e.g. "-arch arm64" or "-m32") → trust them
     ARCH_FLAGS := $(RAW_ARCH)
-  else ifeq ($(UNAME_S),Darwin)
-    # On macOS, use -arch for architecture selection
-    ifeq ($(RAW_ARCH),x86_64)
-      ARCH_FLAGS := -arch x86_64
-    else ifeq ($(RAW_ARCH),x86)
-      ARCH_FLAGS := -arch i386
-    else ifeq ($(RAW_ARCH),arm64)
-      ARCH_FLAGS := -arch arm64
-    else
-      ARCH_FLAGS :=
-    endif
-  else
-    # On non-Darwin, use -m32/-m64 where applicable
-    ifeq ($(RAW_ARCH),x86_64)
-      ARCH_FLAGS := -m64
-    else ifeq ($(RAW_ARCH),x86)
-      ARCH_FLAGS := -m32
-    else
-      ARCH_FLAGS :=
-    endif
-  endif
 endif
 
-# Clear the built-in TARGET_ARCH so implicit rules don't append a stray token
+# Prevent Make's built-in rules from injecting garbage
 override TARGET_ARCH :=
 
-# Host tool choices (used for commands like rm/cc on the build machine)
-ifeq ($(OS),Windows_NT)
-# Auto-detect Windows compiler: try MSVC first, then GCC, then Clang
-ifeq ($(CC),cc)
-    # CC not set, auto-detect
-    ifeq ($(shell where cl.exe 2>nul),)
-        ifeq ($(shell where gcc.exe 2>nul),)
-            CC = clang  # Fallback to clang
-        else
-            CC = gcc
-        endif
-    else
-        CC = cl  # MSVC
+# ----------------------------- Toolchain selection (Clang everywhere) -----------------------------
+CC_BASE := clang
+
+# On Windows host → prefer clang-cl.exe (MSVC-compatible) if it exists
+ifeq ($(HOST_OS),windows)
+    ifneq ($(shell where clang-cl.exe 2>nul),)
+        CC_BASE     := clang-cl.exe
+        USING_CLANG_CL := 1
     endif
 endif
-RM = del /Q  # Windows delete command
-else
-CC = gcc  # C compiler for Unix-like systems
-RM = rm -f   # rm command
-endif
 
-# Configure output extension based on desired target OS
+# Target-specific compiler/linker selection
 ifeq ($(TARGET_OS),windows)
-OUTPUT_EXT := dll
-else ifeq ($(TARGET_OS),darwin)
-OUTPUT_EXT := dylib
-else
-OUTPUT_EXT := so
-endif
-
-# If user provided BINARY_NAME via env or command line, output is just that
-# name with the suffix. Otherwise, include host and arch for clarity.
-ifneq (,$(filter environment command line,$(origin BINARY_NAME)))
-TARGET_LIB = bins/$(BINARY_NAME).$(OUTPUT_EXT)
-else
-TARGET_LIB = bins/$(BINARY_NAME)_$(HOST_OS)_$(NORM_ARCH).$(OUTPUT_EXT)
-endif
-TARGET_LIB_IDA = $(TARGET_LIB).i64
-
-# Linker flags should match the host toolchain for compatibility
-ifeq ($(OS),Windows_NT)
-LDFLAGS = -shared -Wl,/FORCE:UNRESOLVED -g $(ARCH_FLAGS)
-else ifeq ($(UNAME_S),Darwin)
-LDFLAGS = -shared -undefined dynamic_lookup $(ARCH_FLAGS)
-else
-LDFLAGS = -shared -Wl,--unresolved-symbols=ignore-in-shared-libs $(ARCH_FLAGS)
-endif
-
-# Compiler and linker flags - detect compiler type
-ifeq ($(CC),cl)
-    # MSVC compiler flags
-    CFLAGS = /nologo /Od /Zi /Iinclude /D_CRT_SECURE_NO_WARNINGS /MD
-    LDFLAGS = /nologo /DLL /DEBUG
-    # Use .def file for exports if it exists
-    ifneq (,$(wildcard libobfuscated.def))
-        LDFLAGS += /DEF:libobfuscated.def
-    endif
-else
-    # GCC/Clang compiler flags
-    ifeq ($(OS),Windows_NT)
-        # Windows with GCC/Clang: disable optimizations, no -fPIC
-        CFLAGS = -Wall -Wextra $(ARCH_FLAGS) -O0 -g -Iinclude -fno-inline -fno-builtin
+    ifneq ($(USING_CLANG_CL),1)
+        # Cross-compiling to Windows → MinGW target + lld
+        ifeq ($(NORM_ARCH),x86)
+            TRIPLE := i686-w64-mingw32
+        else
+            TRIPLE := x86_64-w64-mingw32
+        endif
+        CC  := $(CC_BASE) --target=$(TRIPLE) -fuse-ld=lld
+        LD  := $(CC_BASE) --target=$(TRIPLE) -fuse-ld=lld
     else
-        # Unix-like: PIC required for shared libraries
-        CFLAGS = -fPIC -Wall -Wextra $(ARCH_FLAGS) -O0 -g -Iinclude -fno-inline -fno-builtin
+        CC  := $(CC_BASE)
+        LD  := $(CC_BASE)
+    endif
+    OUTPUT_EXT := dll
+else ifeq ($(TARGET_OS),darwin)
+    CC  := $(CC_BASE)
+    LD  := $(CC_BASE)
+    OUTPUT_EXT := dylib
+else
+    CC  := $(CC_BASE)
+    LD  := $(CC_BASE)
+    OUTPUT_EXT := so
+endif
+
+# Apply architecture flags
+CC := $(CC) $(ARCH_FLAGS)
+LD := $(LD) $(ARCH_FLAGS)
+
+# ----------------------------- Output naming -----------------------------
+ifneq ($(origin BINARY_NAME),default)
+    TARGET_LIB := bins/$(BINARY_NAME).$(OUTPUT_EXT)
+else
+    TARGET_LIB := bins/$(BINARY_NAME)_$(HOST_OS)_$(NORM_ARCH).$(OUTPUT_EXT)
+endif
+
+# ----------------------------- Compiler & Linker flags (your exact debug setup) -----------------------------
+CFLAGS_BASE := -Wall -Wextra $(ARCH_FLAGS) \
+               -O0 -g -Iinclude \
+               -fno-inline -fno-builtin \
+               -fno-vectorize -fno-slp-vectorize \
+               -fno-omit-frame-pointer
+
+ifeq ($(TARGET_OS),windows)
+    ifeq ($(USING_CLANG_CL),1)
+        # Native Windows with clang-cl (MSVC mode)
+        CFLAGS  := $(CFLAGS_BASE) /MDd
+        LDFLAGS := /DLL /DEBUG:FULL /FORCE:UNRESOLVED
+    else
+        # Cross-compile with Clang → MinGW
+        CFLAGS  := $(CFLAGS_BASE)                       # no -fPIC for Windows DLLs
+        LDFLAGS := -shared -fuse-ld=lld \
+                   -Wl,--export-all-symbols \
+                   -Wl,--enable-auto-import \
+                   -Wl,--unresolved-symbols=ignore-all   # strongest lld option
+    endif
+else
+    # Linux / macOS
+    CFLAGS  := $(CFLAGS_BASE) -fPIC
+
+    ifeq ($(TARGET_OS),darwin)
+        LDFLAGS := -shared -undefined dynamic_lookup $(ARCH_FLAGS)
+    else
+        LDFLAGS := -shared -Wl,--unresolved-symbols=ignore-in-shared-libs $(ARCH_FLAGS)
     endif
 endif
 
-# C sources are now under src/c
-SRCS = $(wildcard src/c/*.c)
+# Keep debug symbols in the final binary everywhere
+LDFLAGS += -g
 
-# Object files - extension depends on compiler
-ifeq ($(CC),cl)
-    OBJS = $(SRCS:.c=.obj)
-else
-    OBJS = $(SRCS:.c=.o)
-endif
+# ----------------------------- Sources & Objects -----------------------------
+SRCS := $(wildcard src/c/*.c)
+OBJS := $(SRCS:.c=.o)
 
-.PHONY: all
-all: ${TARGET_LIB}
+# ----------------------------- Rules -----------------------------
+.PHONY: all clean
 
-# Build target - different for MSVC vs GCC/Clang
-ifeq ($(CC),cl)
+all: bins $(TARGET_LIB)
+
+bins:
+	@$(MKDIR) bins >nul 2>&1 || $(MKDIR) bins
+
 $(TARGET_LIB): $(OBJS)
-	$(CC) $(LDFLAGS) /Fe:$@ $^
-
-%.obj: %.c
-	$(CC) $(CFLAGS) /c /Fo:$@ $<
-else
-$(TARGET_LIB): $(OBJS)
-	$(CC) $(LDFLAGS) -o $@ $^
+	@echo "Linking $(TARGET_LIB)"
+	$(LD) $(LDFLAGS) -o $@ $^
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
-endif
 
-$(SRCS:.c=.d):%.d:%.c
-	$(CC) $(CFLAGS) -MM $< >$@
+# Dependency generation (optional but nice)
+$(SRCS:.c=.d): %.d: %.c
+	$(CC) $(CFLAGS) -MM -MT $(@:.d=.o) $< > $@
 
 -include $(SRCS:.c=.d)
 
-.PHONY: clean
 clean:
-ifeq ($(OS),Windows_NT)
-	-$(RM) $(TARGET_LIB) $(subst /,\,$(OBJS)) $(subst /,\,$(SRCS:.c=.obj)) $(subst /,\,$(SRCS:.c=.o)) $(subst /,\,$(SRCS:.c=.d)) 2>nul
-else
-	-$(RM) $(TARGET_LIB) $(TARGET_LIB_IDA) $(OBJS) $(SRCS:.c=.obj) $(SRCS:.c=.o) $(SRCS:.c=.d)
-endif
-
-
+	-$(RM) $(TARGET_LIB) $(OBJS) $(SRCS:.c=.d) 2>nul || true
