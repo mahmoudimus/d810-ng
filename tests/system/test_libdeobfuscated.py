@@ -5,7 +5,12 @@ import idaapi
 import idc
 
 from .ida_test_base import IDAProTestCase
-from .stutils import d810_state, pseudocode_to_string, setup_libobfuscated_function_names
+from .stutils import (
+    d810_state,
+    pseudocode_to_string,
+    setup_libobfuscated_function_names,
+    configure_hexrays_for_consistent_output,
+)
 
 
 class TestLibDeobfuscated(IDAProTestCase):
@@ -26,8 +31,8 @@ class TestLibDeobfuscated(IDAProTestCase):
         if not idaapi.init_hexrays_plugin():
             raise unittest.SkipTest("Hex-Rays decompiler plugin not available")
 
-        idaapi.change_hexrays_config("COLLAPSE_LVARS = YES")
-        idaapi.change_hexrays_config("DEFAULT_RADIX = 16")  # Display constants in hexadecimal
+        # Configure Hex-Rays for consistent output across IDA versions
+        configure_hexrays_for_consistent_output()
 
         # Set up function names for libobfuscated.dll since they're not exported
         setup_libobfuscated_function_names()

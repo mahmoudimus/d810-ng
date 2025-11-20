@@ -7,7 +7,45 @@ import idc
 from d810.manager import D810State
 
 
+def configure_hexrays_for_consistent_output():
+    """Configure Hex-Rays decompiler settings for consistent test output.
+
+    Sets comprehensive configuration to ensure decompiled pseudocode is consistent
+    across different IDA Pro versions and environments.
+    """
+    # Formatting and display settings
+    idaapi.change_hexrays_config("RIGHT_MARGIN = 100")  # Start wrapping near 100 columns
+    idaapi.change_hexrays_config("PSEUDOCODE_SYNCED = YES")  # Sync with disassembly
+    idaapi.change_hexrays_config("PSEUDOCODE_DOCKPOS = DP_RIGHT")  # Dock at right margin
+    idaapi.change_hexrays_config("GENERATE_EMPTY_LINES = YES")  # Add empty lines between blocks
+    idaapi.change_hexrays_config("BLOCK_INDENT = 4")  # Indent blocks with 4 spaces
+
+    # Function size and complexity limits
+    idaapi.change_hexrays_config("MAX_FUNCSIZE = 2048")  # Max function size
+    idaapi.change_hexrays_config("MAX_NCOMMAS = 1")  # Max commas in expressions
+
+    # Variable and label display
+    idaapi.change_hexrays_config("COLLAPSE_LVARS = YES")  # Collapse local variables
+    idaapi.change_hexrays_config("GENERATE_EA_LABELS = YES")  # Generate EA labels
+    idaapi.change_hexrays_config("AUTO_UNHIDE = YES")  # Auto-unhide code
+
+    # Number display format - CRITICAL for consistent test output
+    idaapi.change_hexrays_config("DEFAULT_RADIX = 16")  # Hexadecimal for all constants
+    # Note: DEFAULT_RADIX values:
+    #   0 = decimal for signed, hex for unsigned (variable)
+    #   10 = decimal for all
+    #   16 = hexadecimal for all (most consistent for tests)
+
+
 def pseudocode_to_string(pseudo_code: idaapi.strvec_t) -> str:
+    """Convert IDA pseudocode to a plain string without formatting tags.
+
+    Args:
+        pseudo_code: IDA pseudocode strvec_t object
+
+    Returns:
+        Plain text representation of the pseudocode
+    """
     converted_obj: list[str] = [
         idaapi.tag_remove(line_obj.line) for line_obj in pseudo_code
     ]
