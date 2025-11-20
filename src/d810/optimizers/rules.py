@@ -156,9 +156,15 @@ class VerifiableRule(SymbolicRule):
     certain conditions (constraints). For example, a rule might only be valid
     when a constant c2 equals ~c1.
 
-    All subclasses are automatically registered in RULE_REGISTRY for batch testing.
+    All subclasses are automatically registered in RULE_REGISTRY for batch testing
+    and with PatternMatchingRule's registry so d810 can use them.
+
+    This class provides an adapter layer: DSL-based rules (PATTERN/REPLACEMENT)
+    are converted to AstNode format for compatibility with d810's existing system.
 
     Class Variables:
+        PATTERN: DSL-based pattern (SymbolicExpression)
+        REPLACEMENT: DSL-based replacement (SymbolicExpression)
         CONSTRAINTS: Optional list of runtime constraint functions.
                     Each function takes a match context dict and returns bool.
         DYNAMIC_CONSTS: Optional dict mapping constant names to compute functions.
@@ -180,20 +186,75 @@ class VerifiableRule(SymbolicRule):
     BIT_WIDTH = 32  # Default bit-width for Z3 verification
 
     # Override these in subclasses
+    PATTERN: SymbolicExpression = None  # DSL pattern
+    REPLACEMENT: SymbolicExpression = None  # DSL replacement
     CONSTRAINTS: List = []  # Runtime constraints (list of callables)
     DYNAMIC_CONSTS: Dict[str, Any] = {}  # Dynamic constant generators
 
+    # Adapter properties: convert DSL format to PatternMatchingRule format
+    @property
+    def pattern_ast(self):
+        """Get the pattern as an AstNode (for PatternMatchingRule compatibility)."""
+        if hasattr(self.__class__, 'PATTERN') and self.__class__.PATTERN is not None:
+            return self.__class__.PATTERN.node
+        return None
+
+    @property
+    def replacement_ast(self):
+        """Get the replacement as an AstNode (for PatternMatchingRule compatibility)."""
+        if hasattr(self.__class__, 'REPLACEMENT') and self.__class__.REPLACEMENT is not None:
+            return self.__class__.REPLACEMENT.node
+        return None
+
     def __init_subclass__(cls, **kwargs):
-        """Automatically register any subclass for testing.
+        """Automatically register any subclass for testing and with PatternMatchingRule.
 
         This magic method is called whenever a class inherits from VerifiableRule.
-        It instantiates the rule and adds it to the global registry.
+        It:
+        1. Adds the rule to the global RULE_REGISTRY for testing
+        2. Creates a PatternMatchingRule adapter and registers it with d810
         """
         super().__init_subclass__(**kwargs)
         # Only register concrete classes, not abstract ones
         if not isabstract(cls):
             try:
+                # Add to testing registry
                 RULE_REGISTRY.append(cls())
+
+                # Create an adapter that bridges VerifiableRule to PatternMatchingRule
+                PatternMatchingRuleBase = _get_pattern_matching_rule()
+                if PatternMatchingRuleBase is not object:
+                    # Create adapter class that inherits from PatternMatchingRule
+                    adapter_name = f"{cls.__name__}_Adapter"
+
+                    # Define the adapter's PATTERN property
+                    def make_pattern_property(verifiable_rule_cls):
+                        @property
+                        def PATTERN(self):
+                            return verifiable_rule_cls.PATTERN.node
+                        return PATTERN
+
+                    # Define the adapter's REPLACEMENT_PATTERN property
+                    def make_replacement_property(verifiable_rule_cls):
+                        @property
+                        def REPLACEMENT_PATTERN(self):
+                            return verifiable_rule_cls.REPLACEMENT.node
+                        return REPLACEMENT_PATTERN
+
+                    # Create the adapter class dynamically
+                    adapter_class = type(
+                        adapter_name,
+                        (PatternMatchingRuleBase,),
+                        {
+                            'PATTERN': make_pattern_property(cls),
+                            'REPLACEMENT_PATTERN': make_replacement_property(cls),
+                            '__module__': cls.__module__,
+                            '__doc__': cls.__doc__,
+                        }
+                    )
+
+                    # The adapter will auto-register itself via Registrant's __init_subclass__
+                    logger.debug(f"Created adapter {adapter_name} for {cls.__name__}")
             except Exception as e:
                 logger.warning(
                     f"Failed to register rule {cls.__name__}: {e}",
