@@ -202,6 +202,54 @@ pip install -e .[dev]
 pytest tests/system -v
 ```
 
+### Tests fail with Qt/GUI import errors (CRITICAL)
+
+**Problem**: `ImportError: PySide6 can only be used from the GUI version of IDA` or `NotImplementedError: Can't import PySide6. Are you trying to use Qt without GUI?`
+
+**Root Cause**: Plugin code unconditionally imports GUI components (like `D810GUI` from `d810.ui.ida_ui`) which require Qt. In headless test environments, Qt is not available.
+
+**Solution**: Make GUI imports conditional in plugin code:
+```python
+# Import GUI only when needed (not in headless/test mode)
+try:
+    from d810.ui.ida_ui import D810GUI
+except (ImportError, NotImplementedError):
+    D810GUI = None  # type: ignore
+
+# Later in code, check before instantiation:
+if gui and self._is_loaded and D810GUI is not None:
+    self.gui = D810GUI(self)
+```
+
+**Files affected**:
+- `src/d810/manager.py` - Main plugin manager with GUI initialization
+- Any other modules that import Qt/GUI components at module level
+
+**Verification**: After applying this fix, run the critical test:
+```bash
+pytest tests/system/test_rule_tracking.py::TestRuleFiring::test_verify_refactored_modules_loaded -v
+```
+
+### VFS storage driver space limitations
+
+**Problem**: Docker image pull fails with "no space left on device" even when disk space is available
+
+**Root Cause**: VFS storage driver in sandboxed environments has limitations with large image extraction (2-4GB images)
+
+**Solution**: Use alternative installation method - direct IDA Pro installation from zip file instead of Docker image. See `ida-direct-install.md` skill for details.
+
+**Symptoms**:
+- Image pull reaches 60-80% completion then fails
+- Error: `failed to register layer: write /var/lib/docker/vfs/dir/...: no space left on device`
+- `df -h` shows available space but extraction still fails
+
+**Workaround attempts** (may not always work):
+1. Clear Docker storage: `rm -rf /var/lib/docker/vfs/*`
+2. Restart daemon
+3. Retry pull
+
+If workarounds fail, use direct IDA installation method.
+
 ## Environment Configuration
 
 ### docker-compose.yml structure
@@ -313,3 +361,5 @@ docker-compose run --rm idapro-tests bash -c "pip install -e .[dev] && pytest te
 3. **Image digest in docker-compose.yml** may change - use tag if digest fails
 4. **VFS storage driver** is slow but reliable in sandboxed environments
 5. **Network disabled mode** bypasses iptables issues in restricted kernels
+6. **GUI imports must be conditional** - Plugin code that imports Qt/GUI components will fail in headless environments. See troubleshooting section for fix pattern.
+7. **VFS has space limitations** - Large Docker images (2-4GB) may fail to pull with VFS storage even with available disk space. Use direct IDA installation as fallback.
