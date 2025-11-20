@@ -307,3 +307,45 @@ export GH_TOKEN="<github-pat-token>"
 
 **Next**: Investigate why deobfuscation isn't producing expected output
 
+---
+
+### Session: 2025-11-20 (Continuing test debugging - functional issues)
+
+**Status**: Module loading fixed, investigating why optimizations aren't being applied
+
+**Summary of Fixes Applied**:
+1. ✅ `DynamicConst.node` missing - Added `@property node` to expose `_placeholder.node`
+2. ✅ `SymbolicExpression.sar()` missing - Added arithmetic right shift method
+3. ✅ `m_sar` not imported - Added to ida_hexrays import list
+4. ✅ All pattern matching modules load without errors
+
+**Commits in This Session**:
+- `9650dac`: fix: add node property to DynamicConst for Z3 verification
+- `a9b01dc`: fix: add sar (arithmetic right shift) method to SymbolicExpression
+- `0593027`: fix: import m_sar from ida_hexrays
+- `e47899f`: docs: update progress - all pattern matching modules now load successfully
+
+**Current Test Status** (Run #19522270841):
+- ✅ Module loading: 100% success (no "Error while loading" messages)
+- ❌ Test failures: 6/6 tests in test_libdeobfuscated.py still failing
+- Root cause: Optimizations load but aren't being applied to produce expected output
+
+**Test Failures Analysis**:
+All 6 tests show the same pattern - d810 runs but doesn't simplify the code as expected:
+
+1. **test_cst_simplification**: Expects `0x222E69C0` in output but gets decimal `573467072` and unsimplified expressions like `(a1[3] - 37288802)`
+2. **test_deobfuscate_opaque_predicate**: Opaque predicates not resolved to constants
+3. **test_simplify_chained_add**: Complex expressions not optimized
+4. **test_simplify_mba_guessing**: MBA patterns not simplified
+5. **test_simplify_xor**: XOR patterns not optimized
+6. **test_tigress_minmaxarray**: Control flow not unflattened (18 switch cases before and after)
+
+**Key Observation**: The decompiler output shows d810 is running (we see profiler output and rule usage stats), but the optimizations aren't producing the expected simplified code.
+
+**Next Steps**:
+- Investigate why loaded optimization rules aren't being applied
+- Check if there are configuration issues
+- Verify rule matching logic
+- Examine if test expectations are outdated vs current implementation
+
+
