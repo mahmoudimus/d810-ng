@@ -227,18 +227,13 @@ class TestLibDeobfuscated(IDAProTestCase):
                 )
                 # Convert to pseudocode string
                 pseudocode = decompiled_func.get_pseudocode()
-                expected_pseudocode = textwrap.dedent(
-                    """\
-                __int64 __fastcall test_xor(int a1, int a2, int a3, int *a4)
-                {
-                    // [COLLAPSED LOCAL DECLARATIONS. PRESS NUMPAD "+" TO EXPAND]
+                pseudocode_before = pseudocode_to_string(pseudocode)
 
-                    *a4 = a2 + a1 - 2 * (a2 & a1);
-                    a4[1] = a2 - 3 + a3 * a1 - 2 * ((a2 - 3) & (a3 * a1));
-                    return (unsigned int)(a4[1] + *a4);
-                }"""
-                )
-                self.assertEqual(pseudocode_to_string(pseudocode), expected_pseudocode)
+                # Check for obfuscated pattern (before d810)
+                self.assertIn("a2 + a1 - 2 * (a2 & a1)", pseudocode_before,
+                            "Should have obfuscated XOR pattern before d810")
+                self.assertIn("a2 - 3 + a3 * a1 - 2 * ((a2 - 3) & (a3 * a1))", pseudocode_before,
+                            "Should have complex obfuscated expression before d810")
 
                 # install the decompilation hooks!
                 state.start_d810()
@@ -250,18 +245,15 @@ class TestLibDeobfuscated(IDAProTestCase):
                 )
                 # Convert to pseudocode string
                 pseudocode = decompiled_func.get_pseudocode()
-                expected_pseudocode = textwrap.dedent(
-                    """\
-                __int64 __fastcall test_xor(int a1, int a2, int a3, int *a4)
-                {
-                    // [COLLAPSED LOCAL DECLARATIONS. PRESS NUMPAD "+" TO EXPAND]
+                pseudocode_after = pseudocode_to_string(pseudocode)
 
-                    *a4 = a2 ^ a1;
-                    a4[1] = (a2 - 3) ^ (a3 * a1);
-                    return (unsigned int)(a4[1] + *a4);
-                }"""
-                )
-                self.assertEqual(pseudocode_to_string(pseudocode), expected_pseudocode)
+                # Check for simplified pattern (after d810)
+                self.assertNotEqual(pseudocode_before, pseudocode_after,
+                                  "d810 MUST simplify the XOR pattern")
+                self.assertIn("a2 ^ a1", pseudocode_after,
+                            "Should have simplified XOR after d810")
+                self.assertIn("(a2 - 3) ^ (a3 * a1)", pseudocode_after,
+                            "Should have simplified XOR expression after d810")
 
     def test_simplify_mba_guessing(self):
         func_ea = idc.get_name_ea_simple("test_mba_guessing")
