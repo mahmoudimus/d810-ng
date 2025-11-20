@@ -6,10 +6,11 @@ import idaapi
 import idc
 
 from d810.manager import D810State
-from d810.optimizers.instrumentation import DeobfuscationContext
-
-# Global context for tracking deobfuscation during tests
-_current_deobfuscation_context: Optional[DeobfuscationContext] = None
+from d810.optimizers.instrumentation import (
+    DeobfuscationContext,
+    get_current_deobfuscation_context,
+    set_current_deobfuscation_context,
+)
 
 
 def configure_hexrays_for_consistent_output():
@@ -95,17 +96,6 @@ def setup_libobfuscated_function_names():
             idaapi.add_func(addr)
 
 
-def get_current_deobfuscation_context() -> Optional[DeobfuscationContext]:
-    """Get the current deobfuscation context (if any)."""
-    return _current_deobfuscation_context
-
-
-def set_current_deobfuscation_context(ctx: Optional[DeobfuscationContext]):
-    """Set the current deobfuscation context (used internally)."""
-    global _current_deobfuscation_context
-    _current_deobfuscation_context = ctx
-
-
 @contextlib.contextmanager
 def d810_state(*, all_rules=False):
     """Context manager for D810 state with instrumentation support.
@@ -137,8 +127,6 @@ def d810_state(*, all_rules=False):
             ctx = get_current_deobfuscation_context()
             assert ctx.rule_fired("Xor_HackersDelight1")  # Refactored rule!
     """
-    global _current_deobfuscation_context
-
     state = D810State()  # singleton
     if not (was_loaded := state.is_loaded()):
         state.load(gui=False)
@@ -155,11 +143,12 @@ def d810_state(*, all_rules=False):
         state.start_d810()
 
     # Create a new deobfuscation context for this session
-    _current_deobfuscation_context = DeobfuscationContext()
+    ctx = DeobfuscationContext()
+    set_current_deobfuscation_context(ctx)
 
     # Hook the context into the manager for instrumentation
     # The manager will populate it during optimization
-    state.manager._deobfuscation_context = _current_deobfuscation_context
+    state.manager._deobfuscation_context = ctx
 
     try:
         yield state
