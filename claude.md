@@ -111,3 +111,34 @@ ERROR tests/system/test_libdeobfuscated.py::TestLibDeobfuscated::test_AntiDebug_
 - `src/d810/reloadable.py`: Added _reload_package_with_graph() function
 - `src/d810/optimizers/microcode/instructions/__init__.py`: Removed imports
 - `src/d810/optimizers/microcode/instructions/{chain,analysis,early,peephole,z3,pattern_matching}/__init__.py`: Removed imports
+
+---
+
+### Session: 2025-11-19 (CI failure fix - test setup discovery)
+
+**Status**: Fixed module discovery for test environment
+
+**Problem**: Commit `df3ed3d` failed CI tests (workflow #19520121017)
+- Tests import d810 modules directly without going through plugin reload
+- Discovery was removed from __init__.py, so no modules were discovered
+- Optimizer classes never registered → `KeyError: 'chainoptimizer'`
+
+**Wrong Approach (commit 4fa7345)**: Added discovery to __init__.py
+- Runs on every import, even when not needed
+- Creates unnecessary overhead
+
+**Correct Approach (commit 88169ea)**: Added discovery to test setup
+- Modified `IDAProTestCase.setUpClass()` in `tests/system/ida_test_base.py`
+- Calls `_Scanner.scan()` once before tests run
+- Only runs when tests actually need it
+
+**Discovery now happens**:
+1. ✅ Test environment: `IDAProTestCase.setUpClass()`
+2. ✅ Plugin reload: `D810.py reload()` → `_reload_package_with_graph()`
+3. ❌ Regular imports: No overhead
+
+**Files Modified**:
+- `tests/system/ida_test_base.py`: Added _Scanner.scan() to setUpClass()
+- `src/d810/__init__.py`: Kept minimal (no discovery code)
+
+**Next**: Monitor CI for workflow run on commit `88169ea`
