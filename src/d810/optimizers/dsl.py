@@ -94,6 +94,11 @@ class SymbolicExpression:
         from d810.expr.ast import AstNode
         return SymbolicExpression(AstNode(m_shr, self.node, other.node))
 
+    def sar(self, other: SymbolicExpression) -> SymbolicExpression:
+        """Arithmetic right shift: self.sar(other) -> m_sar node."""
+        from d810.expr.ast import AstNode
+        return SymbolicExpression(AstNode(m_sar, self.node, other.node))
+
     def __invert__(self) -> SymbolicExpression:
         """Bitwise NOT: ~self -> m_bnot node."""
         from d810.expr.ast import AstNode
