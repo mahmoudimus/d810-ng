@@ -225,15 +225,49 @@ The automated setup script typically performs:
 
 ### Python import errors
 
-**Problem**: `ImportError: No module named 'idaapi'`
+**Problem**: `ModuleNotFoundError: No module named 'ida_hexrays'` or `No module named 'idaapi'`
+
+**Root Cause**: Trying to import IDA modules without importing `idapro` first in standalone scripts.
 
 **Solution**:
+
+**CRITICAL: When using idalib from standalone Python scripts, you MUST:**
+```python
+import idapro  # ← MUST be the FIRST import before ANY IDA modules!
+import idaapi  # ← Now this works
+```
+
+**Common mistakes:**
+```python
+# ❌ WRONG - Will fail with ModuleNotFoundError
+import sys
+sys.path.insert(0, '/home/user/d810-ng/src')
+from d810.optimizers.dsl import *  # This imports ida_hexrays internally - FAILS!
+
+# ✅ CORRECT - Import idapro first
+import idapro  # ← CRITICAL: First import!
+import sys
+sys.path.insert(0, '/home/user/d810-ng/src')
+from d810.optimizers.dsl import *  # Now this works
+```
+
+**Two execution contexts:**
+1. **Inside IDA Pro** (GUI/headless): `import idaapi` works directly
+2. **Standalone Python with idalib**: `import idapro` MUST come first
+
+**Verification steps if still failing:**
 1. Verify IDA Python package installed: `/app/ida/.venv/bin/pip list | grep idapro`
 2. Check idapyswitch ran successfully: Look for "IDA installation directory set to: /app/ida" in setup output
 3. Manually run idapyswitch if needed:
    ```bash
    /app/ida/.venv/bin/idapyswitch --auto-file $(python3 -c "import sysconfig; print(sysconfig.get_path('stdlib') + '/../libpython3.10.so')")
    ```
+4. Verify idapro imports:
+   ```bash
+   /app/ida/.venv/bin/python3 -c "import idapro; import idaapi; print('OK')"
+   ```
+
+**See**: https://docs.hex-rays.com/user-guide/idalib#using-the-ida-library-python-module
 
 ### Tests fail with Qt/GUI import errors
 
@@ -303,26 +337,56 @@ IDAUSR=/root/.idapro
 
 ## Testing the Installation
 
-Quick verification test:
+**⚠️ CRITICAL: Understanding `import idapro` vs `import idaapi`**
+
+When using IDA library (idalib) from standalone Python scripts:
+- ✅ **MUST** import `idapro` FIRST before any IDA modules
+- ✅ After `import idapro`, you can use `idaapi` and other `ida_*` modules
+- ❌ **NEVER** import `idaapi` or `ida_*` modules before `import idapro`
+
+See: https://docs.hex-rays.com/user-guide/idalib#using-the-ida-library-python-module
+
+**Two modes of IDA Python usage:**
+
+1. **Inside IDA Pro** (GUI or headless idat64):
+   ```python
+   # Direct import works - IDA is already running
+   import idaapi
+   import ida_funcs
+   ```
+
+2. **Standalone Python script** (using idalib):
+   ```python
+   # MUST import idapro FIRST
+   import idapro  # ← CRITICAL: First import!
+
+   # Now you can import IDA APIs
+   import idaapi
+   import ida_funcs
+   ```
+
+**Quick verification test:**
 ```bash
 cd /home/user/d810-ng
 
-# Test Python can import IDA modules
+# Test Python can import IDA modules (CORRECT WAY with idapro)
 /app/ida/.venv/bin/python3 -c "
-import sys
-sys.path.insert(0, '/app/ida/python')
+import idapro  # ← CRITICAL: Import idapro FIRST!
 import idaapi
 print(f'IDA Version: {idaapi.IDA_SDK_VERSION}')
 "
 
 # Test d810 imports work
+# Note: d810 modules import idaapi, so this will fail unless run inside IDA
+# For standalone scripts, you must ensure idapro is imported first
 /app/ida/.venv/bin/python3 -c "
+import idapro  # ← CRITICAL: Import idapro FIRST!
 from d810.manager import D810Manager
 from d810.optimizers.rules import VerifiableRule
 print('d810 imports successful')
 "
 
-# Run critical integration test
+# Run critical integration test (pytest handles idapro import internally)
 /app/ida/.venv/bin/python3 -m pytest tests/system/test_rule_tracking.py::TestRuleFiring::test_verify_refactored_modules_loaded -v
 ```
 
@@ -332,6 +396,11 @@ IDA Version: 920
 d810 imports successful
 test_verify_refactored_modules_loaded PASSED
 ```
+
+**Why this matters:**
+- Tests using `IDAProTestCase` automatically handle `idapro` import
+- Standalone scripts MUST manually import `idapro` first
+- Forgetting this causes: `ModuleNotFoundError: No module named 'ida_hexrays'`
 
 ## Files and Directories
 
