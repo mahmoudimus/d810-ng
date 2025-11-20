@@ -20,7 +20,12 @@ from d810.optimizers.microcode.instructions.handler import InstructionOptimizati
 from d810.project_manager import ProjectManager
 from d810.registry import EventEmitter
 from d810.singleton import SingletonMeta
-from d810.ui.ida_ui import D810GUI
+
+# Import GUI only when needed (not in headless/test mode)
+try:
+    from d810.ui.ida_ui import D810GUI
+except (ImportError, NotImplementedError):
+    D810GUI = None  # type: ignore
 
 try:
     import pyinstrument  # type: ignore
@@ -312,7 +317,7 @@ class D810State(metaclass=SingletonMeta):
             logger.warning("No project configurations available; plugin is idle.")
             self._is_loaded = False
 
-        if gui and self._is_loaded:
+        if gui and self._is_loaded and D810GUI is not None:
             self.gui = D810GUI(self)
             self.gui.show_windows()
 
