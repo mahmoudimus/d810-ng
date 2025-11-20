@@ -372,7 +372,40 @@ export GH_TOKEN="<github-pat-token>"
 3. ✅ Test assertion flexibility (replaced assertEqual with assertIn checks)
 4. ⚠️ Tigress control flow unflattening (configuration address mismatch)
 
+**Commits Made**:
+- `f635041`: feat: add AST-based code comparison for robust test assertions
+
+**New Feature: AST-Based Code Comparison**:
+Added libclang-based AST comparison to replace brittle string matching in tests.
+
+**Components**:
+1. `tests/system/clang/` - Python bindings for libclang (from LLVM project)
+2. `clang_init.py` - Initialize libclang using IDA Pro's libclang.so
+3. `code_comparator.py` - AST-based code comparison engine
+4. `ast_test_mixin.py` - Test mixin for easy integration
+5. `test_ast_comparison.py` - Demonstration tests
+6. `AST_COMPARISON.md` - Documentation and usage guide
+
+**Benefits**:
+- Ignores formatting differences (indentation, spacing, comments)
+- Handles type name variations (_DWORD vs int, unsigned int vs DWORD)
+- Detects real semantic differences
+- Falls back gracefully if libclang unavailable
+
+**Usage Example**:
+```python
+from .ast_test_mixin import ASTComparisonMixin
+
+class MyTest(ASTComparisonMixin, IDAProTestCase):
+    def test_code(self):
+        actual = pseudocode_to_string(decompiled.get_pseudocode())
+        expected = "..."
+        self.assertCodeEquivalent(actual, expected)
+```
+
 **Next Steps**:
+- Test AST comparison in Docker environment with IDA Pro's libclang.so
+- Optionally refactor existing tests to use AST comparison instead of assertIn
 - Determine how to handle test_tigress_minmaxarray:
   - Option A: Update configuration with correct 64-bit addresses for tigress_minmaxarray
   - Option B: Skip the test until proper 32-bit/64-bit configuration is available
