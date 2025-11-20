@@ -525,3 +525,22 @@ class DeobfuscationContext:
         self.total_passes = 0
         self.function_name = None
         self.function_address = None
+
+
+# Global context accessor (for use by optimizer hooks)
+_current_deobfuscation_context: Optional[DeobfuscationContext] = None
+
+
+def get_current_deobfuscation_context() -> Optional[DeobfuscationContext]:
+    """Get the current deobfuscation context (if any).
+
+    This is used by optimizer hooks to record rule executions.
+    Returns None if no context is active.
+    """
+    return _current_deobfuscation_context
+
+
+def set_current_deobfuscation_context(ctx: Optional[DeobfuscationContext]):
+    """Set the current deobfuscation context (used by test infrastructure)."""
+    global _current_deobfuscation_context
+    _current_deobfuscation_context = ctx

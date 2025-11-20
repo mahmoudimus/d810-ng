@@ -207,6 +207,21 @@ class InstructionOptimizer(Registrant, typing.Generic[T_Rule]):
                     )
                     optimizer_logger.info("  orig: %s", format_minsn_t(ins))
                     optimizer_logger.info("  new : %s", format_minsn_t(new_ins))
+
+                    # Record instrumentation if context is available
+                    from d810.optimizers.instrumentation import get_current_deobfuscation_context
+                    ctx = get_current_deobfuscation_context()
+                    if ctx is not None:
+                        # Determine rule type based on optimizer name
+                        rule_type = "pattern" if "Pattern" in self.name else "instruction"
+                        ctx.record_rule_execution(
+                            rule_name=rule.name,
+                            rule_type=rule_type,
+                            changes=1,  # One instruction replacement
+                            maturity=self.cur_maturity,
+                            metadata={"optimizer": self.name}
+                        )
+
                     return new_ins
             except RuntimeError as e:
                 optimizer_logger.error(
