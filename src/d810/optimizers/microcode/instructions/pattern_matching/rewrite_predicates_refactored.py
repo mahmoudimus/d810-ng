@@ -36,7 +36,7 @@ THREE = Const("3", 3)
 # ============================================================================
 
 
-class PredSetnz1(VerifiableRule):
+class PredSetnz_1(VerifiableRule):
     """Simplify: (x | c1) != c2 => 1 (when c1 | c2 != c2)
 
     If (c1 | c2) != c2, then no matter what x is, (x | c1) will never equal c2.
@@ -59,7 +59,7 @@ class PredSetnz1(VerifiableRule):
     REFERENCE = "Predicate simplification"
 
 
-class PredSetnz2(VerifiableRule):
+class PredSetnz_2(VerifiableRule):
     """Simplify: (x & c1) != c2 => 1 (when c1 & c2 != c2)
 
     If (c1 & c2) != c2, then (x & c1) can never equal c2.
@@ -81,7 +81,7 @@ class PredSetnz2(VerifiableRule):
     REFERENCE = "Predicate simplification"
 
 
-class PredSetnz3(VerifiableRule):
+class PredSetnz_3(VerifiableRule):
     """Simplify: (x | 2) + (x ^ 2) != 0 => 1
 
     This expression is always non-zero for any x:
@@ -100,7 +100,7 @@ class PredSetnz3(VerifiableRule):
     REFERENCE = "Algebraic simplification"
 
 
-class PredSetnz4(VerifiableRule):
+class PredSetnz_4(VerifiableRule):
     """Simplify: (cst - x) ^ x != 0 => 1 (when cst is odd)
 
     When cst is odd:
@@ -123,7 +123,7 @@ class PredSetnz4(VerifiableRule):
     REFERENCE = "Parity analysis"
 
 
-class PredSetnz5(VerifiableRule):
+class PredSetnz_5(VerifiableRule):
     """Simplify: -(~x & 1) != x => 1
 
     This is always true because:
@@ -144,7 +144,7 @@ class PredSetnz5(VerifiableRule):
     REFERENCE = "Algebraic simplification"
 
 
-class PredSetnz6(VerifiableRule):
+class PredSetnz_6(VerifiableRule):
     """Simplify: ((x + c1) + ((x + c2) & 1)) != 0 => 1 (when (c2 - c1) & 1 == 1)
 
     When (c2 - c1) is odd:
@@ -166,7 +166,7 @@ class PredSetnz6(VerifiableRule):
     REFERENCE = "Parity analysis"
 
 
-class PredSetnz8(VerifiableRule):
+class PredSetnz_8(VerifiableRule):
     """Simplify: ~(3 - x) ^ ~x != 0 => 1
 
     This is always non-zero:
@@ -191,7 +191,7 @@ class PredSetnz8(VerifiableRule):
 # ============================================================================
 
 
-class PredSetz1(VerifiableRule):
+class PredSetz_1(VerifiableRule):
     """Simplify: (x | c1) == c2 => 0 (when c1 | c2 != c2)
 
     If (c1 | c2) != c2, then (x | c1) can never equal c2.
@@ -212,7 +212,7 @@ class PredSetz1(VerifiableRule):
     REFERENCE = "Predicate simplification"
 
 
-class PredSetz2(VerifiableRule):
+class PredSetz_2(VerifiableRule):
     """Simplify: (x & c1) == c2 => 0 (when c1 & c2 != c2)
 
     If (c1 & c2) != c2, then (x & c1) can never equal c2.
@@ -233,7 +233,7 @@ class PredSetz2(VerifiableRule):
     REFERENCE = "Predicate simplification"
 
 
-class PredSetz3(VerifiableRule):
+class PredSetz_3(VerifiableRule):
     """Simplify: (x | 2) + (x ^ 2) == 0 => 0
 
     This expression is never zero (see PredSetnz3), so == 0 is always false.
@@ -253,7 +253,7 @@ class PredSetz3(VerifiableRule):
 # ============================================================================
 
 
-class PredSetb1(VerifiableRule):
+class PredSetb_1(VerifiableRule):
     """Simplify: (x & c1) <u c2 => 1 (when c1 < c2)
 
     If c1 < c2, then (x & c1) is masked to at most c1.
@@ -411,7 +411,7 @@ class Pred0_Rule7(VerifiableRule):
 # ============================================================================
 
 
-class PredFF1(VerifiableRule):
+class PredFF_1(VerifiableRule):
     """Simplify: x | ~x => 0xFF...FF
 
     A value OR its complement gives all bits set.
@@ -426,7 +426,7 @@ class PredFF1(VerifiableRule):
     REFERENCE = "Boolean algebra"
 
 
-class PredFF2(VerifiableRule):
+class PredFF_2(VerifiableRule):
     """Simplify: (x ^ y) | (~x | y) => 0xFF...FF (when ~x is verified)
 
     Requires verification that bnot_x is actually ~x.
@@ -443,7 +443,7 @@ class PredFF2(VerifiableRule):
     REFERENCE = "Boolean algebra with NOT verification"
 
 
-class PredFF3(VerifiableRule):
+class PredFF_3(VerifiableRule):
     """Simplify: x | ~(x & y) => 0xFF...FF
 
     Proof: x | ~(x & y) = x | (~x | ~y) [De Morgan]
@@ -461,7 +461,7 @@ class PredFF3(VerifiableRule):
     REFERENCE = "Boolean algebra + De Morgan"
 
 
-class PredFF4(VerifiableRule):
+class PredFF_4(VerifiableRule):
     """Simplify: (x | y) | ~(x & y) => 0xFF...FF
 
     Proof: (x | y) | ~(x & y) = (x | y) | (~x | ~y) [De Morgan]

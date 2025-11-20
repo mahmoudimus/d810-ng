@@ -23,7 +23,7 @@ TWO = Const("2", 2)
 # ============================================================================
 
 
-class CstSimplification1(VerifiableRule):
+class CstSimplification_1(VerifiableRule):
     """Simplify: ~x & (~x ^ c_1) => (x & ~c_1) ^ ~c_1
 
     Constant distribution through XOR and AND.
@@ -38,7 +38,7 @@ class CstSimplification1(VerifiableRule):
     REFERENCE = "Constant folding"
 
 
-class CstSimplification3(VerifiableRule):
+class CstSimplification_3(VerifiableRule):
     """Simplify: (x - c_0) + c_1*(x - c_2) => (c_1+1)*x - (c_1*c_2 + c_0)
 
     Algebraic simplification with constant folding.
@@ -62,7 +62,7 @@ class CstSimplification3(VerifiableRule):
     REFERENCE = "Algebraic simplification"
 
 
-class CstSimplification4(VerifiableRule):
+class CstSimplification_4(VerifiableRule):
     """Simplify: x - (c_1 - y) => x + y + (-c_1)
 
     Subtraction simplification with constant negation.
@@ -80,7 +80,7 @@ class CstSimplification4(VerifiableRule):
     REFERENCE = "Subtraction identity"
 
 
-class CstSimplification5(VerifiableRule):
+class CstSimplification_5(VerifiableRule):
     """Simplify: (x & c_1) | (y & c_2) => ((x ^ y) & c_1) ^ y
 
     where c_2 == ~c_1 (bitwise NOT of c_1).
@@ -103,7 +103,7 @@ class CstSimplification5(VerifiableRule):
     REFERENCE = "Constant partitioning"
 
 
-class CstSimplification6(VerifiableRule):
+class CstSimplification_6(VerifiableRule):
     """Simplify: (x ^ c_1) & c_2 => (x & c_2) ^ (c_1 & c_2)
 
     XOR-AND constant folding.
@@ -122,7 +122,7 @@ class CstSimplification6(VerifiableRule):
     REFERENCE = "XOR-AND folding"
 
 
-class CstSimplification7(VerifiableRule):
+class CstSimplification_7(VerifiableRule):
     """Simplify: (x & c_1) >> c_2 => (x >> c_2) & (c_1 >> c_2)
 
     Shift-AND constant propagation.
@@ -141,7 +141,7 @@ class CstSimplification7(VerifiableRule):
     REFERENCE = "Shift propagation"
 
 
-class CstSimplification8(VerifiableRule):
+class CstSimplification_8(VerifiableRule):
     """Simplify: (x & c_1) | c_2 => (x & c_res) | c_2
 
     where c_res = c_1 & ~c_2 (remove redundant AND bits).
@@ -169,7 +169,7 @@ class CstSimplification8(VerifiableRule):
     REFERENCE = "OR constant absorption"
 
 
-class CstSimplification9(VerifiableRule):
+class CstSimplification_9(VerifiableRule):
     """Simplify: (x | c_1) & c_2 => (x & (~c_1 & c_2)) ^ (c_1 & c_2)
 
     OR-AND constant folding.
@@ -196,7 +196,7 @@ class CstSimplification9(VerifiableRule):
     REFERENCE = "OR-AND folding"
 
 
-class CstSimplification10(VerifiableRule):
+class CstSimplification_10(VerifiableRule):
     """Simplify: (x & c_1) - (x & c_2) => -(x & ((~c_1) & c_2))
 
     when c_1 is a subset of c_2 (i.e., c_1 & c_2 == c_1).
@@ -225,7 +225,7 @@ class CstSimplification10(VerifiableRule):
     REFERENCE = "AND subtraction folding"
 
 
-class CstSimplification11(VerifiableRule):
+class CstSimplification_11(VerifiableRule):
     """Simplify: (~x ^ c_1) | (x & c_2) => (x ^ ~c_1) ^ (x & (~c_1 & c_2))
 
     Complex constant folding with NOT and XOR.
@@ -252,7 +252,7 @@ class CstSimplification11(VerifiableRule):
     REFERENCE = "NOT-XOR-OR folding"
 
 
-class CstSimplification12(VerifiableRule):
+class CstSimplification_12(VerifiableRule):
     """Simplify: (c_1 - x) - 2*(~x & c_2) => (~x ^ c_2) - (c_2 - c_1)
 
     MBA pattern with constants.
@@ -274,7 +274,7 @@ class CstSimplification12(VerifiableRule):
     REFERENCE = "MBA constant pattern"
 
 
-class CstSimplification13(VerifiableRule):
+class CstSimplification_13(VerifiableRule):
     """Simplify: (cst_1 & (x ^ y)) ^ y => (x & cst_1) ^ (y & ~cst_1)
 
     Constant distribution over XOR.
@@ -295,7 +295,7 @@ class CstSimplification13(VerifiableRule):
     REFERENCE = "XOR constant distribution"
 
 
-class CstSimplification14(VerifiableRule):
+class CstSimplification_14(VerifiableRule):
     """Simplify: (x & c_1) + c_2 => (x | lnot_c_1) + 1
 
     when (~c_1) ^ c_2 == 1 and ~c_1 is even.
@@ -327,7 +327,7 @@ class CstSimplification14(VerifiableRule):
     REFERENCE = "MBA special constant pattern"
 
 
-class CstSimplification15(VerifiableRule):
+class CstSimplification_15(VerifiableRule):
     """Simplify: (x >> c_1) >> c_2 => x >> (c_1 + c_2)
 
     when c_1, c_2, and c_1+c_2 are all less than the bit width.
@@ -364,7 +364,7 @@ class CstSimplification15(VerifiableRule):
 # ============================================================================
 
 
-class CstSimplification16(VerifiableRule):
+class CstSimplification_16(VerifiableRule):
     """Simplify: ~(x ^ c_1) => x ^ ~c_1
 
     NOT distribution over XOR.
@@ -385,7 +385,7 @@ class CstSimplification16(VerifiableRule):
     REFERENCE = "NOT-XOR identity"
 
 
-class CstSimplification17(VerifiableRule):
+class CstSimplification_17(VerifiableRule):
     """Simplify: ~(x | c_1) => ~x & ~c_1
 
     De Morgan's law with constant.
@@ -406,7 +406,7 @@ class CstSimplification17(VerifiableRule):
     REFERENCE = "De Morgan's law"
 
 
-class CstSimplification18(VerifiableRule):
+class CstSimplification_18(VerifiableRule):
     """Simplify: ~(x & c_1) => ~x | ~c_1
 
     De Morgan's law with constant.
@@ -427,7 +427,7 @@ class CstSimplification18(VerifiableRule):
     REFERENCE = "De Morgan's law"
 
 
-class CstSimplification19(VerifiableRule):
+class CstSimplification_19(VerifiableRule):
     """Simplify: (x & c_1) >> c_2 => (x >> c_2) & (c_1 >> c_2)
 
     when c_1's MSB is 0 (ensures SAR behaves like SHR).
@@ -461,7 +461,7 @@ class CstSimplification19(VerifiableRule):
 # ============================================================================
 
 
-class CstSimplification20(VerifiableRule):
+class CstSimplification_20(VerifiableRule):
     """Simplify: (~x & c_and_1) | ((x & c_and_2) ^ c_xor) => (x & c_and_res) ^ c_xor_res
 
     OLLVM obfuscation pattern with disjoint constant masks.
@@ -497,7 +497,7 @@ class CstSimplification20(VerifiableRule):
     REFERENCE = "OLLVM constant obfuscation"
 
 
-class CstSimplification21(VerifiableRule):
+class CstSimplification_21(VerifiableRule):
     """Simplify: ((x & c_and) ^ c_xor_1) | ((x & ~c_and) ^ c_xor_2) => x ^ c_xor_res
 
     OLLVM pattern with complementary masks.
@@ -530,7 +530,7 @@ class CstSimplification21(VerifiableRule):
     REFERENCE = "OLLVM complementary mask obfuscation"
 
 
-class CstSimplification22(VerifiableRule):
+class CstSimplification_22(VerifiableRule):
     """Simplify: ((x & c_and) ^ c_xor_1) | ((~x & ~c_and) ^ c_xor_2) => x ^ c_xor_res
 
     Complex OLLVM pattern with variable and constant complementation.

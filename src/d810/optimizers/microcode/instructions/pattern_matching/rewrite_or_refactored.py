@@ -20,7 +20,7 @@ x, y, z = Var("x_0"), Var("x_1"), Var("x_2")
 ONE = Const("1", 1)
 
 
-class Or_HackersDelight2(VerifiableRule):
+class Or_HackersDelight_2(VerifiableRule):
     """Simplify: (x + y) - (x & y) => x | y
 
     Proof:
@@ -57,7 +57,7 @@ class Or_HackersDelight2_Variant1(VerifiableRule):
     REFERENCE = "Hacker's Delight, variant"
 
 
-class Or_MBA1(VerifiableRule):
+class Or_MBA_1(VerifiableRule):
     """Simplify: (x & y) + (x ^ y) => x | y
 
     This is the fundamental OR identity.
@@ -76,7 +76,7 @@ class Or_MBA1(VerifiableRule):
     REFERENCE = "Mixed Boolean-Arithmetic, OR identity"
 
 
-class Or_MBA2(VerifiableRule):
+class Or_MBA_2(VerifiableRule):
     """Simplify: ((x + y) + 1) + ~(x & y) => x | y
 
     This is an obfuscated OR pattern.
@@ -98,7 +98,7 @@ class Or_MBA2(VerifiableRule):
     REFERENCE = "MBA obfuscation pattern"
 
 
-class Or_MBA3(VerifiableRule):
+class Or_MBA_3(VerifiableRule):
     """Simplify: (x + (x ^ y)) - (x & ~y) => x | y
 
     Proof:
@@ -117,7 +117,7 @@ class Or_MBA3(VerifiableRule):
     REFERENCE = "MBA pattern 3"
 
 
-class Or_Factor1(VerifiableRule):
+class Or_Factor_1(VerifiableRule):
     """Simplify: (x & y) | (x ^ y) => x | y
 
     Proof:
@@ -134,7 +134,7 @@ class Or_Factor1(VerifiableRule):
     REFERENCE = "Boolean algebra, partition"
 
 
-class Or_Factor2(VerifiableRule):
+class Or_Factor_2(VerifiableRule):
     """Simplify: (x & (y ^ z)) | ((x ^ y) ^ z) => x | (y ^ z)
 
     This is a factoring identity for OR.
@@ -153,7 +153,7 @@ class Or_Factor2(VerifiableRule):
     REFERENCE = "Boolean algebra, distributive law"
 
 
-class Or_Rule2(VerifiableRule):
+class Or_Rule_2(VerifiableRule):
     """Simplify: (x ^ y) | y => x | y
 
     Proof:
@@ -172,7 +172,7 @@ class Or_Rule2(VerifiableRule):
     REFERENCE = "Boolean algebra, XOR absorption"
 
 
-class Or_Rule4(VerifiableRule):
+class Or_Rule_4(VerifiableRule):
     """Simplify: (x & y) ^ (x ^ y) => x | y
 
     Proof:
@@ -190,7 +190,7 @@ class Or_Rule4(VerifiableRule):
     REFERENCE = "Boolean algebra, XOR identity"
 
 
-class OrBnot_Factor1(VerifiableRule):
+class OrBnot_Factor_1(VerifiableRule):
     """Simplify: ~x ^ (x & y) => ~x | y
 
     Proof:
@@ -210,7 +210,7 @@ class OrBnot_Factor1(VerifiableRule):
     REFERENCE = "Boolean algebra, partition"
 
 
-class OrBnot_Factor2(VerifiableRule):
+class OrBnot_Factor_2(VerifiableRule):
     """Simplify: x ^ (~x & y) => x | y
 
     Proof:
@@ -235,7 +235,7 @@ class OrBnot_Factor2(VerifiableRule):
 # ============================================================================
 
 
-class Or_HackersDelight1(VerifiableRule):
+class Or_HackersDelight_1(VerifiableRule):
     """Simplify: (x & ~y) + y => x | y (when ~y is verified)
 
     Hacker's Delight pattern requiring bitwise NOT verification.
@@ -257,7 +257,7 @@ class Or_HackersDelight1(VerifiableRule):
     REFERENCE = "Hacker's Delight with bnot constraint"
 
 
-class Or_Factor3(VerifiableRule):
+class Or_Factor_3(VerifiableRule):
     """Simplify: (x | y) | (~x ^ ~y) => x | y (when ~x and ~y verified)
 
     Absorption pattern with double bitwise NOT verification.
@@ -281,7 +281,7 @@ class Or_Factor3(VerifiableRule):
     REFERENCE = "Absorption with double bnot constraint"
 
 
-class Or_OLLVM1(VerifiableRule):
+class Or_OLLVM_1(VerifiableRule):
     """Simplify: (x & y) | ~(~x ^ y) => x | y (when ~x is verified)
 
     OLLVM obfuscation pattern with bitwise NOT verification.
@@ -303,7 +303,7 @@ class Or_OLLVM1(VerifiableRule):
     REFERENCE = "OLLVM obfuscation with bnot constraint"
 
 
-class Or_Rule1(VerifiableRule):
+class Or_Rule_1(VerifiableRule):
     """Simplify: (~x & y) | x => x | y (when ~x is verified)
 
     Absorption pattern with bitwise NOT.
@@ -324,7 +324,7 @@ class Or_Rule1(VerifiableRule):
     REFERENCE = "Absorption with bnot constraint"
 
 
-class Or_Rule3(VerifiableRule):
+class Or_Rule_3(VerifiableRule):
     """Simplify: ~(~x | ~y) | (x ^ y) => x | y (when ~x and ~y verified)
 
     Complex pattern combining De Morgan and XOR with double bnot verification.
@@ -348,7 +348,7 @@ class Or_Rule3(VerifiableRule):
     REFERENCE = "De Morgan + XOR with double bnot constraint"
 
 
-class OrBnot_Factor3(VerifiableRule):
+class OrBnot_Factor_3(VerifiableRule):
     """Simplify: (x - y) + (~x | y) => x | ~y (when ~x is verified)
 
     Produces OR-NOT result with bitwise NOT verification.
@@ -369,7 +369,7 @@ class OrBnot_Factor3(VerifiableRule):
     REFERENCE = "Complex factoring with bnot constraint"
 
 
-class OrBnot_Factor4(VerifiableRule):
+class OrBnot_Factor_4(VerifiableRule):
     """Simplify: (~x | y) ^ (x ^ y) => x | ~y (when ~x is verified)
 
     Produces OR-NOT result through XOR factoring with bnot verification.
@@ -423,7 +423,7 @@ Example Comparison:
 ------------------
 BEFORE:
 ```python
-class Or_MBA1(PatternMatchingRule):
+class Or_MBA_1(PatternMatchingRule):
     @property
     def PATTERN(self) -> AstNode:
         return AstNode(
@@ -439,7 +439,7 @@ class Or_MBA1(PatternMatchingRule):
 
 AFTER:
 ```python
-class Or_MBA1(VerifiableRule):
+class Or_MBA_1(VerifiableRule):
     PATTERN = (x & y) + (x ^ y)
     REPLACEMENT = x | y
 ```

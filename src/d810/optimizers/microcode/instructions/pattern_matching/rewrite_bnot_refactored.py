@@ -29,7 +29,7 @@ TWO = Const("2", 2)
 # ============================================================================
 
 
-class Bnot_HackersDelight1(VerifiableRule):
+class Bnot_HackersDelight_1(VerifiableRule):
     """Simplify: -x - 1 => ~x
 
     This is a common pattern for bitwise NOT using arithmetic.
@@ -43,7 +43,7 @@ class Bnot_HackersDelight1(VerifiableRule):
     REFERENCE = "Hacker's Delight 2-4"
 
 
-class Bnot_HackersDelight2(VerifiableRule):
+class Bnot_HackersDelight_2(VerifiableRule):
     """Simplify: ~(x | y) | ~y => ~y
 
     Absorption law: ~(x | y) | ~y = ~y because ~y implies ~(x | y) when x|y contains y.
@@ -57,7 +57,7 @@ class Bnot_HackersDelight2(VerifiableRule):
     REFERENCE = "Hacker's Delight"
 
 
-class Bnot_MBA1(VerifiableRule):
+class Bnot_MBA_1(VerifiableRule):
     """Simplify: (x - 1) - 2*x => ~x
 
     This is an MBA (Mixed Boolean-Arithmetic) obfuscation pattern.
@@ -71,7 +71,7 @@ class Bnot_MBA1(VerifiableRule):
     REFERENCE = "MBA obfuscation"
 
 
-class Bnot_Factor1(VerifiableRule):
+class Bnot_Factor_1(VerifiableRule):
     """Simplify: ~(x ^ y) ^ y => ~x
 
     XOR properties: ~(x ^ y) ^ y = (~x ^ ~y) ^ y = ~x ^ (~y ^ y) = ~x ^ 0 = ~x
@@ -84,7 +84,7 @@ class Bnot_Factor1(VerifiableRule):
     REFERENCE = "XOR factoring"
 
 
-class Bnot_Factor4(VerifiableRule):
+class Bnot_Factor_4(VerifiableRule):
     """Simplify: ~x ^ ~y => x ^ y
 
     Double negation cancels: ~x ^ ~y = x ^ y
@@ -97,7 +97,7 @@ class Bnot_Factor4(VerifiableRule):
     REFERENCE = "XOR double negation"
 
 
-class BnotXor_Factor1(VerifiableRule):
+class BnotXor_Factor_1(VerifiableRule):
     """Simplify: x ^ ~y => ~(x ^ y)
 
     Distribute negation: x ^ ~y = ~(x ^ y)
@@ -110,7 +110,7 @@ class BnotXor_Factor1(VerifiableRule):
     REFERENCE = "XOR negation distribution"
 
 
-class BnotAnd_Factor1(VerifiableRule):
+class BnotAnd_Factor_1(VerifiableRule):
     """Simplify: (x ^ y) | ~(x | y) => ~(x & y)
 
     This combines XOR and NOR to produce NAND.
@@ -125,7 +125,7 @@ class BnotAnd_Factor1(VerifiableRule):
     REFERENCE = "De Morgan's law"
 
 
-class BnotAnd_Factor3(VerifiableRule):
+class BnotAnd_Factor_3(VerifiableRule):
     """Simplify: ~x | ~y => ~(x & y)
 
     De Morgan's law: ~x | ~y = ~(x & y)
@@ -138,7 +138,7 @@ class BnotAnd_Factor3(VerifiableRule):
     REFERENCE = "De Morgan's law"
 
 
-class BnotOr_Factor1(VerifiableRule):
+class BnotOr_Factor_1(VerifiableRule):
     """Simplify: ~x & ~y => ~(x | y)
 
     De Morgan's law: ~x & ~y = ~(x | y)
@@ -151,7 +151,7 @@ class BnotOr_Factor1(VerifiableRule):
     REFERENCE = "De Morgan's law"
 
 
-class Bnot_Xor1(VerifiableRule):
+class Bnot_Xor_1(VerifiableRule):
     """Simplify: (x & y) | ~(x | y) => ~(x ^ y)
 
     This is the negation of XOR.
@@ -171,7 +171,7 @@ class Bnot_Xor1(VerifiableRule):
 # ============================================================================
 
 
-class Bnot_Factor2(VerifiableRule):
+class Bnot_Factor_2(VerifiableRule):
     """Simplify: -1 - x => ~x (where -1 is max value for the size)
 
     This handles the pattern where -1 is represented as the maximum unsigned
@@ -192,7 +192,7 @@ class Bnot_Factor2(VerifiableRule):
     REFERENCE = "Arithmetic NOT"
 
 
-class Bnot_Factor3(VerifiableRule):
+class Bnot_Factor_3(VerifiableRule):
     """Simplify: (x & y) ^ (x | ~y) => ~y
 
     This requires that the second operand is actually the bitwise NOT of y.
@@ -207,7 +207,7 @@ class Bnot_Factor3(VerifiableRule):
     REFERENCE = "Factoring with NOT"
 
 
-class BnotXor_Rule1(VerifiableRule):
+class BnotXor_Rule_1(VerifiableRule):
     """Simplify: (x & y) | (~x & ~y) => ~(x ^ y)
 
     This is XNOR. Requires verification that operands are bitwise NOTs.
@@ -225,7 +225,7 @@ class BnotXor_Rule1(VerifiableRule):
     REFERENCE = "XNOR pattern"
 
 
-class BnotXor_Rule2(VerifiableRule):
+class BnotXor_Rule_2(VerifiableRule):
     """Simplify: (x | y) ^ (~x | ~y) => ~(x ^ y)
 
     Alternative XNOR pattern. Requires verification of NOT relationships.
@@ -243,7 +243,7 @@ class BnotXor_Rule2(VerifiableRule):
     REFERENCE = "XNOR pattern variant 2"
 
 
-class BnotXor_Rule3(VerifiableRule):
+class BnotXor_Rule_3(VerifiableRule):
     """Simplify: (x | ~y) & (~x | y) => ~(x ^ y)
 
     Yet another XNOR pattern. Requires verification of NOT relationships.
@@ -261,7 +261,7 @@ class BnotXor_Rule3(VerifiableRule):
     REFERENCE = "XNOR pattern variant 3"
 
 
-class BnotAnd_Factor2(VerifiableRule):
+class BnotAnd_Factor_2(VerifiableRule):
     """Simplify: (~x | ~y) | (x ^ y) => ~(x & y)
 
     De Morgan combined with XOR. Requires verification of NOT relationships.
@@ -279,7 +279,7 @@ class BnotAnd_Factor2(VerifiableRule):
     REFERENCE = "De Morgan + XOR"
 
 
-class BnotAnd_Factor4(VerifiableRule):
+class BnotAnd_Factor_4(VerifiableRule):
     """Simplify: ~x | (x ^ y) => ~(x & y)
 
     Requires verification that the operand is bitwise NOT of x.
@@ -294,7 +294,7 @@ class BnotAnd_Factor4(VerifiableRule):
     REFERENCE = "Factoring with NOT"
 
 
-class BnotAdd_MBA1(VerifiableRule):
+class BnotAdd_MBA_1(VerifiableRule):
     """Simplify: (x ^ ~y) - 2*(x & y) => ~(x + y)
 
     This is an MBA obfuscation of NOT(x + y).
@@ -310,7 +310,7 @@ class BnotAdd_MBA1(VerifiableRule):
     REFERENCE = "MBA obfuscation"
 
 
-class Bnot_Rule1(VerifiableRule):
+class Bnot_Rule_1(VerifiableRule):
     """Simplify: (x & ~y) | ~(x | y) => ~y
 
     This simplifies to just ~y.

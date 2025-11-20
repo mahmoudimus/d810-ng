@@ -23,7 +23,7 @@ TWO = Const("2", 2)
 # ============================================================================
 
 
-class Neg_HackersDelight1(VerifiableRule):
+class Neg_HackersDelight_1(VerifiableRule):
     """Simplify: ~x + 1 => -x
 
     Two's complement identity - the fundamental definition of negation.
@@ -42,7 +42,7 @@ class Neg_HackersDelight1(VerifiableRule):
     REFERENCE = "Two's complement negation"
 
 
-class Neg_HackersDelight2(VerifiableRule):
+class Neg_HackersDelight_2(VerifiableRule):
     """Simplify: ~(x - 1) => -x
 
     Another two's complement identity.
@@ -64,7 +64,7 @@ class Neg_HackersDelight2(VerifiableRule):
 # ============================================================================
 
 
-class NegSub_HackersDelight1(VerifiableRule):
+class NegSub_HackersDelight_1(VerifiableRule):
     """Simplify: (x ^ y) - 2*(x | y) => -(x + y)
 
     Hacker's Delight identity for negated addition.
@@ -85,7 +85,7 @@ class NegSub_HackersDelight1(VerifiableRule):
     REFERENCE = "Hacker's Delight 2-18"
 
 
-class NegAdd_HackersDelight1(VerifiableRule):
+class NegAdd_HackersDelight_1(VerifiableRule):
     """Simplify: (val_fe * (x | y)) + (x ^ y) => -(x + y)
 
     where val_fe is -2 for the operand size (i.e., 0xFFFFFFFE for 32-bit).
@@ -108,7 +108,7 @@ class NegAdd_HackersDelight1(VerifiableRule):
     REFERENCE = "Hacker's Delight with constant validation"
 
 
-class NegAdd_HackersDelight2(VerifiableRule):
+class NegAdd_HackersDelight_2(VerifiableRule):
     """Simplify: (x ^ (y | z)) - 2*((x | y) | z) => -(x + (y | z))
 
     Extended form of NegSub_HackersDelight1 with three variables.
@@ -128,7 +128,7 @@ class NegAdd_HackersDelight2(VerifiableRule):
 # ============================================================================
 
 
-class NegOr_HackersDelight1(VerifiableRule):
+class NegOr_HackersDelight_1(VerifiableRule):
     """Simplify: (x & y) - (x + y) => -(x | y)
 
     Hacker's Delight identity for negated OR.
@@ -151,7 +151,7 @@ class NegOr_HackersDelight1(VerifiableRule):
 # ============================================================================
 
 
-class NegXor_HackersDelight1(VerifiableRule):
+class NegXor_HackersDelight_1(VerifiableRule):
     """Simplify: (x & y) - (x | y) => -(x ^ y)
 
     Hacker's Delight identity for negated XOR.
@@ -168,7 +168,7 @@ class NegXor_HackersDelight1(VerifiableRule):
     REFERENCE = "Hacker's Delight 2-13 variant"
 
 
-class NegXor_HackersDelight2(VerifiableRule):
+class NegXor_HackersDelight_2(VerifiableRule):
     """Simplify: (x + y) - 2*(x | y) => -(x ^ y)
 
     Alternative form of negated XOR.
