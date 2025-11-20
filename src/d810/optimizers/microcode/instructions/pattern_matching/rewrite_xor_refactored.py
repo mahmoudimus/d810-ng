@@ -25,7 +25,7 @@ TWO = Const("2", 2)
 # ============================================================================
 
 
-class Xor_HackersDelight1(VerifiableRule):
+class Xor_HackersDelightRule_1(VerifiableRule):
     """Simplify: (x | y) - (x & y) => x ^ y
 
     Hacker's Delight identity exploiting the relationship between OR, AND, and XOR.
@@ -43,7 +43,7 @@ class Xor_HackersDelight1(VerifiableRule):
     REFERENCE = "Hacker's Delight 2-13"
 
 
-class Xor_HackersDelight2(VerifiableRule):
+class Xor_HackersDelightRule_2(VerifiableRule):
     """Simplify: 2*(x | y) - (x + y) => x ^ y
 
     Another Hacker's Delight identity for XOR.
@@ -61,7 +61,7 @@ class Xor_HackersDelight2(VerifiableRule):
     REFERENCE = "Hacker's Delight 2-13"
 
 
-class Xor_HackersDelight3(VerifiableRule):
+class Xor_HackersDelightRule_3(VerifiableRule):
     """Simplify: (x + y) - 2*(x & y) => x ^ y
 
     Yet another Hacker's Delight XOR identity.
@@ -79,7 +79,7 @@ class Xor_HackersDelight3(VerifiableRule):
     REFERENCE = "Hacker's Delight 2-13"
 
 
-class Xor_HackersDelight4(VerifiableRule):
+class Xor_HackersDelightRule_4(VerifiableRule):
     """Simplify: ((x - y) - 2*(x | ~y)) - 2 => x ^ y
 
     Complex Hacker's Delight pattern with negation.
@@ -95,7 +95,7 @@ class Xor_HackersDelight4(VerifiableRule):
     REFERENCE = "Hacker's Delight variant"
 
 
-class Xor_HackersDelight5(VerifiableRule):
+class Xor_HackersDelightRule_5(VerifiableRule):
     """Simplify: x - (2*(x & y) - y) => x ^ y
 
     Hacker's Delight identity with rearranged terms.
@@ -118,7 +118,7 @@ class Xor_HackersDelight5(VerifiableRule):
 # ============================================================================
 
 
-class Xor_MBA1(VerifiableRule):
+class Xor_MbaRule_1(VerifiableRule):
     """Simplify: x - (2*(y & ~(x ^ y)) - y) => x ^ y
 
     MBA obfuscation pattern combining multiple operations.
@@ -134,7 +134,7 @@ class Xor_MBA1(VerifiableRule):
     REFERENCE = "MBA obfuscation"
 
 
-class Xor_MBA2(VerifiableRule):
+class Xor_MbaRule_2(VerifiableRule):
     """Simplify: x - (2*(x & y) - y) => x ^ y
 
     Simpler MBA pattern (same as HackersDelight5).
@@ -149,7 +149,7 @@ class Xor_MBA2(VerifiableRule):
     REFERENCE = "MBA obfuscation"
 
 
-class Xor_MBA3(VerifiableRule):
+class Xor_MbaRule_3(VerifiableRule):
     """Simplify: x - 2*(x & y) => (x ^ y) - y
 
     MBA pattern that doesn't fully simplify to XOR.
@@ -169,7 +169,7 @@ class Xor_MBA3(VerifiableRule):
 # ============================================================================
 
 
-class Xor_Factor1(VerifiableRule):
+class Xor_FactorRule_1(VerifiableRule):
     """Simplify: (x & ~y) | (~x & y) => x ^ y (with bnot verification)
 
     XOR definition as disjunction of exclusive conjunctions.
@@ -193,7 +193,7 @@ class Xor_Factor1(VerifiableRule):
     REFERENCE = "XOR definition with NOT verification"
 
 
-class Xor_Factor2(VerifiableRule):
+class Xor_FactorRule_2(VerifiableRule):
     """Simplify: (~x & y) ^ (x & ~y) => x ^ y (with bnot verification)
 
     XOR of the two exclusive AND terms gives XOR directly.
@@ -212,7 +212,7 @@ class Xor_Factor2(VerifiableRule):
     REFERENCE = "XOR factoring with NOT verification"
 
 
-class Xor_Factor3(VerifiableRule):
+class Xor_FactorRule_3(VerifiableRule):
     """Simplify: (x & y) ^ (x | y) => x ^ y
 
     Proof:
@@ -229,7 +229,7 @@ class Xor_Factor3(VerifiableRule):
     REFERENCE = "XOR factoring"
 
 
-class Xor_Rule4(VerifiableRule):
+class Xor_Rule_4(VerifiableRule):
     """Simplify: (x & ~y) | (~x & y) => x ^ y (with bnot verification)
 
     Same as Xor_Factor1 but named differently in original.
@@ -253,7 +253,7 @@ class Xor_Rule4(VerifiableRule):
 # ============================================================================
 
 
-class Xor_SpecialConstant1(VerifiableRule):
+class Xor_SpecialConstantRule_1(VerifiableRule):
     """Simplify: (x - y) + 2*(~x & y) => x ^ y
 
     Special pattern mixing subtraction, multiplication, and NOT.
@@ -268,7 +268,7 @@ class Xor_SpecialConstant1(VerifiableRule):
     REFERENCE = "Special constant pattern"
 
 
-class Xor_SpecialConstant2(VerifiableRule):
+class Xor_SpecialConstantRule_2(VerifiableRule):
     """Simplify: (x + y) + (c_minus_2 * (x & y)) => x ^ y
 
     where c_minus_2 is exactly -2 for the operand size.
@@ -290,7 +290,7 @@ class Xor_SpecialConstant2(VerifiableRule):
     REFERENCE = "Constant validation pattern"
 
 
-class Xor1_MBA1(VerifiableRule):
+class Xor1_MbaRule_1(VerifiableRule):
     """Simplify: ~x + (2*x | 2) => x ^ 1
 
     MBA pattern that produces XOR with constant 1 (bit flip LSB).
@@ -310,7 +310,7 @@ class Xor1_MBA1(VerifiableRule):
 # ============================================================================
 
 
-class Xor_Rule1(VerifiableRule):
+class Xor_Rule_1(VerifiableRule):
     """Simplify: (x & y) | ~(x | y) => x ^ ~y
 
     Combines AND, OR, and NOT to produce XOR-NOT.
@@ -327,7 +327,7 @@ class Xor_Rule1(VerifiableRule):
     REFERENCE = "XNOR equivalence"
 
 
-class Xor_Rule2(VerifiableRule):
+class Xor_Rule_2(VerifiableRule):
     """Simplify: ((x ^ z) & (y ^ ~z)) | ((x ^ ~z) & (y ^ z)) => x ^ y
 
     Complex OLLVM obfuscation with multiple XORs and NOTs.
@@ -346,7 +346,7 @@ class Xor_Rule2(VerifiableRule):
     REFERENCE = "OLLVM obfuscation"
 
 
-class Xor_Rule3(VerifiableRule):
+class Xor_Rule_3(VerifiableRule):
     """Simplify: ((x ^ z) & (y ^ z)) | ((x ^ ~z) & (y ^ ~z)) => ~x ^ y
 
     Another complex OLLVM obfuscation producing NOT-XOR.
@@ -362,7 +362,7 @@ class Xor_Rule3(VerifiableRule):
     REFERENCE = "OLLVM obfuscation variant"
 
 
-class XorAlmost_Rule1(VerifiableRule):
+class XorAlmost_Rule_1(VerifiableRule):
     """Transform: (x + y) - 2*(x | (y - 1)) => (x ^ (-y)) + 2
 
     Complex MBA transformation that doesn't fully simplify to XOR.

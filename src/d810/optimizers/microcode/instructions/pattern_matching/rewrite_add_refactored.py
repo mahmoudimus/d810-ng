@@ -21,7 +21,7 @@ ONE = Const("ONE", 1)
 TWO = Const("TWO", 2)
 
 
-class Add_HackersDelight1(VerifiableRule):
+class Add_HackersDelight_1(VerifiableRule):
     """Simplify: x - (~y + 1) => x + y
 
     This is a classic identity from Hacker's Delight.
@@ -39,7 +39,7 @@ class Add_HackersDelight1(VerifiableRule):
     REFERENCE = "Hacker's Delight, Chapter 2"
 
 
-class Add_HackersDelight2(VerifiableRule):
+class Add_HackersDelight_2(VerifiableRule):
     """Simplify: (x ^ y) + 2*(x & y) => x + y
 
     Proof:
@@ -61,7 +61,7 @@ class Add_HackersDelight2(VerifiableRule):
     REFERENCE = "Hacker's Delight, addition identity"
 
 
-class Add_HackersDelight3(VerifiableRule):
+class Add_HackersDelight_3(VerifiableRule):
     """Simplify: (x | y) + (x & y) => x + y
 
     Proof:
@@ -79,7 +79,7 @@ class Add_HackersDelight3(VerifiableRule):
     REFERENCE = "Hacker's Delight, OR-AND identity"
 
 
-class Add_HackersDelight4(VerifiableRule):
+class Add_HackersDelight_4(VerifiableRule):
     """Simplify: 2*(x | y) - (x ^ y) => x + y
 
     Proof:
@@ -98,7 +98,7 @@ class Add_HackersDelight4(VerifiableRule):
     REFERENCE = "Hacker's Delight, OR-XOR identity"
 
 
-class Add_HackersDelight5(VerifiableRule):
+class Add_HackersDelight_5(VerifiableRule):
     """Simplify: 2*(x | y | z) - (x ^ (y | z)) => x + (y | z)
 
     This is an extension of HackersDelight4 to three variables.
@@ -116,7 +116,7 @@ class Add_HackersDelight5(VerifiableRule):
     REFERENCE = "Hacker's Delight, extended identity"
 
 
-class Add_OLLVM1(VerifiableRule):
+class Add_OLLVM_1(VerifiableRule):
     """Simplify: ~(x ^ y) + 2*(y | x) => (x + y) - 1
 
     This is an OLLVM obfuscation pattern.
@@ -139,7 +139,7 @@ class Add_OLLVM1(VerifiableRule):
     REFERENCE = "OLLVM obfuscation, pattern 1"
 
 
-class Add_OLLVM3(VerifiableRule):
+class Add_OLLVM_3(VerifiableRule):
     """Simplify: (x ^ y) + 2*(x & y) => x + y
 
     Same as Add_HackersDelight2, but identified as OLLVM pattern.
@@ -166,7 +166,7 @@ class Add_OLLVM3(VerifiableRule):
 from d810.optimizers.dsl import when, DynamicConst
 
 
-class Add_SpecialConstant1(VerifiableRule):
+class Add_SpecialConstant_1(VerifiableRule):
     """Simplify: (x ^ c1) + 2*(x & c2) => x + c1 where c1 == c2
 
     This rule is only valid when both constants have the same value.
@@ -183,7 +183,7 @@ class Add_SpecialConstant1(VerifiableRule):
     REFERENCE = "Special constant pattern 1"
 
 
-class Add_SpecialConstant2(VerifiableRule):
+class Add_SpecialConstant_2(VerifiableRule):
     """Simplify: ((x & 0xFF) ^ c1) + 2*(x & c2) => (x & 0xFF) + c1
 
     where (c1 & 0xFF) == c2
@@ -203,7 +203,7 @@ class Add_SpecialConstant2(VerifiableRule):
     REFERENCE = "Special constant pattern 2"
 
 
-class Add_SpecialConstant3(VerifiableRule):
+class Add_SpecialConstant_3(VerifiableRule):
     """Simplify: (x ^ c1) + 2*(x | c2) => x + (c2 - 1)
 
     where c1 == ~c2
@@ -244,7 +244,7 @@ class Add_OLLVM_DynamicConst(VerifiableRule):
     REFERENCE = "OLLVM obfuscation, dynamic variant"
 
 
-class Add_OLLVM2(VerifiableRule):
+class Add_OLLVM_2(VerifiableRule):
     """Simplify: ~(x ^ y) - (val_fe * (x | y)) => (x + y) - 1
 
     where (val_fe + 2) & SIZE_MASK == 0
@@ -270,7 +270,7 @@ class Add_OLLVM2(VerifiableRule):
     REFERENCE = "OLLVM obfuscation, pattern 2"
 
 
-class Add_OLLVM4(VerifiableRule):
+class Add_OLLVM_4(VerifiableRule):
     """Simplify: (x ^ y) - (val_fe * (x & y)) => x + y
 
     where val_fe must satisfy certain conditions (typically -2).
@@ -293,7 +293,7 @@ class Add_OLLVM4(VerifiableRule):
     REFERENCE = "OLLVM obfuscation, pattern 4"
 
 
-class AddXor_Constrained1(VerifiableRule):
+class AddXor_Constrained_1(VerifiableRule):
     """Simplify: (x - y) - 2*(x | ~y) => (x ^ y) + 2
 
     where bnot_y == ~y
@@ -314,7 +314,7 @@ class AddXor_Constrained1(VerifiableRule):
     REFERENCE = "AddXor pattern 1"
 
 
-class AddXor_Constrained2(VerifiableRule):
+class AddXor_Constrained_2(VerifiableRule):
     """Simplify: (x - y) - 2*(~(~x & y)) => (x ^ y) + 2
 
     where bnot_x == ~x
@@ -360,7 +360,7 @@ class Add_HackersDelightRule_2(PatternMatchingRule):
 
 After (declarative):
 -------------------
-class Add_HackersDelight2(VerifiableRule):
+class Add_HackersDelight_2(VerifiableRule):
     PATTERN = (x ^ y) + TWO * (x & y)
     REPLACEMENT = x + y
 

@@ -21,7 +21,7 @@ bnot_y = Var("bnot_x_1")
 # ============================================================================
 
 
-class GetIdent1(VerifiableRule):
+class GetIdent_1(VerifiableRule):
     """Simplify: (x & y) + (x & ~y) => x (with bnot verification)
 
     Boolean identity: x distributed over (y + ~y) = x * 1 = x.
@@ -46,7 +46,7 @@ class GetIdent1(VerifiableRule):
     REFERENCE = "Boolean algebra distributive identity"
 
 
-class GetIdent2(VerifiableRule):
+class GetIdent_2(VerifiableRule):
     """Simplify: (x & y) ^ (x & ~y) => x (with bnot verification)
 
     Boolean identity using XOR instead of addition.
@@ -68,7 +68,7 @@ class GetIdent2(VerifiableRule):
     REFERENCE = "Boolean algebra XOR identity"
 
 
-class GetIdent3(VerifiableRule):
+class GetIdent_3(VerifiableRule):
     """Simplify: x & (x | y) => x
 
     Absorption law from Boolean algebra.

@@ -23,7 +23,7 @@ TWO = Const("2", 2)
 # ============================================================================
 
 
-class Mul_MBA1(VerifiableRule):
+class Mul_MBA_1(VerifiableRule):
     """Simplify: (x | y)*(x & y) + (x & ~y)*(y & ~x) => x * y (with double bnot)
 
     MBA obfuscation pattern combining OR, AND, and NOT operations.
@@ -48,7 +48,7 @@ class Mul_MBA1(VerifiableRule):
     REFERENCE = "MBA obfuscation with double bnot verification"
 
 
-class Mul_MBA4(VerifiableRule):
+class Mul_MBA_4(VerifiableRule):
     """Simplify: (x | y)*(x & y) + ~(x | ~y)*(x & ~y) => x * y (with bnot)
 
     MBA obfuscation with bitwise NOT and OR.
@@ -72,7 +72,7 @@ class Mul_MBA4(VerifiableRule):
 # ============================================================================
 
 
-class Mul_Factor1(VerifiableRule):
+class Mul_Factor_1(VerifiableRule):
     """Simplify: 2 + 2*(y + (x | ~y)) => 2*(x & y) (with bnot verification)
 
     Factoring pattern producing multiplication of AND.
@@ -97,7 +97,7 @@ class Mul_Factor1(VerifiableRule):
     REFERENCE = "Multiplication factoring with bnot verification"
 
 
-class Mul_Factor2(VerifiableRule):
+class Mul_Factor_2(VerifiableRule):
     """Simplify: -(x & y) - (x & y) => -2 * (x & y)
 
     Produces multiplication by -2 (0xFFFFFFFE in 32-bit two's complement).
