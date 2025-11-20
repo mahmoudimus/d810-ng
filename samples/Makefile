@@ -173,12 +173,21 @@ all: bins $(TARGET_LIB)
 bins:
 	@$(MKDIR) bins >nul 2>&1 || $(MKDIR) bins
 
+# Build target - different for MSVC vs GCC/Clang
+ifeq ($(CC),cl)
+$(TARGET_LIB): $(OBJS)
+	$(CC) $(LDFLAGS) /Fe:$@ $^
+
+%.obj: %.c
+	$(CC) $(CFLAGS) /c /Fo:$@ $<
+else
 $(TARGET_LIB): $(OBJS)
 	@echo "Linking $(TARGET_LIB)"
 	$(LD) $(LDFLAGS) -o $@ $^
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
+endif
 
 # Dependency generation (optional but nice)
 $(SRCS:.c=.d): %.d: %.c
