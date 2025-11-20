@@ -20,13 +20,29 @@ try:
         CursorKind,
         conf,
     )
-except ImportError:
-    logging.error(
-        "clang.cindex not found. Ensure clang bindings are in tests/system/clang/"
+    CLANG_AVAILABLE = True
+except ImportError as e:
+    logging.warning(
+        "clang.cindex not found. AST comparison will not be available: %s", e
     )
-    sys.exit(1)
+    CLANG_AVAILABLE = False
+    # Define dummy classes to prevent import errors
+    Config = None
+    Index = None
+    TranslationUnit = None
+    Cursor = None
+    CursorKind = None
+    conf = None
 
-from .clang_init import get_clang_index
+# Only import clang_init if clang is available
+if CLANG_AVAILABLE:
+    try:
+        from .clang_init import get_clang_index
+    except Exception:
+        CLANG_AVAILABLE = False
+        get_clang_index = None
+else:
+    get_clang_index = None
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -36,7 +52,16 @@ class CodeComparator:
     """Parses and compares C/C++ code snippets for structural equivalence using Clang ASTs."""
 
     def __init__(self):
-        """Initialize the code comparator with a clang index."""
+        """Initialize the code comparator with a clang index.
+
+        Raises:
+            RuntimeError: If libclang is not available
+        """
+        if not CLANG_AVAILABLE:
+            raise RuntimeError(
+                "libclang not available. AST comparison requires libclang Python bindings. "
+                "Install with: pip install libclang"
+            )
         self.index = get_clang_index()
 
     def _parse(self, code: str, filename: str = "dummy.cpp") -> TranslationUnit:

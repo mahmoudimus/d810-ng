@@ -11,9 +11,14 @@ sys.path.insert(0, str(Path(__file__).parent / "clang"))
 
 try:
     from clang.cindex import Config, Index
-except ImportError:
-    print("Error: 'clang' folder with 'cindex.py' not found.")
-    sys.exit(1)
+    CLANG_AVAILABLE = True
+except ImportError as e:
+    CLANG_AVAILABLE = False
+    CLANG_ERROR = str(e)
+    logger = logging.getLogger(__name__)
+    logger.warning("clang.cindex not found: %s", e)
+    Config = None
+    Index = None
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -26,9 +31,12 @@ def init_clang():
         Index: Clang index for parsing C/C++ code
 
     Raises:
+        RuntimeError: If clang bindings are not available
         FileNotFoundError: If libclang.so is not found
         Exception: If libclang fails to load
     """
+    if not CLANG_AVAILABLE:
+        raise RuntimeError(f"clang Python bindings not available: {CLANG_ERROR}")
     # Priority 1: Use libclang.so from IDA Pro installation (in Docker)
     lib_path = Path("/app/ida/libclang.so")
 
