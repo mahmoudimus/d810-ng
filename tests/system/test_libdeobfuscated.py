@@ -326,20 +326,20 @@ class TestLibDeobfuscated(IDAProTestCase):
                 decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
                 self.assertIsNotNone(decompiled_after, "Decompilation with d810 failed")
 
-            actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
+                actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
-            # ASSERT: Control flow was unflattened
-            # After unflattening, should have natural control flow (for loops, if statements)
-            # instead of dispatcher pattern
-            case_count_after = actual_after.count("case ")
-            self.assertLess(case_count_after, case_count_before,
-                          f"Unflattening MUST reduce switch cases ({case_count_before} → {case_count_after})")
+                # ASSERT: Control flow was unflattened
+                # After unflattening, should have natural control flow (for loops, if statements)
+                # instead of dispatcher pattern
+                case_count_after = actual_after.count("case ")
+                self.assertLess(case_count_after, case_count_before,
+                              f"Unflattening MUST reduce switch cases ({case_count_before} → {case_count_after})")
 
-            # Should have more natural control structures
-            for_count_after = actual_after.count("for (")
-            if_count_after = actual_after.count("if (")
-            self.assertGreater(for_count_after + if_count_after, 0,
-                             "Unflattened code should have natural control flow (for/if)")
+                # Should have more natural control structures
+                for_count_after = actual_after.count("for (")
+                if_count_after = actual_after.count("if (")
+                self.assertGreater(for_count_after + if_count_after, 0,
+                                 "Unflattened code should have natural control flow (for/if)")
 
 
 if __name__ == "__main__":
