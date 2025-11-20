@@ -1,10 +1,15 @@
 import contextlib
 import os
+from typing import Optional
 
 import idaapi
 import idc
 
 from d810.manager import D810State
+from src.d810.optimizers.instrumentation import DeobfuscationContext
+
+# Global context for tracking deobfuscation during tests
+_current_deobfuscation_context: Optional[DeobfuscationContext] = None
 
 
 def configure_hexrays_for_consistent_output():
@@ -90,15 +95,58 @@ def setup_libobfuscated_function_names():
             idaapi.add_func(addr)
 
 
+def get_current_deobfuscation_context() -> Optional[DeobfuscationContext]:
+    """Get the current deobfuscation context (if any)."""
+    return _current_deobfuscation_context
+
+
+def set_current_deobfuscation_context(ctx: Optional[DeobfuscationContext]):
+    """Set the current deobfuscation context (used internally)."""
+    global _current_deobfuscation_context
+    _current_deobfuscation_context = ctx
+
+
 @contextlib.contextmanager
 def d810_state():
+    """Context manager for D810 state with instrumentation support.
+
+    This provides access to D810's deobfuscation engine and creates
+    a DeobfuscationContext to track all optimization activity.
+
+    Usage:
+        with d810_state() as state:
+            state.stop_d810()
+            # ... decompile without d810 ...
+
+            state.start_d810()
+            # ... decompile with d810 ...
+
+            # Access instrumentation
+            ctx = get_current_deobfuscation_context()
+            assert ctx.rule_fired("UnflattenerTigress")
+    """
+    global _current_deobfuscation_context
+
     state = D810State()  # singleton
     if not (was_loaded := state.is_loaded()):
         state.load(gui=False)
     if not (was_started := state.manager.started):
         state.start_d810()
-    yield state
-    if not was_started:
-        state.stop_d810()
-    if not was_loaded:
-        state.unload(gui=False)
+
+    # Create a new deobfuscation context for this session
+    _current_deobfuscation_context = DeobfuscationContext()
+
+    # Hook the context into the manager for instrumentation
+    # The manager will populate it during optimization
+    state.manager._deobfuscation_context = _current_deobfuscation_context
+
+    try:
+        yield state
+    finally:
+        if not was_started:
+            state.stop_d810()
+        if not was_loaded:
+            state.unload(gui=False)
+
+        # Context remains accessible after the block for assertions
+        # It will be reset on next d810_state() call
