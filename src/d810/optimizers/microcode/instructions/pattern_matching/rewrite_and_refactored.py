@@ -20,7 +20,7 @@ x, y, z = Var("x_0"), Var("x_1"), Var("x_2")
 ONE = Const("1", 1)
 
 
-class And_HackersDelight_1(VerifiableRule):
+class And_HackersDelightRule_1(VerifiableRule):
     """Simplify: (~x | y) - ~x => x & y
 
     Proof:
@@ -39,7 +39,7 @@ class And_HackersDelight_1(VerifiableRule):
     REFERENCE = "Hacker's Delight, Chapter 2"
 
 
-class And_HackersDelight_3(VerifiableRule):
+class And_HackersDelightRule_3(VerifiableRule):
     """Simplify: (x + y) - (x | y) => x & y
 
     Proof:
@@ -59,7 +59,7 @@ class And_HackersDelight_3(VerifiableRule):
     REFERENCE = "Hacker's Delight, addition-OR identity"
 
 
-class And_HackersDelight_4(VerifiableRule):
+class And_HackersDelightRule_4(VerifiableRule):
     """Simplify: (x | y) - (x ^ y) => x & y
 
     Proof:
@@ -117,7 +117,7 @@ class And_OLLVM_3(VerifiableRule):
     REFERENCE = "OLLVM obfuscation, pattern 3"
 
 
-class And_Factor_2(VerifiableRule):
+class And_FactorRule_2(VerifiableRule):
     """Simplify: x & ~(x ^ y) => x & y
 
     Proof:
@@ -138,7 +138,7 @@ class And_Factor_2(VerifiableRule):
     REFERENCE = "Boolean algebra factoring"
 
 
-class AndBnot_HackersDelight_1(VerifiableRule):
+class AndBnot_HackersDelightRule_1(VerifiableRule):
     """Simplify: (x | y) - y => x & ~y
 
     Proof:
@@ -158,7 +158,7 @@ class AndBnot_HackersDelight_1(VerifiableRule):
     REFERENCE = "Hacker's Delight, AND-NOT identity"
 
 
-class AndBnot_HackersDelight_2(VerifiableRule):
+class AndBnot_HackersDelightRule_2(VerifiableRule):
     """Simplify: x - (x & y) => x & ~y
 
     Proof:
@@ -176,7 +176,7 @@ class AndBnot_HackersDelight_2(VerifiableRule):
     REFERENCE = "Hacker's Delight, partition identity"
 
 
-class AndBnot_Factor_1(VerifiableRule):
+class AndBnot_FactorRule_1(VerifiableRule):
     """Simplify: x ^ (x & y) => x & ~y
 
     Proof:
@@ -195,7 +195,7 @@ class AndBnot_Factor_1(VerifiableRule):
     REFERENCE = "Boolean algebra, XOR identity"
 
 
-class AndBnot_Factor_2(VerifiableRule):
+class AndBnot_FactorRule_2(VerifiableRule):
     """Simplify: x & (x ^ y) => x & ~y
 
     Proof:
@@ -216,7 +216,7 @@ class AndBnot_Factor_2(VerifiableRule):
     REFERENCE = "Boolean algebra, XOR-AND identity"
 
 
-class AndBnot_Factor_3(VerifiableRule):
+class AndBnot_FactorRule_3(VerifiableRule):
     """Simplify: (x | y) ^ y => x & ~y
 
     Proof:
@@ -235,7 +235,7 @@ class AndBnot_Factor_3(VerifiableRule):
     REFERENCE = "Boolean algebra, XOR cancellation"
 
 
-class AndOr_Factor_1(VerifiableRule):
+class AndOr_FactorRule_1(VerifiableRule):
     """Factor common term: (x & z) | (y & z) => (x | y) & z
 
     This is the distributive law of AND over OR.
@@ -254,7 +254,7 @@ class AndOr_Factor_1(VerifiableRule):
     REFERENCE = "Boolean algebra, distributive law"
 
 
-class AndXor_Factor_1(VerifiableRule):
+class AndXor_FactorRule_1(VerifiableRule):
     """Factor common term: (x & z) ^ (y & z) => (x ^ y) & z
 
     This is the distributive law of AND over XOR.
@@ -278,7 +278,7 @@ class AndXor_Factor_1(VerifiableRule):
 # ============================================================================
 
 
-class And_HackersDelight_2(VerifiableRule):
+class And_HackersDelightRule_2(VerifiableRule):
     """Simplify: (~x | y) + (x + 1) => x & y (when ~x is verified)
 
     This Hacker's Delight pattern requires verification that bnot_x == ~x.
@@ -320,7 +320,7 @@ class And_OLLVM_2(VerifiableRule):
     REFERENCE = "OLLVM obfuscation with bnot constraint"
 
 
-class And_Factor_1(VerifiableRule):
+class And_FactorRule_1(VerifiableRule):
     """Simplify: (x ^ ~y) & y => x & y (when ~y is verified)
 
     Factoring pattern with bitwise NOT verification.
@@ -341,7 +341,7 @@ class And_Factor_1(VerifiableRule):
     REFERENCE = "Factoring with bnot constraint"
 
 
-class AndBnot_Factor_4(VerifiableRule):
+class AndBnot_FactorRule_4(VerifiableRule):
     """Simplify: (y ^ x) & ~(x & ~y) => y & ~x (when ~y is verified)
 
     Complex factoring with bitwise NOT, producing AND-NOT result.
@@ -388,7 +388,7 @@ class And1_MBA1(VerifiableRule):
     REFERENCE = "MBA obfuscation, modular arithmetic"
 
 
-class AndGetUpperBits_Factor_1(VerifiableRule):
+class AndGetUpperBits_FactorRule_1(VerifiableRule):
     """Simplify: c1 * ((x >> c2) & c3) => x & c_res (when 2^c2 == c1)
 
     This pattern shifts right, masks, then multiplies by a power of 2,

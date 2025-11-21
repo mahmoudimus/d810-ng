@@ -24,7 +24,7 @@ TWO = Const("2", 2)
 # ============================================================================
 
 
-class Sub_HackersDelight_1(VerifiableRule):
+class Sub_HackersDelightRule_1(VerifiableRule):
     """Simplify: x + (~y + 1) => x - y
 
     Two's complement identity for subtraction.
@@ -41,7 +41,7 @@ class Sub_HackersDelight_1(VerifiableRule):
     REFERENCE = "Two's complement subtraction"
 
 
-class Sub_HackersDelight_2(VerifiableRule):
+class Sub_HackersDelightRule_2(VerifiableRule):
     """Simplify: (x ^ y) - 2*(~x & y) => x - y
 
     Hacker's Delight identity combining XOR and AND.
@@ -58,7 +58,7 @@ class Sub_HackersDelight_2(VerifiableRule):
     REFERENCE = "Hacker's Delight 2-19"
 
 
-class Sub_HackersDelight_3(VerifiableRule):
+class Sub_HackersDelightRule_3(VerifiableRule):
     """Simplify: (x & ~y) - (~x & y) => x - y (with bnot verification)
 
     Requires verification that bnot_x == ~x and bnot_y == ~y.
@@ -81,7 +81,7 @@ class Sub_HackersDelight_3(VerifiableRule):
     REFERENCE = "Hacker's Delight with double bnot verification"
 
 
-class Sub_HackersDelight_4(VerifiableRule):
+class Sub_HackersDelightRule_4(VerifiableRule):
     """Simplify: 2*(x & ~y) - (x ^ y) => x - y (with bnot verification)
 
     Requires verification that bnot_y == ~y.

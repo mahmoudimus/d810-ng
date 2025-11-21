@@ -20,7 +20,7 @@ x, y, z = Var("x_0"), Var("x_1"), Var("x_2")
 ONE = Const("1", 1)
 
 
-class Or_HackersDelight_2(VerifiableRule):
+class Or_HackersDelightRule_2(VerifiableRule):
     """Simplify: (x + y) - (x & y) => x | y
 
     Proof:
@@ -117,7 +117,7 @@ class Or_MBA_3(VerifiableRule):
     REFERENCE = "MBA pattern 3"
 
 
-class Or_Factor_1(VerifiableRule):
+class Or_FactorRule_1(VerifiableRule):
     """Simplify: (x & y) | (x ^ y) => x | y
 
     Proof:
@@ -134,7 +134,7 @@ class Or_Factor_1(VerifiableRule):
     REFERENCE = "Boolean algebra, partition"
 
 
-class Or_Factor_2(VerifiableRule):
+class Or_FactorRule_2(VerifiableRule):
     """Simplify: (x & (y ^ z)) | ((x ^ y) ^ z) => x | (y ^ z)
 
     This is a factoring identity for OR.
@@ -190,7 +190,7 @@ class Or_Rule_4(VerifiableRule):
     REFERENCE = "Boolean algebra, XOR identity"
 
 
-class OrBnot_Factor_1(VerifiableRule):
+class OrBnot_FactorRule_1(VerifiableRule):
     """Simplify: ~x ^ (x & y) => ~x | y
 
     Proof:
@@ -210,7 +210,7 @@ class OrBnot_Factor_1(VerifiableRule):
     REFERENCE = "Boolean algebra, partition"
 
 
-class OrBnot_Factor_2(VerifiableRule):
+class OrBnot_FactorRule_2(VerifiableRule):
     """Simplify: x ^ (~x & y) => x | y
 
     Proof:
@@ -235,7 +235,7 @@ class OrBnot_Factor_2(VerifiableRule):
 # ============================================================================
 
 
-class Or_HackersDelight_1(VerifiableRule):
+class Or_HackersDelightRule_1(VerifiableRule):
     """Simplify: (x & ~y) + y => x | y (when ~y is verified)
 
     Hacker's Delight pattern requiring bitwise NOT verification.
@@ -257,7 +257,7 @@ class Or_HackersDelight_1(VerifiableRule):
     REFERENCE = "Hacker's Delight with bnot constraint"
 
 
-class Or_Factor_3(VerifiableRule):
+class Or_FactorRule_3(VerifiableRule):
     """Simplify: (x | y) | (~x ^ ~y) => x | y (when ~x and ~y verified)
 
     Absorption pattern with double bitwise NOT verification.
@@ -348,7 +348,7 @@ class Or_Rule_3(VerifiableRule):
     REFERENCE = "De Morgan + XOR with double bnot constraint"
 
 
-class OrBnot_Factor_3(VerifiableRule):
+class OrBnot_FactorRule_3(VerifiableRule):
     """Simplify: (x - y) + (~x | y) => x | ~y (when ~x is verified)
 
     Produces OR-NOT result with bitwise NOT verification.
@@ -369,7 +369,7 @@ class OrBnot_Factor_3(VerifiableRule):
     REFERENCE = "Complex factoring with bnot constraint"
 
 
-class OrBnot_Factor_4(VerifiableRule):
+class OrBnot_FactorRule_4(VerifiableRule):
     """Simplify: (~x | y) ^ (x ^ y) => x | ~y (when ~x is verified)
 
     Produces OR-NOT result through XOR factoring with bnot verification.
