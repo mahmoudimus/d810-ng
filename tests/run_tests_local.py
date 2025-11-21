@@ -198,13 +198,13 @@ def test_constrained_rules_exist():
     class_names = [cls.name for cls in classes]
 
     expected_rules = [
-        'Add_SpecialConstant1',
-        'Add_SpecialConstant2',
-        'Add_SpecialConstant3',
-        'Add_OLLVM2',
-        'Add_OLLVM4',
-        'AddXor_Constrained1',
-        'AddXor_Constrained2',
+        'Add_SpecialConstantRule_1',
+        'Add_SpecialConstantRule_2',
+        'Add_SpecialConstantRule_3',
+        'Add_OllvmRule_2',
+        'Add_OllvmRule_4',
+        'AddXor_Rule_1',
+        'AddXor_Rule_2',
     ]
 
     found = 0
