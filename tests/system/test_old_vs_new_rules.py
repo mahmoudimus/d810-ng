@@ -126,10 +126,21 @@ class TestOldVsNewRules(IDAProTestCase):
             old_rules_fired = []
             new_rules_fired = []
 
-            # From PatternOptimizer (OLD rules)
+            # From PatternOptimizer (could be OLD or NEW VerifiableRule)
             for rule_name in pattern_optimizer_rules:
                 all_rules_fired_set.add(rule_name)
-                old_rules_fired.append(rule_name)
+
+                # Check if this is a VerifiableRule (NEW) despite coming from PatternOptimizer
+                is_new = any(
+                    r.__name__ == rule_name and issubclass(r, VerifiableRule)
+                    for r in all_rules
+                    if isinstance(r, type)
+                )
+
+                if is_new:
+                    new_rules_fired.append(rule_name)
+                else:
+                    old_rules_fired.append(rule_name)
 
             # From instrumentation context (NEW rules + others)
             if ctx is not None:
@@ -141,7 +152,7 @@ class TestOldVsNewRules(IDAProTestCase):
                         for r in all_rules
                         if isinstance(r, type)
                     )
-                    if is_new:
+                    if is_new and rule_name not in new_rules_fired:
                         new_rules_fired.append(rule_name)
 
             all_rules_fired = sorted(all_rules_fired_set)
