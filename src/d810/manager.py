@@ -4,6 +4,7 @@ import contextlib
 import dataclasses
 import inspect
 import pathlib
+import time
 import typing
 
 from d810.conf import D810Configuration, ProjectConfiguration
@@ -91,13 +92,17 @@ class D810Manager:
         if self._started:
             self.stop()
         logger.debug("Starting manager...")
+        t0 = time.perf_counter()
 
         # Instantiate core manager classes from registry
+        t_inst = time.perf_counter()
         self.instruction_optimizer = InstructionOptimizerManager(self.log_dir)
         self.instruction_optimizer.configure(**self.instruction_optimizer_config)
         self.block_optimizer = BlockOptimizerManager(self.log_dir)
         self.block_optimizer.configure(**self.block_optimizer_config)
+        print(f"    ⏱ Manager instantiation: {time.perf_counter() - t_inst:.2f}s")
 
+        t_rules = time.perf_counter()
         for rule in self.instruction_optimizer_rules:
             rule.log_dir = self.log_dir
             self.instruction_optimizer.add_rule(rule)
@@ -105,9 +110,13 @@ class D810Manager:
         for cfg_rule in self.block_optimizer_rules:
             cfg_rule.log_dir = self.log_dir
             self.block_optimizer.add_rule(cfg_rule)
+        print(f"    ⏱ Rule registration: {time.perf_counter() - t_rules:.2f}s")
 
+        t_hooks = time.perf_counter()
         self.hx_decompiler_hook = HexraysDecompilationHook(self.event_emitter.emit)
         self._install_hooks()
+        print(f"    ⏱ Hook installation: {time.perf_counter() - t_hooks:.2f}s")
+        print(f"    ⏱ D810Manager.start() total: {time.perf_counter() - t0:.2f}s")
         self._started = True
 
     def _install_hooks(self):
@@ -295,17 +304,21 @@ class D810State(metaclass=SingletonMeta):
         self.current_blk_rules = []
 
         # Build lists of available rules, skipping abstract / hidden ones
+        t_rules = time.perf_counter()
         self.known_ins_rules = [
             rule_cls()
             for rule_cls in InstructionOptimizationRule.registry.values()
             if not inspect.isabstract(rule_cls)
         ]
+        print(f"  ⏱ Instantiate {len(self.known_ins_rules)} instruction rules: {time.perf_counter() - t_rules:.2f}s")
 
+        t_blk = time.perf_counter()
         self.known_blk_rules = [
             rule_cls()
             for rule_cls in FlowOptimizationRule.registry.values()
             if not inspect.isabstract(rule_cls)
         ]
+        print(f"  ⏱ Instantiate {len(self.known_blk_rules)} block rules: {time.perf_counter() - t_blk:.2f}s")
 
         # Clamp to available projects, if any
         if projects := len(self.project_manager):
