@@ -14,10 +14,10 @@ from d810.optimizers.dsl import (
 )
 from d810.optimizers.rules import VerifiableRule
 from d810.optimizers.microcode.instructions.pattern_matching.rewrite_add_refactored import (
-    Add_SpecialConstant1,
-    Add_SpecialConstant3,
-    Add_OLLVM2,
-    AddXor_Constrained1,
+    Add_SpecialConstantRule_1,
+    Add_SpecialConstantRule_3,
+    Add_OllvmRule_2,
+    AddXor_Rule_1,
 )
 
 
@@ -206,8 +206,8 @@ class TestConstrainedRulesIntegration:
     """Integration tests for constrained rules."""
 
     def test_add_special_constant1_structure(self):
-        """Test Add_SpecialConstant1 has correct structure."""
-        rule = Add_SpecialConstant1()
+        """Test Add_SpecialConstantRule_1 has correct structure."""
+        rule = Add_SpecialConstantRule_1()
 
         assert hasattr(rule, 'PATTERN')
         assert hasattr(rule, 'REPLACEMENT')
@@ -215,24 +215,24 @@ class TestConstrainedRulesIntegration:
         assert len(rule.CONSTRAINTS) > 0
 
     def test_add_special_constant3_has_dynamic_const(self):
-        """Test Add_SpecialConstant3 uses DynamicConst."""
-        rule = Add_SpecialConstant3()
+        """Test Add_SpecialConstantRule_3 uses DynamicConst."""
+        rule = Add_SpecialConstantRule_3()
 
         # Check that val_res is defined
-        assert hasattr(Add_SpecialConstant3, 'val_res')
-        assert isinstance(Add_SpecialConstant3.val_res, DynamicConst)
+        assert hasattr(Add_SpecialConstantRule_3, 'val_res')
+        assert isinstance(Add_SpecialConstantRule_3.val_res, DynamicConst)
 
     def test_add_ollvm2_has_constraints(self):
-        """Test Add_OLLVM2 has lambda constraint."""
-        rule = Add_OLLVM2()
+        """Test Add_OllvmRule_2 has lambda constraint."""
+        rule = Add_OllvmRule_2()
 
         assert len(rule.CONSTRAINTS) > 0
         # First constraint should be a lambda
         assert callable(rule.CONSTRAINTS[0])
 
     def test_addxor_constrained1_structure(self):
-        """Test AddXor_Constrained1 structure."""
-        rule = AddXor_Constrained1()
+        """Test AddXor_Rule_1 structure."""
+        rule = AddXor_Rule_1()
 
         assert len(rule.CONSTRAINTS) > 0
         # Should use when.is_bnot
