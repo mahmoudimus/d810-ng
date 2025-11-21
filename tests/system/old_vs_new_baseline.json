@@ -3,12 +3,12 @@
     "description": "XOR pattern simplification",
     "total_rules_fired": 1,
     "total_changes": 0,
-    "old_rules_fired": [
+    "old_rules_fired": [],
+    "new_rules_fired": [
       "Xor_MbaRule_3"
     ],
-    "new_rules_fired": [],
-    "old_count": 1,
-    "new_count": 0,
+    "old_count": 0,
+    "new_count": 1,
     "rules_detail": {
       "Xor_MbaRule_3": {
         "fire_count": 2,
@@ -53,13 +53,13 @@
     "description": "Opaque predicate removal",
     "total_rules_fired": 3,
     "total_changes": 1,
-    "old_rules_fired": [
+    "old_rules_fired": [],
+    "new_rules_fired": [
       "Or_Rule_1",
       "Xor_HackersDelightRule_1"
     ],
-    "new_rules_fired": [],
-    "old_count": 2,
-    "new_count": 0,
+    "old_count": 0,
+    "new_count": 2,
     "rules_detail": {
       "Or_Rule_1": {
         "fire_count": 2,
