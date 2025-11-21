@@ -4,6 +4,39 @@ This file tracks session context for continuity across conversations.
 
 ---
 
+## Critical Architecture Notes
+
+### Module Discovery and Registration
+
+**IMPORTANT**: Do NOT add direct imports to `__init__.py` files to trigger class registration.
+
+The project uses a **scanner/reloader mechanism** for module discovery:
+
+1. **IDA Plugin Context** (`src/D810.py`):
+   - `D810Plugin.reload()` calls `_reload_package_with_graph()`
+   - This walks all modules via `pkgutil.walk_packages()` and loads them
+   - Classes auto-register via `Registrant` metaclass when modules are imported
+
+2. **Test Context** (`tests/system/ida_test_base.py`):
+   - `IDAProTestCase.setUpClass()` calls `_Scanner.scan()`
+   - Discovers and loads all d810 modules before tests run
+
+3. **Key Files**:
+   - `src/d810/reloadable.py` - Contains `_Scanner`, `Reloader`, `_reload_package_with_graph()`
+   - `src/d810/registry.py` - Contains `Registrant` metaclass for auto-registration
+
+**Why this matters**:
+- Adding imports to `__init__.py` creates maintenance burden and bypasses the intended mechanism
+- The scanner ensures ALL modules are discovered, including new ones added later
+- Keep `__init__.py` files minimal (just docstrings)
+
+**If you encounter `KeyError` for optimizer classes** (e.g., `KeyError: 'chainoptimizer'`):
+- The scanner isn't being called in that context
+- Solution: Ensure `_Scanner.scan()` or `_reload_package_with_graph()` runs before accessing the registry
+- Do NOT add direct imports as a workaround
+
+---
+
 ## Session Context History
 
 ### Session: 2025-11-19 (Context save after module discovery refactoring)
