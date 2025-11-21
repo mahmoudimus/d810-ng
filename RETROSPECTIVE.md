@@ -97,7 +97,7 @@ class Xor_HackersDelightRule_1(VerifiableRule):
 
 ### ✅ **2. Self-Verifying Rules with Z3 (COMPLETE)**
 
-**Status:** 100% complete with 168 formal proofs running
+**Status:** Framework 100% complete, 162 tests implemented (38 pass, 124 fail)
 
 **Implementation:**
 - `VerifiableRule` abstract base class with `verify()` method
@@ -106,7 +106,7 @@ class Xor_HackersDelightRule_1(VerifiableRule):
 - Automatic rule registry via `Registrant` metaclass
 
 **Test Coverage:**
-- Generic test: `test_rule_is_correct[rulename]` for all 168 rules
+- Generic test: `test_rule_is_correct[rulename]` for 162 rules
 - Z3 solver runs formal verification for each rule
 - Tests catch incorrect transformations at development time
 
@@ -133,9 +133,11 @@ class CstSimplificationRule5(VerifiableRule):
 - Constraints formalized (not just comments)
 
 **Test Results:**
-- 168 rules with Z3 verification
-- ~140 rules currently failing verification (pre-existing issues)
+- 162 rules with Z3 verification tests (main branch had 168 rules, some not included)
+- 38 tests PASSED (23.5%) - rules with correct implementations
+- 124 tests FAILED (76.5%) - includes at least 3 known_incorrect rules from main branch
 - Verification framework complete and working
+- Note: Cannot confirm if failures are regressions without running main branch tests
 
 ---
 
