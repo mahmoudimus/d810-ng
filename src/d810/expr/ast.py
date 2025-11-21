@@ -998,7 +998,10 @@ class AstConstant(AstLeaf):
 
     @property
     def value(self):
-        assert self.mop is not None and self.mop.t == ida_hexrays.mop_n
+        # For Z3 verification before pattern matching, use expected_value
+        if self.mop is None:
+            return self.expected_value
+        assert self.mop.t == ida_hexrays.mop_n
         return self.mop.nnn.value
 
     @_compat.override
