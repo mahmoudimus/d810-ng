@@ -9,4 +9,8 @@ if str(src_path) not in sys.path:
 
 # Import idapro BEFORE any d810 modules that use IDA APIs
 # This is required for standalone test execution (idalib mode)
-import idapro
+# Only import if available (when running in IDA Pro environment)
+try:
+    import idapro
+except ModuleNotFoundError:
+    pass  # Not in IDA Pro environment, skip idapro import
