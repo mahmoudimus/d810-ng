@@ -140,10 +140,10 @@ class TestVerifiableRuleConstraints:
     def test_check_runtime_constraints_empty(self):
         """Test that rules with no constraints pass."""
         from d810.optimizers.microcode.instructions.pattern_matching.rewrite_add_refactored import (
-            Add_HackersDelight1
+            Add_HackersDelightRule_1
         )
 
-        rule = Add_HackersDelight1()
+        rule = Add_HackersDelightRule_1()
 
         # Empty context should pass (no constraints to check)
         assert rule.check_runtime_constraints({}) == True
@@ -209,8 +209,8 @@ class TestConstrainedRulesIntegration:
         """Test Add_SpecialConstantRule_1 has correct structure."""
         rule = Add_SpecialConstantRule_1()
 
-        assert hasattr(rule, 'PATTERN')
-        assert hasattr(rule, 'REPLACEMENT')
+        assert hasattr(rule, 'pattern')
+        assert hasattr(rule, 'replacement')
         assert hasattr(rule, 'CONSTRAINTS')
         assert len(rule.CONSTRAINTS) > 0
 
@@ -259,8 +259,8 @@ class TestDSLExtensionUsage:
 
         rule = SimpleConstrainedRule()
 
-        assert rule.PATTERN is not None
-        assert rule.REPLACEMENT is not None
+        assert rule.pattern is not None
+        assert rule.replacement is not None
         assert len(rule.CONSTRAINTS) == 1
 
     def test_dynamic_const_rule(self):
@@ -279,7 +279,9 @@ class TestDSLExtensionUsage:
 
         rule = DynamicConstRule()
 
-        assert hasattr(DynamicConstRule, 'val_res')
+        # The rule should have pattern and replacement after init
+        assert rule.pattern is not None
+        assert rule.replacement is not None
 
     def test_complex_constraint_rule(self):
         """Test rule with multiple constraints."""
