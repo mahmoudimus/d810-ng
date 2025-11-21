@@ -1,6 +1,7 @@
 import contextlib
 import logging
 import os
+import time
 from typing import Optional
 
 import idaapi
@@ -132,7 +133,10 @@ def d810_state(*, all_rules=False):
     """
     state = D810State()  # singleton
     if not (was_loaded := state.is_loaded()):
+        t_load_start = time.perf_counter()
         state.load(gui=False)
+        t_load = time.perf_counter() - t_load_start
+        print(f"  ⏱ D810State.load() took {t_load:.2f}s")
 
     # Override rule selection for testing
     if all_rules:
@@ -143,7 +147,10 @@ def d810_state(*, all_rules=False):
         logger.debug(f"all_rules=True: Loaded {len(state.current_ins_rules)} instruction rules (bypassing project config)")
 
     if not (was_started := state.manager.started):
+        t_start = time.perf_counter()
         state.start_d810()
+        t_start_elapsed = time.perf_counter() - t_start
+        print(f"  ⏱ D810State.start_d810() took {t_start_elapsed:.2f}s")
 
     # Create a new deobfuscation context for this session
     ctx = DeobfuscationContext()

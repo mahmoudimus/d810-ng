@@ -9,6 +9,7 @@ import pathlib
 import shutil
 import sys
 import tempfile
+import time
 import unittest
 import warnings
 
@@ -113,16 +114,22 @@ class IDAProTestCase(CoveredIntegrationTest):
         if not IDA_AVAILABLE:
             raise unittest.SkipTest("IDA Pro API not available")
 
+        cls._timing_data = {}
+        t0 = time.perf_counter()
+
         # Discover and load all d810 modules to ensure optimizer classes are registered
         # Import d810 first to ensure it's in sys.modules, then use its __path__
         import d810
         from d810.reloadable import _Scanner
+        t_scan_start = time.perf_counter()
         _Scanner.scan(
             package_path=d810.__path__,
             prefix="d810.",
             callback=None,
             skip_packages=False,
         )
+        cls._timing_data['scanner_scan'] = time.perf_counter() - t_scan_start
+        print(f"  ⏱ _Scanner.scan() took {cls._timing_data['scanner_scan']:.2f}s")
 
         if cls.binary_name is None:
             raise ValueError("Subclasses must set binary_name class variable")
@@ -191,14 +198,20 @@ class IDAProTestCase(CoveredIntegrationTest):
 
         # Open database once for all tests
         logger.info(f"Opening database {cls.temp_binary_path}...")
+        t_db_start = time.perf_counter()
         result = idapro.open_database(str(cls.temp_binary_path), True)
+        cls._timing_data['db_open'] = time.perf_counter() - t_db_start
+        print(f"  ⏱ idapro.open_database() took {cls._timing_data['db_open']:.2f}s")
         logger.debug(f"Open result: {result}")
 
         if result != 0:
             raise unittest.SkipTest(f"Failed to open database. Result code: {result}")
 
         # Run auto analysis
+        t_auto_start = time.perf_counter()
         idaapi.auto_wait()
+        cls._timing_data['auto_wait'] = time.perf_counter() - t_auto_start
+        print(f"  ⏱ idaapi.auto_wait() took {cls._timing_data['auto_wait']:.2f}s")
         cls.database_opened = True
 
         # Store commonly used values
