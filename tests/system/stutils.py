@@ -1,4 +1,5 @@
 import contextlib
+import logging
 import os
 from typing import Optional
 
@@ -6,6 +7,8 @@ import idaapi
 import idc
 
 from d810.manager import D810State
+
+logger = logging.getLogger(__name__)
 from d810.optimizers.instrumentation import (
     DeobfuscationContext,
     get_current_deobfuscation_context,
