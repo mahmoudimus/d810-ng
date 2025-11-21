@@ -72,7 +72,7 @@ class Mul_MBA_4(VerifiableRule):
 # ============================================================================
 
 
-class Mul_Factor_1(VerifiableRule):
+class Mul_FactorRule_1(VerifiableRule):
     """Simplify: 2 + 2*(y + (x | ~y)) => 2*(x & y) (with bnot verification)
 
     Factoring pattern producing multiplication of AND.
@@ -97,7 +97,7 @@ class Mul_Factor_1(VerifiableRule):
     REFERENCE = "Multiplication factoring with bnot verification"
 
 
-class Mul_Factor_2(VerifiableRule):
+class Mul_FactorRule_2(VerifiableRule):
     """Simplify: -(x & y) - (x & y) => -2 * (x & y)
 
     Produces multiplication by -2 (0xFFFFFFFE in 32-bit two's complement).

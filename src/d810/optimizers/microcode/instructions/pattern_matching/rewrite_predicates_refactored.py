@@ -279,7 +279,7 @@ class PredSetb_1(VerifiableRule):
 # ============================================================================
 
 
-class Pred0_Rule1(VerifiableRule):
+class Pred0Rule1(VerifiableRule):
     """Simplify: x * (x - 1) & 1 => 0
 
     For any integer x:
@@ -297,7 +297,7 @@ class Pred0_Rule1(VerifiableRule):
     REFERENCE = "Parity analysis"
 
 
-class Pred0_Rule2(VerifiableRule):
+class Pred0Rule2(VerifiableRule):
     """Simplify: x * (x + 1) & 1 => 0
 
     Same as Pred0_Rule1: consecutive integers have opposite parity,
@@ -313,7 +313,7 @@ class Pred0_Rule2(VerifiableRule):
     REFERENCE = "Parity analysis"
 
 
-class Pred0_Rule3(VerifiableRule):
+class Pred0Rule3(VerifiableRule):
     """Simplify: x & ~x => 0
 
     A value AND its complement is always 0.
@@ -328,7 +328,7 @@ class Pred0_Rule3(VerifiableRule):
     REFERENCE = "Boolean algebra"
 
 
-class Pred0_Rule4(VerifiableRule):
+class Pred0Rule4(VerifiableRule):
     """Simplify: xdu(x & 1) == 2 => 0
 
     xdu extends (x & 1) which is either 0 or 1.
@@ -348,7 +348,7 @@ class Pred0_Rule4(VerifiableRule):
     REFERENCE = "Range analysis"
 
 
-class Pred0_Rule5(VerifiableRule):
+class Pred0Rule5(VerifiableRule):
     """Simplify: x & ~(x | y) => 0
 
     Proof: x & ~(x | y) = x & (~x & ~y) [De Morgan]
@@ -366,7 +366,7 @@ class Pred0_Rule5(VerifiableRule):
     REFERENCE = "Boolean algebra + De Morgan"
 
 
-class Pred0_Rule6(VerifiableRule):
+class Pred0Rule6(VerifiableRule):
     """Simplify: (x & y) & ~(x | y) => 0
 
     Proof: (x & y) & ~(x | y) = (x & y) & (~x & ~y) [De Morgan]
@@ -387,7 +387,7 @@ class Pred0_Rule6(VerifiableRule):
     REFERENCE = "Boolean algebra + De Morgan"
 
 
-class Pred0_Rule7(VerifiableRule):
+class Pred0Rule7(VerifiableRule):
     """Simplify: (x & y) & (x ^ y) => 0
 
     Proof: For a bit position to be 1 in the result:
