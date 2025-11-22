@@ -97,12 +97,14 @@ class CstSimplificationRule4(VerifiableRule):
     """
 
     c_1 = Const("c_1")
-    c_res = DynamicConst(
-        "c_res", lambda ctx: SUB_TABLE[ctx["c_1"].size] - ctx["c_1"].value, size_from="c_1"
-    )
+    c_res = Const("c_res")  # -c_1
 
     PATTERN = x - (c_1 - y)
     REPLACEMENT = x + (y + c_res)
+
+    CONSTRAINTS = [
+        c_res == -c_1  # Two's complement negation
+    ]
 
     DESCRIPTION = "Simplify x - (c - y) to x + y + (-c)"
     REFERENCE = "Subtraction identity"
@@ -120,8 +122,7 @@ class CstSimplificationRule5(VerifiableRule):
     c_2 = Const("c_2")
 
     CONSTRAINTS = [
-        # Check that c_2 == ~c_1
-        lambda ctx: ctx["c_2"].value == (ctx["c_1"].value ^ AND_TABLE[ctx["c_1"].size])
+        c_2 == ~c_1  # Bitwise NOT relationship
     ]
 
     PATTERN = (x & c_1) | (y & c_2)
@@ -144,6 +145,10 @@ class CstSimplificationRule6(VerifiableRule):
     PATTERN = (x ^ c_1) & c_2
     REPLACEMENT = (x & c_2) ^ c_res
 
+    CONSTRAINTS = [
+        c_res == c_1 & c_2  # AND of constants
+    ]
+
     DESCRIPTION = "Simplify (x ^ c1) & c2 to (x & c2) ^ (c1 & c2)"
     REFERENCE = "XOR-AND folding"
 
@@ -161,6 +166,10 @@ class CstSimplificationRule7(VerifiableRule):
     PATTERN = (x & c_1) >> c_2
     REPLACEMENT = (x >> c_2) & c_res
 
+    CONSTRAINTS = [
+        c_res == c_1 >> c_2  # Shift constant
+    ]
+
     DESCRIPTION = "Simplify (x & c1) >> c2 to (x >> c2) & (c1 >> c2)"
     REFERENCE = "Shift propagation"
 
@@ -175,13 +184,10 @@ class CstSimplificationRule8(VerifiableRule):
 
     c_1 = Const("c_1")
     c_2 = Const("c_2")
-    c_res = DynamicConst(
-        "c_res",
-        lambda ctx: ctx["c_1"].value & ~ctx["c_2"].value,
-        size_from="c_1",
-    )
+    c_res = Const("c_res")  # c_1 & ~c_2
 
     CONSTRAINTS = [
+        c_res == c_1 & ~c_2,  # Remove redundant bits
         # Only apply if we actually simplify (c_res != c_1)
         lambda ctx: (ctx["c_1"].value & ~ctx["c_2"].value) != ctx["c_1"].value
     ]
@@ -201,20 +207,16 @@ class CstSimplificationRule9(VerifiableRule):
 
     c_1 = Const("c_1")
     c_2 = Const("c_2")
-
-    c_and = DynamicConst(
-        "c_and",
-        lambda ctx: (AND_TABLE[ctx["c_1"].size] ^ ctx["c_1"].value) & ctx["c_2"].value,
-        size_from="x_0",
-    )
-    c_xor = DynamicConst(
-        "c_xor",
-        lambda ctx: ctx["c_1"].value & ctx["c_2"].value,
-        size_from="x_0",
-    )
+    c_and = Const("c_and")  # ~c_1 & c_2
+    c_xor = Const("c_xor")  # c_1 & c_2
 
     PATTERN = (x | c_1) & c_2
     REPLACEMENT = (x & c_and) ^ c_xor
+
+    CONSTRAINTS = [
+        c_and == ~c_1 & c_2,  # NOT-AND folding
+        c_xor == c_1 & c_2     # AND for XOR
+    ]
 
     DESCRIPTION = "Simplify (x | c1) & c2 to (x & (~c1 & c2)) ^ (c1 & c2)"
     REFERENCE = "OR-AND folding"
@@ -230,14 +232,10 @@ class CstSimplificationRule10(VerifiableRule):
 
     c_1 = Const("c_1")
     c_2 = Const("c_2")
-
-    c_and = DynamicConst(
-        "c_and",
-        lambda ctx: (AND_TABLE[ctx["c_1"].size] ^ ctx["c_1"].value) & ctx["c_2"].value,
-        size_from="x_0",
-    )
+    c_and = Const("c_and")  # ~c_1 & c_2
 
     CONSTRAINTS = [
+        c_and == ~c_1 & c_2,  # Compute result mask
         # Check that c_1 is subset of c_2
         lambda ctx: (ctx["c_1"].value & ctx["c_2"].value) == ctx["c_1"].value
     ]
@@ -257,20 +255,16 @@ class CstSimplificationRule11(VerifiableRule):
 
     c_1 = Const("c_1")
     c_2 = Const("c_2")
-
-    c_1_bnot = DynamicConst(
-        "c_1_bnot",
-        lambda ctx: AND_TABLE[ctx["c_1"].size] ^ ctx["c_1"].value,
-        size_from="c_1",
-    )
-    c_and = DynamicConst(
-        "c_and",
-        lambda ctx: (AND_TABLE[ctx["c_1"].size] ^ ctx["c_1"].value) & ctx["c_2"].value,
-        size_from="c_1",
-    )
+    c_1_bnot = Const("c_1_bnot")  # ~c_1
+    c_and = Const("c_and")  # ~c_1 & c_2
 
     PATTERN = (~x ^ c_1) | (x & c_2)
     REPLACEMENT = (x ^ c_1_bnot) ^ (x & c_and)
+
+    CONSTRAINTS = [
+        c_1_bnot == ~c_1,      # NOT of c_1
+        c_and == ~c_1 & c_2     # AND folding
+    ]
 
     DESCRIPTION = "Simplify (~x ^ c1) | (x & c2)"
     REFERENCE = "NOT-XOR-OR folding"
@@ -284,15 +278,14 @@ class CstSimplificationRule12(VerifiableRule):
 
     c_1 = Const("c_1")
     c_2 = Const("c_2")
-
-    c_diff = DynamicConst(
-        "c_diff",
-        lambda ctx: ctx["c_2"].value - ctx["c_1"].value,
-        size_from="c_1",
-    )
+    c_diff = Const("c_diff")  # c_2 - c_1
 
     PATTERN = (c_1 - x) - TWO * (~x & c_2)
     REPLACEMENT = (~x ^ c_2) - c_diff
+
+    CONSTRAINTS = [
+        c_diff == c_2 - c_1  # Constant difference
+    ]
 
     DESCRIPTION = "Simplify (c1 - x) - 2*(~x & c2)"
     REFERENCE = "MBA constant pattern"
@@ -305,11 +298,14 @@ class CstSimplificationRule13(VerifiableRule):
     """
 
     cst_1 = Const("cst_1")
-
     not_cst_1 = Const("not_cst_1")  # ~cst_1
 
     PATTERN = (cst_1 & (x ^ y)) ^ y
     REPLACEMENT = (x & cst_1) ^ (y & not_cst_1)
+
+    CONSTRAINTS = [
+        not_cst_1 == ~cst_1  # NOT of cst_1
+    ]
 
     DESCRIPTION = "Simplify (c & (x ^ y)) ^ y to (x & c) ^ (y & ~c)"
     REFERENCE = "XOR constant distribution"
@@ -325,14 +321,10 @@ class CstSimplificationRule14(VerifiableRule):
 
     c_1 = Const("c_1")
     c_2 = Const("c_2")
-
-    lnot_c_1 = DynamicConst(
-        "lnot_c_1",
-        lambda ctx: ctx["c_1"].value ^ AND_TABLE[ctx["c_1"].size],
-        size_from="c_1",
-    )
+    lnot_c_1 = Const("lnot_c_1")  # ~c_1
 
     CONSTRAINTS = [
+        lnot_c_1 == ~c_1,  # NOT of c_1
         # Check (~c_1) ^ c_2 == 1
         lambda ctx: ((ctx["c_1"].value ^ AND_TABLE[ctx["c_1"].size]) ^ ctx["c_2"].value) == 1,
         # Check ~c_1 is even (LSB = 0)
@@ -356,14 +348,10 @@ class CstSimplificationRule15(VerifiableRule):
 
     c_1 = Const("c_1")
     c_2 = Const("c_2")
-
-    c_res = DynamicConst(
-        "c_res",
-        lambda ctx: ctx["c_1"].value + ctx["c_2"].value,
-        size_from="c_1",
-    )
+    c_res = Const("c_res")  # c_1 + c_2
 
     CONSTRAINTS = [
+        c_res == c_1 + c_2,  # Sum of shift amounts
         # Check individual shifts are valid
         lambda ctx: ctx["c_1"].value < ctx["x_0"].size,
         lambda ctx: ctx["c_2"].value < ctx["x_0"].size,
@@ -390,15 +378,14 @@ class CstSimplificationRule16(VerifiableRule):
     """
 
     c_1 = Const("c_1")
-
-    bnot_c_1 = DynamicConst(
-        "bnot_c_1",
-        lambda ctx: ctx["c_1"].value ^ AND_TABLE[ctx["c_1"].size],
-        size_from="c_1",
-    )
+    bnot_c_1 = Const("bnot_c_1")  # ~c_1
 
     PATTERN = ~(x ^ c_1)
     REPLACEMENT = x ^ bnot_c_1
+
+    CONSTRAINTS = [
+        bnot_c_1 == ~c_1  # NOT of c_1
+    ]
 
     DESCRIPTION = "Simplify ~(x ^ c) to x ^ ~c"
     REFERENCE = "NOT-XOR identity"
@@ -411,15 +398,14 @@ class CstSimplificationRule17(VerifiableRule):
     """
 
     c_1 = Const("c_1")
-
-    bnot_c_1 = DynamicConst(
-        "bnot_c_1",
-        lambda ctx: ctx["c_1"].value ^ AND_TABLE[ctx["c_1"].size],
-        size_from="c_1",
-    )
+    bnot_c_1 = Const("bnot_c_1")  # ~c_1
 
     PATTERN = ~(x | c_1)
     REPLACEMENT = ~x & bnot_c_1
+
+    CONSTRAINTS = [
+        bnot_c_1 == ~c_1  # NOT of c_1
+    ]
 
     DESCRIPTION = "Simplify ~(x | c) to ~x & ~c"
     REFERENCE = "De Morgan's law"
@@ -432,15 +418,14 @@ class CstSimplificationRule18(VerifiableRule):
     """
 
     c_1 = Const("c_1")
-
-    bnot_c_1 = DynamicConst(
-        "bnot_c_1",
-        lambda ctx: ctx["c_1"].value ^ AND_TABLE[ctx["c_1"].size],
-        size_from="c_1",
-    )
+    bnot_c_1 = Const("bnot_c_1")  # ~c_1
 
     PATTERN = ~(x & c_1)
     REPLACEMENT = ~x | bnot_c_1
+
+    CONSTRAINTS = [
+        bnot_c_1 == ~c_1  # NOT of c_1
+    ]
 
     DESCRIPTION = "Simplify ~(x & c) to ~x | ~c"
     REFERENCE = "De Morgan's law"
@@ -487,20 +472,13 @@ class CstSimplificationRule20(VerifiableRule):
     c_and_1 = Const("c_and_1")
     c_and_2 = Const("c_and_2")
     c_xor = Const("c_xor")
-
-    c_and_res = DynamicConst(
-        "c_and_res",
-        lambda ctx: ctx["c_and_1"].value ^ ctx["c_and_2"].value,
-        size_from="c_and_1",
-    )
-    c_xor_res = DynamicConst(
-        "c_xor_res",
-        lambda ctx: ctx["c_and_1"].value ^ ctx["c_xor"].value,
-        size_from="c_and_1",
-    )
+    c_and_res = Const("c_and_res")  # c_and_1 ^ c_and_2
+    c_xor_res = Const("c_xor_res")  # c_and_1 ^ c_xor
 
     CONSTRAINTS = [
         when.is_bnot("x_0", "bnot_x_0"),
+        c_and_res == c_and_1 ^ c_and_2,  # XOR of masks
+        c_xor_res == c_and_1 ^ c_xor,     # XOR result
         # Check disjoint masks
         lambda ctx: (ctx["c_and_1"].value & ctx["c_and_2"].value) == 0,
     ]
@@ -524,12 +502,11 @@ class CstSimplificationRule21(VerifiableRule):
     bnot_c_and = Const("bnot_c_and")
     c_xor_1 = Const("c_xor_1")
     c_xor_2 = Const("c_xor_2")
-
     c_xor_res = Const("c_xor_res")  # c_xor_1 ^ c_xor_2
 
     CONSTRAINTS = [
-        # Check bnot_c_and == ~c_and
-        lambda ctx: ctx["bnot_c_and"].value == (ctx["c_and"].value ^ AND_TABLE[ctx["c_and"].size]),
+        bnot_c_and == ~c_and,           # NOT relationship
+        c_xor_res == c_xor_1 ^ c_xor_2,  # XOR result
         # Check disjoint XOR constants
         lambda ctx: (ctx["c_xor_1"].value & ctx["c_xor_2"].value) == 0,
     ]
@@ -558,14 +535,13 @@ class CstSimplificationRule22(VerifiableRule):
     bnot_c_and = Const("bnot_c_and")
     c_xor_1 = Const("c_xor_1")
     c_xor_2 = Const("c_xor_2")
-
     c_xor_res = Const("c_xor_res")  # c_xor_1 ^ c_xor_2
 
     CONSTRAINTS = [
         # Variable NOT verification
         when.is_bnot("x_0", "bnot_x_0"),
-        # Constant NOT verification
-        lambda ctx: ctx["bnot_c_and"].value == (ctx["c_and"].value ^ AND_TABLE[ctx["c_and"].size]),
+        bnot_c_and == ~c_and,            # Constant NOT
+        c_xor_res == c_xor_1 ^ c_xor_2,   # XOR result
         # Disjoint XOR constants
         lambda ctx: (ctx["c_xor_1"].value & ctx["c_xor_2"].value) == 0,
         # c_xor_1 lives in c_and
