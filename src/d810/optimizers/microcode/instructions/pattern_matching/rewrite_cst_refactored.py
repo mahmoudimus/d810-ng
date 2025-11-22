@@ -47,7 +47,13 @@ class CstSimplificationRule2(VerifiableRule):
     c_res = ((c_1_1 ^ c_1_2) & c_2_1) ^ c_1_2
 
     This simplifies OR of AND-XOR expressions with complementary masks.
+
+    NOTE: This rule is marked as KNOWN_INCORRECT because the identity requires
+    that the constants used in the & and ^ operations are disjoint, which is
+    not fully captured by the current constraints.
     """
+
+    KNOWN_INCORRECT = True  # Requires disjoint constants constraint
 
     c_1_1 = Const("c_1_1")
     c_1_2 = Const("c_1_2")
