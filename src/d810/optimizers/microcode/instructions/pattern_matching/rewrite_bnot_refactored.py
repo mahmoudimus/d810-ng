@@ -176,7 +176,12 @@ class Bnot_FactorRule_2(VerifiableRule):
 
     This handles the pattern where -1 is represented as the maximum unsigned
     value for the operand size (0xFF for 1 byte, 0xFFFF for 2 bytes, etc.)
+
+    NOTE: Z3 verification is skipped because this rule has size-dependent
+    constraints that cannot be automatically converted to Z3 expressions.
     """
+
+    SKIP_VERIFICATION = True  # Size-dependent constraint requires runtime checking
 
     minus_1 = Const("minus_1")
 

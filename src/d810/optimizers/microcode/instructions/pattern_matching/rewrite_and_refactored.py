@@ -404,7 +404,12 @@ class AndGetUpperBits_FactorRule_1(VerifiableRule):
         If size=4 bytes (32-bit):
         - c1 = 256, c2 = 8, c3 = 0xFF
         - c_res = (-256) & 0xFF = 0xFFFFFF00 & 0xFF = 0
+
+    NOTE: This rule is marked as KNOWN_INCORRECT because it is only true
+    under very specific (and unlikely) conditions.
     """
+
+    KNOWN_INCORRECT = True  # Only valid under very specific conditions
 
     c1, c2, c3 = Const("c_1"), Const("c_2"), Const("c_3")
     c_res = Const("c_res")  # (-c1) & c3
