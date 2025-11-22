@@ -53,22 +53,113 @@ except ImportError:
         pass
     mop_n = 0  # type: ignore
 
-    # Mock all IDA constants used in module-level dictionaries
-    # These are just placeholder integers - actual values don't matter for unit tests
-    m_nop = m_stx = m_ldx = m_ldc = m_mov = m_neg = m_lnot = m_bnot = 0
-    m_xds = m_xdu = m_low = m_high = m_add = m_sub = m_mul = m_udiv = m_sdiv = 0
-    m_umod = m_smod = m_or = m_and = m_xor = m_shl = m_shr = m_sar = 0
-    m_cfadd = m_ofadd = m_cfshl = m_cfshr = m_sets = m_seto = m_setp = 0
-    m_setnz = m_setz = m_seta = m_setae = m_setb = m_setbe = 0
-    m_setg = m_setge = m_setl = m_setle = 0
-    m_jcnd = m_jnz = m_jz = m_jae = m_jb = m_ja = m_jbe = 0
-    m_jg = m_jge = m_jl = m_jle = m_jtbl = m_ijmp = m_goto = 0
-    m_call = m_icall = m_ret = m_push = m_pop = m_und = m_ext = 0
-    m_f2i = m_f2u = m_i2f = m_u2f = m_f2f = m_fneg = m_fadd = m_fsub = m_fmul = m_fdiv = 0
-    MMAT_ZERO = MMAT_GENERATED = MMAT_PREOPTIMIZED = MMAT_LOCOPT = 0
-    MMAT_CALLS = MMAT_GLBOPT1 = MMAT_GLBOPT2 = MMAT_GLBOPT3 = MMAT_LVARS = 0
-    mop_z = mop_r = mop_n = mop_str = mop_d = mop_S = mop_v = mop_b = 0
-    mop_f = mop_l = mop_a = mop_h = mop_c = mop_fn = mop_p = mop_sc = 0
+    # Mock all IDA constants - MUST use unique values so OPCODES_INFO dict works
+    # These values must match those in dsl.py and z3_utils.py for consistency
+    # Core opcodes (matching z3_utils.py)
+    m_add = 0
+    m_and = 1
+    m_bnot = 2
+    m_mul = 3
+    m_neg = 4
+    m_or = 5
+    m_sar = 6
+    m_shl = 7
+    m_shr = 8
+    m_sub = 9
+    m_xor = 10
+    m_lnot = 11
+    m_udiv = 12
+    m_sdiv = 13
+    m_umod = 14
+    m_smod = 15
+    m_setnz = 16
+    m_setz = 17
+    m_setae = 18
+    m_setb = 19
+    m_seta = 20
+    m_setbe = 21
+    m_setg = 22
+    m_setge = 23
+    m_setl = 24
+    m_setle = 25
+    m_setp = 26
+    m_sets = 27
+    m_xdu = 28
+    m_xds = 29
+    m_low = 30
+    m_high = 31
+
+    # Additional opcodes not used in Z3 but needed for OPCODES_INFO dict
+    m_nop = 32
+    m_stx = 33
+    m_ldx = 34
+    m_ldc = 35
+    m_mov = 36
+    m_cfadd = 37
+    m_ofadd = 38
+    m_cfshl = 39
+    m_cfshr = 40
+    m_seto = 41
+    m_jcnd = 42
+    m_jnz = 43
+    m_jz = 44
+    m_jae = 45
+    m_jb = 46
+    m_ja = 47
+    m_jbe = 48
+    m_jg = 49
+    m_jge = 50
+    m_jl = 51
+    m_jle = 52
+    m_jtbl = 53
+    m_ijmp = 54
+    m_goto = 55
+    m_call = 56
+    m_icall = 57
+    m_ret = 58
+    m_push = 59
+    m_pop = 60
+    m_und = 61
+    m_ext = 62
+    m_f2i = 63
+    m_f2u = 64
+    m_i2f = 65
+    m_u2f = 66
+    m_f2f = 67
+    m_fneg = 68
+    m_fadd = 69
+    m_fsub = 70
+    m_fmul = 71
+    m_fdiv = 72
+
+    # Maturity levels
+    MMAT_ZERO = 0
+    MMAT_GENERATED = 1
+    MMAT_PREOPTIMIZED = 2
+    MMAT_LOCOPT = 3
+    MMAT_CALLS = 4
+    MMAT_GLBOPT1 = 5
+    MMAT_GLBOPT2 = 6
+    MMAT_GLBOPT3 = 7
+    MMAT_LVARS = 8
+
+    # Operand types
+    mop_z = 0
+    mop_r = 1
+    mop_n = 2
+    mop_str = 3
+    mop_d = 4
+    mop_S = 5
+    mop_v = 6
+    mop_b = 7
+    mop_f = 8
+    mop_l = 9
+    mop_a = 10
+    mop_h = 11
+    mop_c = 12
+    mop_fn = 13
+    mop_p = 14
+    mop_sc = 15
 
     # Create a mock ida_hexrays module with necessary attributes
     class _MockIDAHexrays:  # type: ignore
