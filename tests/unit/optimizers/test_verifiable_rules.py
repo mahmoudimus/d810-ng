@@ -19,6 +19,7 @@ from d810.optimizers.rules import RULE_REGISTRY, VerifiableRule
 try:
     import d810.optimizers.microcode.instructions.pattern_matching.rewrite_xor_refactored
     import d810.optimizers.microcode.instructions.pattern_matching.rewrite_neg_refactored
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_misc_refactored
 except ImportError as e:
     # If running in an environment without IDA, some imports might fail
     # The test will be skipped if no rules are registered

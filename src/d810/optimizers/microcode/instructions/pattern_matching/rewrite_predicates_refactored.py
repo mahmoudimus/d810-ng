@@ -506,16 +506,61 @@ class PredOr1_Rule1(VerifiableRule):
 
 
 # ============================================================================
+# Parity/Odd-Even Rules
+# ============================================================================
+
+
+class PredOdd1(VerifiableRule):
+    """Simplify: (x * (x - 1)) & 1 => 0
+
+    This always evaluates to 0 because x * (x - 1) is always even
+    (product of consecutive integers).
+
+    Proof: For any integer x:
+    - If x is even: x * (x-1) = even * odd = even
+    - If x is odd: x * (x-1) = odd * even = even
+    Therefore the LSB is always 0.
+    """
+
+    val_0 = DynamicConst("val_0", lambda ctx: 0)
+
+    PATTERN = (x * (x - ONE)) & ONE
+    REPLACEMENT = val_0
+
+    DESCRIPTION = "Simplify (x * (x-1)) & 1 to 0"
+    REFERENCE = "Parity analysis: consecutive integers"
+
+
+class PredOdd2(VerifiableRule):
+    """Simplify: (x * (x + 1)) & 1 => 0
+
+    This always evaluates to 0 because x * (x + 1) is always even
+    (product of consecutive integers).
+
+    Proof: Same as PredOdd1, x and (x+1) are consecutive integers.
+    """
+
+    val_0 = DynamicConst("val_0", lambda ctx: 0)
+
+    PATTERN = (x * (x + ONE)) & ONE
+    REPLACEMENT = val_0
+
+    DESCRIPTION = "Simplify (x * (x+1)) & 1 to 0"
+    REFERENCE = "Parity analysis: consecutive integers"
+
+
+# ============================================================================
 # Summary
 # ============================================================================
 
 """
-Total Predicate rules: 21
+Total Predicate rules: 23
 - PredSetnz: 7 rules (set-if-not-zero)
 - PredSetz: 3 rules (set-if-zero)
 - PredSetb: 1 rule (set-if-below)
 - Pred0: 7 rules (always zero)
 - PredFF: 4 rules (always all-bits-set)
+- PredOdd: 2 rules (parity/odd-even analysis)
 - Complex: 2 rules (bit manipulation transforms)
 
 All rules verified by Z3 SMT solver.
