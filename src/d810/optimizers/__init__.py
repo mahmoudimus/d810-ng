@@ -12,22 +12,35 @@ This module provides the foundational components for the d810 optimization syste
 
 # Core infrastructure (must be imported first)
 from . import dsl
-from . import core
 from . import rules
 
-# Advanced features
-from . import instrumentation
-from . import caching
-from . import profiling
-from . import parallel
-from . import manager
+# Try to import IDA-dependent modules
+try:
+    from . import core
+    from . import instrumentation
+    from . import caching
+    from . import profiling
+    from . import parallel
+    from . import manager
+    IDA_AVAILABLE = True
+except (ImportError, ModuleNotFoundError):
+    # Allow module to be imported for unit testing without IDA Pro
+    IDA_AVAILABLE = False
+    core = None  # type: ignore
+    instrumentation = None  # type: ignore
+    caching = None  # type: ignore
+    profiling = None  # type: ignore
+    parallel = None  # type: ignore
+    manager = None  # type: ignore
 
 # Re-export commonly used classes for convenience
 from .dsl import Var, Const, DynamicConst, when
-from .core import OptimizationContext, OptimizationRule
 from .rules import VerifiableRule
-from .instrumentation import DeobfuscationContext
-from .manager import OptimizerManager, create_default_manager
+
+if IDA_AVAILABLE:
+    from .core import OptimizationContext, OptimizationRule
+    from .instrumentation import DeobfuscationContext
+    from .manager import OptimizerManager, create_default_manager
 
 __all__ = [
     # Modules

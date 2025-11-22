@@ -18,19 +18,36 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ida_hexrays import (
-    m_add,
-    m_and,
-    m_bnot,
-    m_mul,
-    m_neg,
-    m_or,
-    m_sar,
-    m_shl,
-    m_shr,
-    m_sub,
-    m_xor,
-)
+# Try to import IDA constants, fall back to mock values for unit testing
+try:
+    from ida_hexrays import (
+        m_add,
+        m_and,
+        m_bnot,
+        m_mul,
+        m_neg,
+        m_or,
+        m_sar,
+        m_shl,
+        m_shr,
+        m_sub,
+        m_xor,
+    )
+except ImportError:
+    # Mock IDA constants for unit testing without IDA Pro
+    # These are placeholder opcodes that allow the DSL to be imported.
+    # The actual values don't matter for Z3 verification - only the symbolic structure.
+    m_add = 0
+    m_and = 1
+    m_bnot = 2
+    m_mul = 3
+    m_neg = 4
+    m_or = 5
+    m_sar = 6
+    m_shl = 7
+    m_shr = 8
+    m_sub = 9
+    m_xor = 10
 
 if TYPE_CHECKING:
     from d810.expr.ast import AstBase, AstNode

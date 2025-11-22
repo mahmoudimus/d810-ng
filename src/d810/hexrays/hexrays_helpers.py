@@ -9,31 +9,84 @@ import enum
 import typing
 from typing import Optional, Tuple, Union
 
-import ida_hexrays
-from ida_hexrays import *
-from ida_hexrays import (
-    EQ_IGNSIZE,
-    m_ldx,
-    m_stx,
-    m_xds,
-    m_xdu,
-    mop_a,
-    mop_b,
-    mop_c,
-    mop_d,
-    mop_f,
-    mop_fn,
-    mop_h,
-    mop_l,
-    mop_n,
-    mop_p,
-    mop_r,
+# Try to import IDA modules, allow module to be imported for unit testing
+try:
+    import ida_hexrays
+    from ida_hexrays import *
+    from ida_hexrays import (
+        EQ_IGNSIZE,
+        m_ldx,
+        m_stx,
+        m_xds,
+        m_xdu,
+        mop_a,
+        mop_b,
+        mop_c,
+        mop_d,
+        mop_f,
+        mop_fn,
+        mop_h,
+        mop_l,
+        mop_n,
+        mop_p,
+        mop_r,
     mop_S,
     mop_sc,
     mop_str,
     mop_v,
     mop_z,
 )
+    IDA_AVAILABLE = True
+except ImportError:
+    # Allow module to be imported for unit testing without IDA Pro
+    # Mock all IDA constants that are used in module-level code
+    IDA_AVAILABLE = False
+
+    # Mock minimal IDA types/constants needed for AST construction
+    class mop_t:  # type: ignore
+        pass
+    class minsn_t:  # type: ignore
+        pass
+    class mblock_t:  # type: ignore
+        pass
+    class mba_t:  # type: ignore
+        pass
+    mop_n = 0  # type: ignore
+
+    # Mock all IDA constants used in module-level dictionaries
+    # These are just placeholder integers - actual values don't matter for unit tests
+    m_nop = m_stx = m_ldx = m_ldc = m_mov = m_neg = m_lnot = m_bnot = 0
+    m_xds = m_xdu = m_low = m_high = m_add = m_sub = m_mul = m_udiv = m_sdiv = 0
+    m_umod = m_smod = m_or = m_and = m_xor = m_shl = m_shr = m_sar = 0
+    m_cfadd = m_ofadd = m_cfshl = m_cfshr = m_sets = m_seto = m_setp = 0
+    m_setnz = m_setz = m_seta = m_setae = m_setb = m_setbe = 0
+    m_setg = m_setge = m_setl = m_setle = 0
+    m_jcnd = m_jnz = m_jz = m_jae = m_jb = m_ja = m_jbe = 0
+    m_jg = m_jge = m_jl = m_jle = m_jtbl = m_ijmp = m_goto = 0
+    m_call = m_icall = m_ret = m_push = m_pop = m_und = m_ext = 0
+    m_f2i = m_f2u = m_i2f = m_u2f = m_f2f = m_fneg = m_fadd = m_fsub = m_fmul = m_fdiv = 0
+    MMAT_ZERO = MMAT_GENERATED = MMAT_PREOPTIMIZED = MMAT_LOCOPT = 0
+    MMAT_CALLS = MMAT_GLBOPT1 = MMAT_GLBOPT2 = MMAT_GLBOPT3 = MMAT_LVARS = 0
+    mop_z = mop_r = mop_n = mop_str = mop_d = mop_S = mop_v = mop_b = 0
+    mop_f = mop_l = mop_a = mop_h = mop_c = mop_fn = mop_p = mop_sc = 0
+
+    # Create a mock ida_hexrays module with necessary attributes
+    class _MockIDAHexrays:  # type: ignore
+        MMAT_ZERO = MMAT_ZERO
+        MMAT_GENERATED = MMAT_GENERATED
+        MMAT_PREOPTIMIZED = MMAT_PREOPTIMIZED
+        MMAT_LOCOPT = MMAT_LOCOPT
+        MMAT_CALLS = MMAT_CALLS
+        MMAT_GLBOPT1 = MMAT_GLBOPT1
+        MMAT_GLBOPT2 = MMAT_GLBOPT2
+        MMAT_GLBOPT3 = MMAT_GLBOPT3
+        MMAT_LVARS = MMAT_LVARS
+        minsn_t = minsn_t
+        mop_t = mop_t
+        mblock_t = mblock_t
+        mba_t = mba_t
+
+    ida_hexrays = _MockIDAHexrays()
 
 from d810.conf.loggers import getLogger
 
@@ -250,6 +303,7 @@ MINSN_TO_AST_FORBIDDEN_OPCODES = CONTROL_FLOW_OPCODES + [
     m_ext,
 ]
 
+# These constant tables don't depend on IDA and are always available
 SUB_TABLE = {
     1: 0x100,
     2: 0x10000,

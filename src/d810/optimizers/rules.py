@@ -21,11 +21,11 @@ except ImportError:
 
 from d810.conf.loggers import getLogger
 from d810.expr.z3_utils import z3_prove_equivalence
-from d810.optimizers.core import OptimizationContext
 from d810.optimizers.dsl import SymbolicExpression
 
-# Import PatternMatchingRule only for type checking to avoid circular imports
+# Import types only for type checking to avoid circular imports and IDA dependencies
 if TYPE_CHECKING:
+    from d810.optimizers.core import OptimizationContext
     from d810.optimizers.microcode.instructions.pattern_matching.handler import PatternMatchingRule
 
 logger = getLogger(__name__)
