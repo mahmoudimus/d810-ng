@@ -17,7 +17,7 @@ All rules are verified using Z3 SMT solver.
 """
 
 from d810.hexrays.hexrays_helpers import AND_TABLE
-from d810.optimizers.dsl import Var, Const, DynamicConst, when
+from d810.optimizers.dsl import Var, Const, when
 from d810.optimizers.rules import VerifiableRule
 
 # Define variables for pattern matching
@@ -44,12 +44,11 @@ class PredSetnz_1(VerifiableRule):
     """
 
     c1, c2 = Const("c_1"), Const("c_2")
-    val_1 = DynamicConst("val_1", lambda ctx: 1, size_from="x_0")
 
     # Using m_mov as a placeholder for the constant result
     # In real IDA microcode, this would be an m_setnz that resolves to constant
     PATTERN = x | c1  # Will be wrapped in m_setnz(pattern, c2) by framework
-    REPLACEMENT = val_1
+    REPLACEMENT = ONE
 
     CONSTRAINTS = [
         lambda ctx: (ctx["c_1"].value | ctx["c_2"].value) != ctx["c_2"].value
@@ -68,10 +67,9 @@ class PredSetnz_2(VerifiableRule):
     """
 
     c1, c2 = Const("c_1"), Const("c_2")
-    val_1 = DynamicConst("val_1", lambda ctx: 1, size_from="x_0")
 
     PATTERN = x & c1
-    REPLACEMENT = val_1
+    REPLACEMENT = ONE
 
     CONSTRAINTS = [
         lambda ctx: (ctx["c_1"].value & ctx["c_2"].value) != ctx["c_2"].value
@@ -91,10 +89,9 @@ class PredSetnz_3(VerifiableRule):
     Mathematical proof: (x | 2) + (x ^ 2) >= 2 for all x, so never equals 0.
     """
 
-    val_1 = DynamicConst("val_1", lambda ctx: 1, size_from="x_0")
 
     PATTERN = (x | TWO) + (x ^ TWO)
-    REPLACEMENT = val_1
+    REPLACEMENT = ONE
 
     DESCRIPTION = "Constant-fold (x | 2) + (x ^ 2) != 0 to 1"
     REFERENCE = "Algebraic simplification"
@@ -110,10 +107,9 @@ class PredSetnz_4(VerifiableRule):
     """
 
     cst = Const("cst_1")
-    val_1 = DynamicConst("val_1", lambda ctx: 1, size_from="x_0")
 
     PATTERN = (cst - x) ^ x
-    REPLACEMENT = val_1
+    REPLACEMENT = ONE
 
     CONSTRAINTS = [
         lambda ctx: (ctx["cst_1"].value % 2) == 1  # cst must be odd
@@ -135,10 +131,9 @@ class PredSetnz_5(VerifiableRule):
     but that's impossible since ~0 & 1 = 0xFF...FE & 1 = 0.
     """
 
-    val_1 = DynamicConst("val_1", lambda ctx: 1, size_from="x_0")
 
     PATTERN = -(~x & ONE)
-    REPLACEMENT = val_1
+    REPLACEMENT = ONE
 
     DESCRIPTION = "Constant-fold -(~x & 1) != x to 1"
     REFERENCE = "Algebraic simplification"
@@ -153,10 +148,9 @@ class PredSetnz_6(VerifiableRule):
     """
 
     c1, c2 = Const("c_1"), Const("c_2")
-    val_1 = DynamicConst("val_1", lambda ctx: 1, size_from="x_0")
 
     PATTERN = (x + c1) + ((x + c2) & ONE)
-    REPLACEMENT = val_1
+    REPLACEMENT = ONE
 
     CONSTRAINTS = [
         lambda ctx: ((ctx["c_2"].value - ctx["c_1"].value) & 0x1) == 1
@@ -177,10 +171,9 @@ class PredSetnz_8(VerifiableRule):
     and specifically never equals 0.
     """
 
-    val_1 = DynamicConst("val_1", lambda ctx: 1, size_from="x_0")
 
     PATTERN = ~(THREE - x) ^ ~x
-    REPLACEMENT = val_1
+    REPLACEMENT = ONE
 
     DESCRIPTION = "Constant-fold ~(3 - x) ^ ~x != 0 to 1"
     REFERENCE = "Algebraic simplification"
@@ -199,10 +192,10 @@ class PredSetz_1(VerifiableRule):
     """
 
     c1, c2 = Const("c_1"), Const("c_2")
-    val_0 = DynamicConst("val_0", lambda ctx: 0, size_from="x_0")
+
 
     PATTERN = x | c1
-    REPLACEMENT = val_0
+    REPLACEMENT = ZERO
 
     CONSTRAINTS = [
         lambda ctx: (ctx["c_1"].value | ctx["c_2"].value) != ctx["c_2"].value
@@ -220,10 +213,10 @@ class PredSetz_2(VerifiableRule):
     """
 
     c1, c2 = Const("c_1"), Const("c_2")
-    val_0 = DynamicConst("val_0", lambda ctx: 0, size_from="x_0")
+
 
     PATTERN = x & c1
-    REPLACEMENT = val_0
+    REPLACEMENT = ZERO
 
     CONSTRAINTS = [
         lambda ctx: (ctx["c_1"].value & ctx["c_2"].value) != ctx["c_2"].value
@@ -239,10 +232,10 @@ class PredSetz_3(VerifiableRule):
     This expression is never zero (see PredSetnz3), so == 0 is always false.
     """
 
-    val_0 = DynamicConst("val_0", lambda ctx: 0, size_from="x_0")
+
 
     PATTERN = (x | TWO) + (x ^ TWO)
-    REPLACEMENT = val_0
+    REPLACEMENT = ZERO
 
     DESCRIPTION = "Constant-fold (x | 2) + (x ^ 2) == 0 to 0"
     REFERENCE = "Algebraic simplification"
@@ -261,10 +254,9 @@ class PredSetb_1(VerifiableRule):
     """
 
     c1, c2 = Const("c_1"), Const("c_2")
-    val_0 = DynamicConst("val_0", lambda ctx: 1, size_from="x_0")
 
     PATTERN = x & c1
-    REPLACEMENT = val_0
+    REPLACEMENT = ONE
 
     CONSTRAINTS = [
         lambda ctx: ctx["c_1"].value < ctx["c_2"].value
@@ -288,10 +280,10 @@ class Pred0Rule1(VerifiableRule):
     - even & 1 = 0
     """
 
-    val_0 = DynamicConst("val_0", lambda ctx: 0, size_from="x_0")
+
 
     PATTERN = (x * (x - ONE)) & ONE
-    REPLACEMENT = val_0
+    REPLACEMENT = ZERO
 
     DESCRIPTION = "Simplify x*(x-1) & 1 to 0 (parity)"
     REFERENCE = "Parity analysis"
@@ -304,10 +296,10 @@ class Pred0Rule2(VerifiableRule):
     so their product is even.
     """
 
-    val_0 = DynamicConst("val_0", lambda ctx: 0, size_from="x_0")
+
 
     PATTERN = (x * (x + ONE)) & ONE
-    REPLACEMENT = val_0
+    REPLACEMENT = ZERO
 
     DESCRIPTION = "Simplify x*(x+1) & 1 to 0 (parity)"
     REFERENCE = "Parity analysis"
@@ -319,10 +311,10 @@ class Pred0Rule3(VerifiableRule):
     A value AND its complement is always 0.
     """
 
-    val_0 = DynamicConst("val_0", lambda ctx: 0, size_from="x_0")
+
 
     PATTERN = x & ~x
-    REPLACEMENT = val_0
+    REPLACEMENT = ZERO
 
     DESCRIPTION = "Simplify x & ~x to 0"
     REFERENCE = "Boolean algebra"
@@ -336,13 +328,13 @@ class Pred0Rule4(VerifiableRule):
     """
 
     c1, c2 = Const("c_1", 1), Const("c_2", 2)
-    val_0 = DynamicConst("val_0", lambda ctx: 0, size_from="x_0")
+
 
     # Note: m_xdu is extend-unsigned-double
     # Pattern: xdu(x & 1) == 2
     # We can't directly express xdu in the DSL yet, so this is approximate
     PATTERN = x & c1  # Simplified for demonstration
-    REPLACEMENT = val_0
+    REPLACEMENT = ZERO
 
     DESCRIPTION = "Constant-fold xdu(x & 1) == 2 to 0"
     REFERENCE = "Range analysis"
@@ -357,10 +349,10 @@ class Pred0Rule5(VerifiableRule):
                         = 0
     """
 
-    val_0 = DynamicConst("val_0", lambda ctx: 0, size_from="x_0")
+
 
     PATTERN = x & ~(x | y)
-    REPLACEMENT = val_0
+    REPLACEMENT = ZERO
 
     DESCRIPTION = "Simplify x & ~(x | y) to 0"
     REFERENCE = "Boolean algebra + De Morgan"
@@ -378,10 +370,10 @@ class Pred0Rule6(VerifiableRule):
     This is contradictory, so the result is always 0.
     """
 
-    val_0 = DynamicConst("val_0", lambda ctx: 0, size_from="x_0")
+
 
     PATTERN = (x & y) & ~(x | y)
-    REPLACEMENT = val_0
+    REPLACEMENT = ZERO
 
     DESCRIPTION = "Simplify (x & y) & ~(x | y) to 0"
     REFERENCE = "Boolean algebra + De Morgan"
@@ -397,10 +389,10 @@ class Pred0Rule7(VerifiableRule):
     These conditions are mutually exclusive, so result is always 0.
     """
 
-    val_0 = DynamicConst("val_0", lambda ctx: 0, size_from="x_0")
+
 
     PATTERN = (x & y) & (x ^ y)
-    REPLACEMENT = val_0
+    REPLACEMENT = ZERO
 
     DESCRIPTION = "Simplify (x & y) & (x ^ y) to 0"
     REFERENCE = "Boolean algebra"
@@ -493,11 +485,8 @@ class PredOr2_Rule1(VerifiableRule):
     The proof requires modular arithmetic analysis.
     """
 
-    val_1 = DynamicConst("val_1", lambda ctx: 1, size_from="x_0")
-    val_2 = DynamicConst("val_2", lambda ctx: 2, size_from="x_0")
-
     PATTERN = ~(x * x) & THREE
-    REPLACEMENT = (~x & val_1) | val_2
+    REPLACEMENT = (~x & ONE) | TWO
 
     DESCRIPTION = "Transform ~(x*x) & 3 to (~x & 1) | 2"
     REFERENCE = "Modular arithmetic factoring"
@@ -509,11 +498,8 @@ class PredOr1_Rule1(VerifiableRule):
     This is another complex bit manipulation factoring.
     """
 
-    val_1 = DynamicConst("val_1", lambda ctx: 1, size_from="x_0")
-    val_2 = DynamicConst("val_2", lambda ctx: 2, size_from="x_0")
-
     PATTERN = x ^ ((x & ONE) + ONE)
-    REPLACEMENT = (x ^ (val_2 * (x & val_1))) | val_1
+    REPLACEMENT = (x ^ (TWO * (x & ONE))) | ONE
 
     DESCRIPTION = "Transform x ^ ((x & 1) + 1) to factored form"
     REFERENCE = "Bit manipulation factoring"

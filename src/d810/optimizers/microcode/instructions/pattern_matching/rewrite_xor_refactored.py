@@ -8,7 +8,7 @@ All rules are verified using Z3 SMT solver.
 """
 
 from d810.hexrays.hexrays_helpers import SUB_TABLE
-from d810.optimizers.dsl import Var, Const, DynamicConst, when
+from d810.optimizers.dsl import Var, Const, when
 from d810.optimizers.rules import VerifiableRule
 
 # Define variables for pattern matching
@@ -296,10 +296,9 @@ class Xor1_MbaRule_1(VerifiableRule):
     MBA pattern that produces XOR with constant 1 (bit flip LSB).
     """
 
-    val_1 = DynamicConst("val_1", lambda ctx: 1, size_from="x_0")
 
     PATTERN = ~x + (TWO * x | TWO)
-    REPLACEMENT = x ^ val_1
+    REPLACEMENT = x ^ ONE
 
     DESCRIPTION = "Simplify ~x + (2*x | 2) to x ^ 1"
     REFERENCE = "MBA XOR-with-1 pattern"
@@ -369,10 +368,9 @@ class XorAlmost_Rule_1(VerifiableRule):
     Uses DynamicConst for the constant 2.
     """
 
-    val_2 = DynamicConst("val_2", lambda ctx: 2, size_from="x_0")
 
     PATTERN = (x + y) - TWO * (x | (y - ONE))
-    REPLACEMENT = (x ^ (-y)) + val_2
+    REPLACEMENT = (x ^ (-y)) + TWO
 
     DESCRIPTION = "Transform complex MBA to (x ^ -y) + 2"
     REFERENCE = "MBA partial simplification"

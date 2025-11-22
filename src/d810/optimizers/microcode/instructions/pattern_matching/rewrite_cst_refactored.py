@@ -7,7 +7,7 @@ All rules are verified using Z3 SMT solver.
 """
 
 from d810.hexrays.hexrays_helpers import AND_TABLE, SUB_TABLE
-from d810.optimizers.dsl import Var, Const, DynamicConst, when
+from d810.optimizers.dsl import Var, Const, when
 from d810.optimizers.rules import VerifiableRule
 
 # Define variables for pattern matching
@@ -51,21 +51,15 @@ class CstSimplificationRule2(VerifiableRule):
     c_1_2 = Const("c_1_2")
     c_2_1 = Const("c_2_1")
     c_2_2 = Const("c_2_2")
-
-    # Compute the result constant dynamically
-    c_res = DynamicConst(
-        "c_res",
-        lambda ctx: (
-            ((ctx["c_1_1"].value ^ ctx["c_1_2"].value) & ctx["c_2_1"].value)
-            ^ ctx["c_1_2"].value
-        ),
-        size_from="c_1_1",
-    )
+    c_res = Const("c_res")  # Computed from matched constants
 
     PATTERN = ((x ^ c_1_1) & c_2_1) | ((x ^ c_1_2) & c_2_2)
     REPLACEMENT = x ^ c_res
 
-    CONSTRAINTS = [when.is_bnot("c_2_1", "c_2_2")]
+    CONSTRAINTS = [
+        c_2_1 == ~c_2_2,  # Checking constraint (was when.is_bnot)
+        c_res == (((c_1_1 ^ c_1_2) & c_2_1) ^ c_1_2)  # Defining constraint
+    ]
 
     DESCRIPTION = "Simplify OR of masked XOR expressions with complementary masks"
     REFERENCE = "Constant folding with bitwise NOT constraint"
@@ -80,16 +74,16 @@ class CstSimplificationRule3(VerifiableRule):
     c_0 = Const("c_0")
     c_1 = Const("c_1")
     c_2 = Const("c_2")
-
-    c_coeff = DynamicConst("c_coeff", lambda ctx: ctx["c_1"].value + 1, size_from="c_1")
-    c_sub = DynamicConst(
-        "c_sub",
-        lambda ctx: (ctx["c_1"].value * ctx["c_2"].value) + ctx["c_0"].value,
-        size_from="c_2",
-    )
+    c_coeff = Const("c_coeff")  # Computed: c_1 + 1
+    c_sub = Const("c_sub")  # Computed: c_1 * c_2 + c_0
 
     PATTERN = (x - c_0) + c_1 * (x - c_2)
     REPLACEMENT = c_coeff * x - c_sub
+
+    CONSTRAINTS = [
+        c_coeff == c_1 + ONE,
+        c_sub == (c_1 * c_2) + c_0
+    ]
 
     DESCRIPTION = "Simplify (x - c0) + c1*(x - c2) to (c1+1)*x - (c1*c2 + c0)"
     REFERENCE = "Algebraic simplification"
@@ -144,9 +138,7 @@ class CstSimplificationRule6(VerifiableRule):
 
     c_1 = Const("c_1")
     c_2 = Const("c_2")
-    c_res = DynamicConst(
-        "c_res", lambda ctx: ctx["c_1"].value & ctx["c_2"].value, size_from="c_2"
-    )
+    c_res = Const("c_res")  # c_1 & c_2
 
     PATTERN = (x ^ c_1) & c_2
     REPLACEMENT = (x & c_2) ^ c_res
@@ -163,9 +155,7 @@ class CstSimplificationRule7(VerifiableRule):
 
     c_1 = Const("c_1")
     c_2 = Const("c_2")
-    c_res = DynamicConst(
-        "c_res", lambda ctx: ctx["c_1"].value >> ctx["c_2"].value, size_from="c_1"
-    )
+    c_res = Const("c_res")  # c_1 >> c_2
 
     PATTERN = (x & c_1) >> c_2
     REPLACEMENT = (x >> c_2) & c_res
@@ -315,11 +305,7 @@ class CstSimplificationRule13(VerifiableRule):
 
     cst_1 = Const("cst_1")
 
-    not_cst_1 = DynamicConst(
-        "not_cst_1",
-        lambda ctx: ~ctx["cst_1"].value,
-        size_from="cst_1",
-    )
+    not_cst_1 = Const("not_cst_1")  # ~cst_1
 
     PATTERN = (cst_1 & (x ^ y)) ^ y
     REPLACEMENT = (x & cst_1) ^ (y & not_cst_1)
@@ -339,7 +325,6 @@ class CstSimplificationRule14(VerifiableRule):
     c_1 = Const("c_1")
     c_2 = Const("c_2")
 
-    val_1 = DynamicConst("val_1", lambda ctx: 1, size_from="c_2")
     lnot_c_1 = DynamicConst(
         "lnot_c_1",
         lambda ctx: ctx["c_1"].value ^ AND_TABLE[ctx["c_1"].size],
@@ -354,7 +339,7 @@ class CstSimplificationRule14(VerifiableRule):
     ]
 
     PATTERN = (x & c_1) + c_2
-    REPLACEMENT = (x | lnot_c_1) + val_1
+    REPLACEMENT = (x | lnot_c_1) + ONE
 
     DESCRIPTION = "Simplify (x & c1) + c2 when (~c1) ^ c2 == 1 and ~c1 is even"
     REFERENCE = "MBA special constant pattern"
@@ -471,11 +456,7 @@ class CstSimplificationRule19(VerifiableRule):
     c_1 = Const("c_1")
     c_2 = Const("c_2")
 
-    c_res = DynamicConst(
-        "c_res",
-        lambda ctx: ctx["c_1"].value >> ctx["c_2"].value,
-        size_from="c_1",
-    )
+    c_res = Const("c_res")  # c_1 >> c_2
 
     CONSTRAINTS = [
         # Check MSB of c_1 is 0
@@ -543,11 +524,7 @@ class CstSimplificationRule21(VerifiableRule):
     c_xor_1 = Const("c_xor_1")
     c_xor_2 = Const("c_xor_2")
 
-    c_xor_res = DynamicConst(
-        "c_xor_res",
-        lambda ctx: ctx["c_xor_1"].value ^ ctx["c_xor_2"].value,
-        size_from="c_xor_1",
-    )
+    c_xor_res = Const("c_xor_res")  # c_xor_1 ^ c_xor_2
 
     CONSTRAINTS = [
         # Check bnot_c_and == ~c_and
@@ -581,9 +558,7 @@ class CstSimplificationRule22(VerifiableRule):
     c_xor_1 = Const("c_xor_1")
     c_xor_2 = Const("c_xor_2")
 
-    c_xor_res = DynamicConst(
-        "c_xor_res",
-        lambda ctx: ctx["c_xor_1"].value ^ ctx["c_xor_2"].value ^ (ctx["c_and"].value ^ AND_TABLE[ctx["c_and"].size]),
+    c_xor_res = Const("c_xor_res")  # c_xor_1 ^ c_xor_2,
         size_from="c_xor_1",
     )
 

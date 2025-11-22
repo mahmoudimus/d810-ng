@@ -12,7 +12,7 @@ Original rules from rewrite_and.py, now with:
 All rules are mathematically proven correct by Z3 SMT solver.
 """
 
-from d810.optimizers.dsl import Var, Const, DynamicConst, when
+from d810.optimizers.dsl import Var, Const, when
 from d810.optimizers.rules import VerifiableRule
 
 # Create symbolic variables
@@ -379,10 +379,9 @@ class And1_MBA1(VerifiableRule):
     """
 
     THREE = Const("3", 3)
-    val_1 = DynamicConst("val_1", lambda ctx: 1, size_from="x_0")
 
     PATTERN = (x * x) & THREE
-    REPLACEMENT = x & val_1
+    REPLACEMENT = x & ONE
 
     DESCRIPTION = "Simplify (x*x) & 3 to x & 1"
     REFERENCE = "MBA obfuscation, modular arithmetic"

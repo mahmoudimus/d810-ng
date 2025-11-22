@@ -242,10 +242,9 @@ class Add_OllvmRule_DynamicConst(VerifiableRule):
         ~(a ^ b) + 2*(b | a) => (a + b) - 1
     """
 
-    val_1 = DynamicConst("val_1", lambda ctx: 1, size_from="x")
 
     PATTERN = ~(x ^ y) + TWO * (y | x)
-    REPLACEMENT = (x + y) - val_1
+    REPLACEMENT = ONE
 
     DESCRIPTION = "OLLVM pattern with dynamic constant"
     REFERENCE = "OLLVM obfuscation, dynamic variant"
@@ -264,10 +263,9 @@ class Add_OllvmRule_2(VerifiableRule):
     """
 
     val_fe = Const("val_fe")
-    val_1 = DynamicConst("val_1", lambda ctx: 1, size_from="x")
 
     PATTERN = ~(x ^ y) - (val_fe * (x | y))
-    REPLACEMENT = (x + y) - val_1
+    REPLACEMENT = ONE
 
     CONSTRAINTS = [
         lambda ctx: (ctx['val_fe'].value + 2) & ((1 << (ctx['val_fe'].size * 8)) - 1) == 0
@@ -310,10 +308,9 @@ class AddXor_Rule_1(VerifiableRule):
     """
 
     bnot_y = Var("bnot_y")
-    val_2 = DynamicConst("val_2", lambda ctx: 2, size_from="x")
 
     PATTERN = (x - y) - TWO * (x | bnot_y)
-    REPLACEMENT = (x ^ y) + val_2
+    REPLACEMENT = TWO
 
     CONSTRAINTS = [when.is_bnot("y", "bnot_y")]
 
@@ -331,10 +328,9 @@ class AddXor_Rule_2(VerifiableRule):
     """
 
     bnot_x = Var("bnot_x")
-    val_2 = DynamicConst("val_2", lambda ctx: 2, size_from="x")
 
     PATTERN = (x - y) - TWO * ~(bnot_x & y)
-    REPLACEMENT = (x ^ y) + val_2
+    REPLACEMENT = TWO
 
     CONSTRAINTS = [when.is_bnot("x", "bnot_x")]
 
