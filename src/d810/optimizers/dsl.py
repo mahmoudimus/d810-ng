@@ -160,10 +160,10 @@ def Const(name: str, value: int | None = None) -> SymbolicExpression:
         >>> pattern = ~x + one  # Represents: ~x + 1 (two's complement negation)
     """
     from d810.expr.ast import AstConstant
-    # AstConstant expects a value, so we use 0 as a default if None is provided
-    # The actual matching logic should handle the "match any constant" case
-    actual_value = value if value is not None else 0
-    return SymbolicExpression(AstConstant(name, actual_value))
+    # Pass value as-is (including None for pattern-matching constants)
+    # None = pattern-matching constant (symbolic)
+    # int = concrete constant for exact matching
+    return SymbolicExpression(AstConstant(name, value))
 
 
 # Common symbolic constants for convenience

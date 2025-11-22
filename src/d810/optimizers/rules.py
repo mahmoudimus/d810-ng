@@ -396,20 +396,38 @@ class VerifiableRule(SymbolicRule):
         pattern_node = self.pattern.node
         replacement_node = self.replacement.node
 
-        # Find all unique variable names (this will need to be adapted based on
-        # how AstLeaf stores variable names - might be 'name' or another attribute)
+        # Find all unique variable and constant names
+        # CRITICAL: Pattern-matching constants (e.g., Const("c_1") without value)
+        # must be treated as symbolic Z3 variables, not concrete values
         pattern_leaves = pattern_node.get_leaf_list()
         replacement_leaves = replacement_node.get_leaf_list()
 
         var_names = set()
+        const_names = set()
+
         for leaf in pattern_leaves + replacement_leaves:
-            if not leaf.is_constant() and hasattr(leaf, 'name'):
+            if not hasattr(leaf, 'name'):
+                continue
+
+            if leaf.is_constant():
+                # AstConstant - check if it's a pattern-matching constant
+                # (symbolic) or a concrete constant
+                if hasattr(leaf, 'expected_value') and leaf.expected_value is None:
+                    # Pattern-matching constant like Const("c_1") - treat as symbolic
+                    const_names.add(leaf.name)
+                # else: concrete constant like Const("ONE", 1) - handled by ast_to_z3
+            else:
+                # AstLeaf - regular variable
                 var_names.add(leaf.name)
 
-        # Create Z3 BitVec variables
-        z3_vars = {name: z3.BitVec(name, self.BIT_WIDTH) for name in sorted(var_names)}
+        # Create Z3 BitVec variables for BOTH variables and pattern-matching constants
+        z3_vars = {}
+        for name in sorted(var_names):
+            z3_vars[name] = z3.BitVec(name, self.BIT_WIDTH)
+        for name in sorted(const_names):
+            z3_vars[name] = z3.BitVec(name, self.BIT_WIDTH)
 
-        # Get rule-specific constraints
+        # Get rule-specific constraints (now has access to constant symbols)
         constraints = self.get_constraints(z3_vars)
 
         # Prove equivalence
