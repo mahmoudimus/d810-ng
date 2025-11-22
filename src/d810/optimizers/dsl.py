@@ -6,7 +6,7 @@ rules can be written in a mathematical, self-documenting style.
 
 Example:
     Instead of writing:
-        AstNode(m_add, AstNode(m_bnot, AstLeaf("x")), AstConstant("1", 1))
+        AstNode(M_ADD, AstNode(M_BNOT, AstLeaf("x")), AstConstant("1", 1))
 
     You can write:
         ~x + one
@@ -18,36 +18,20 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-# Try to import IDA constants, fall back to mock values for unit testing
-try:
-    from ida_hexrays import (
-        m_add,
-        m_and,
-        m_bnot,
-        m_mul,
-        m_neg,
-        m_or,
-        m_sar,
-        m_shl,
-        m_shr,
-        m_sub,
-        m_xor,
-    )
-except ImportError:
-    # Mock IDA constants for unit testing without IDA Pro
-    # These values MUST match those in z3_utils.py and hexrays_helpers.py
-    # for Z3 verification to work correctly
-    m_add = 0
-    m_and = 1
-    m_bnot = 2
-    m_mul = 3
-    m_neg = 4
-    m_or = 5
-    m_sar = 6
-    m_shl = 7
-    m_shr = 8
-    m_sub = 9
-    m_xor = 10
+# Use platform-independent opcodes (no IDA dependency!)
+from d810.opcodes import (
+    M_ADD,
+    M_AND,
+    M_BNOT,
+    M_MUL,
+    M_NEG,
+    M_OR,
+    M_SAR,
+    M_SHL,
+    M_SHR,
+    M_SUB,
+    M_XOR,
+)
 
 if TYPE_CHECKING:
     from d810.expr.ast import AstBase, AstNode
@@ -74,59 +58,59 @@ class SymbolicExpression:
         self.node = node
 
     def __add__(self, other: SymbolicExpression) -> SymbolicExpression:
-        """Addition: self + other -> m_add node."""
+        """Addition: self + other -> M_ADD node."""
         from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(m_add, self.node, other.node))
+        return SymbolicExpression(AstNode(M_ADD, self.node, other.node))
 
     def __sub__(self, other: SymbolicExpression) -> SymbolicExpression:
-        """Subtraction: self - other -> m_sub node."""
+        """Subtraction: self - other -> M_SUB node."""
         from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(m_sub, self.node, other.node))
+        return SymbolicExpression(AstNode(M_SUB, self.node, other.node))
 
     def __xor__(self, other: SymbolicExpression) -> SymbolicExpression:
-        """XOR: self ^ other -> m_xor node."""
+        """XOR: self ^ other -> M_XOR node."""
         from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(m_xor, self.node, other.node))
+        return SymbolicExpression(AstNode(M_XOR, self.node, other.node))
 
     def __and__(self, other: SymbolicExpression) -> SymbolicExpression:
-        """Bitwise AND: self & other -> m_and node."""
+        """Bitwise AND: self & other -> M_AND node."""
         from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(m_and, self.node, other.node))
+        return SymbolicExpression(AstNode(M_AND, self.node, other.node))
 
     def __or__(self, other: SymbolicExpression) -> SymbolicExpression:
-        """Bitwise OR: self | other -> m_or node."""
+        """Bitwise OR: self | other -> M_OR node."""
         from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(m_or, self.node, other.node))
+        return SymbolicExpression(AstNode(M_OR, self.node, other.node))
 
     def __mul__(self, other: SymbolicExpression) -> SymbolicExpression:
-        """Multiplication: self * other -> m_mul node."""
+        """Multiplication: self * other -> M_MUL node."""
         from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(m_mul, self.node, other.node))
+        return SymbolicExpression(AstNode(M_MUL, self.node, other.node))
 
     def __lshift__(self, other: SymbolicExpression) -> SymbolicExpression:
-        """Left shift: self << other -> m_shl node."""
+        """Left shift: self << other -> M_SHL node."""
         from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(m_shl, self.node, other.node))
+        return SymbolicExpression(AstNode(M_SHL, self.node, other.node))
 
     def __rshift__(self, other: SymbolicExpression) -> SymbolicExpression:
-        """Right shift: self >> other -> m_shr node."""
+        """Right shift: self >> other -> M_SHR node."""
         from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(m_shr, self.node, other.node))
+        return SymbolicExpression(AstNode(M_SHR, self.node, other.node))
 
     def sar(self, other: SymbolicExpression) -> SymbolicExpression:
-        """Arithmetic right shift: self.sar(other) -> m_sar node."""
+        """Arithmetic right shift: self.sar(other) -> M_SAR node."""
         from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(m_sar, self.node, other.node))
+        return SymbolicExpression(AstNode(M_SAR, self.node, other.node))
 
     def __invert__(self) -> SymbolicExpression:
-        """Bitwise NOT: ~self -> m_bnot node."""
+        """Bitwise NOT: ~self -> M_BNOT node."""
         from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(m_bnot, self.node))
+        return SymbolicExpression(AstNode(M_BNOT, self.node))
 
     def __neg__(self) -> SymbolicExpression:
-        """Negation: -self -> m_neg node."""
+        """Negation: -self -> M_NEG node."""
         from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(m_neg, self.node))
+        return SymbolicExpression(AstNode(M_NEG, self.node))
 
     def __repr__(self) -> str:
         """Return a string representation of this expression."""
