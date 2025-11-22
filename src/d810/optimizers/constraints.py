@@ -144,18 +144,78 @@ class EqualityConstraint(ConstraintExpr):
         raise ValueError(f"Cannot get name from {expr}")
 
     def _expr_to_z3(self, expr, z3_vars: dict) -> Any:
-        """Convert DSL expression to Z3."""
-        from d810.expr.z3_utils import ast_to_z3_expression
+        """Convert DSL expression to Z3.
 
+        This converts expressions WITHOUT needing z3_var to be pre-assigned.
+        It looks up variable/constant names directly in z3_vars.
+        """
+        import z3
+        from d810.expr.ast import AstConstant, AstLeaf, AstNode
+        from ida_hexrays import (
+            m_add, m_sub, m_mul, m_and, m_or, m_xor,
+            m_bnot, m_neg, m_shl, m_shr, m_sar
+        )
+
+        # Unwrap SymbolicExpression
         if hasattr(expr, 'node'):
-            # SymbolicExpression - use the AST node
-            return ast_to_z3_expression(expr.node, z3_vars)
-        elif hasattr(expr, 'z3_var'):
-            # AST node with z3_var already assigned
-            return expr.z3_var
+            node = expr.node
         else:
-            # Direct AST node
-            return ast_to_z3_expression(expr, z3_vars)
+            node = expr
+
+        # Base cases: Constant or Leaf
+        # IMPORTANT: Check AstConstant BEFORE AstLeaf since AstConstant inherits from AstLeaf
+        if isinstance(node, AstConstant):
+            # Check if it's a symbolic constant (in z3_vars)
+            if node.name in z3_vars:
+                return z3_vars[node.name]
+            # Otherwise it's a concrete constant
+            if node.expected_value is not None:
+                return z3.BitVecVal(node.expected_value, 32)
+            raise ValueError(f"Constant {node.name} has no value and not in z3_vars")
+
+        if isinstance(node, AstLeaf):
+            # Look up in z3_vars
+            if node.name in z3_vars:
+                return z3_vars[node.name]
+            raise ValueError(f"Variable {node.name} not in z3_vars")
+
+        # Recursive case: AstNode with operator
+        if isinstance(node, AstNode):
+            left_z3 = self._expr_to_z3(node.left, z3_vars)
+
+            # Unary operators
+            if node.right is None:
+                if node.opcode == m_bnot:
+                    return ~left_z3
+                elif node.opcode == m_neg:
+                    return -left_z3
+                raise ValueError(f"Unknown unary opcode: {node.opcode}")
+
+            # Binary operators
+            right_z3 = self._expr_to_z3(node.right, z3_vars)
+
+            if node.opcode == m_add:
+                return left_z3 + right_z3
+            elif node.opcode == m_sub:
+                return left_z3 - right_z3
+            elif node.opcode == m_mul:
+                return left_z3 * right_z3
+            elif node.opcode == m_and:
+                return left_z3 & right_z3
+            elif node.opcode == m_or:
+                return left_z3 | right_z3
+            elif node.opcode == m_xor:
+                return left_z3 ^ right_z3
+            elif node.opcode == m_shl:
+                return left_z3 << right_z3
+            elif node.opcode == m_shr:
+                return z3.LShR(left_z3, right_z3)  # Logical shift right
+            elif node.opcode == m_sar:
+                return left_z3 >> right_z3  # Arithmetic shift right
+
+            raise ValueError(f"Unknown binary opcode: {node.opcode}")
+
+        raise ValueError(f"Cannot convert {expr} to Z3")
 
     def _eval_expr(self, expr, candidate: dict[str, Any]) -> int:
         """Evaluate expression with concrete candidate values.
@@ -180,15 +240,7 @@ class EqualityConstraint(ConstraintExpr):
             node = expr
 
         # Base cases
-        if isinstance(node, AstLeaf):
-            if node.name in candidate:
-                leaf_value = candidate[node.name]
-                # Handle both AstConstant/AstLeaf objects and raw integers
-                if hasattr(leaf_value, 'value'):
-                    return leaf_value.value
-                return leaf_value
-            raise ValueError(f"Variable {node.name} not in candidate")
-
+        # IMPORTANT: Check AstConstant BEFORE AstLeaf since AstConstant inherits from AstLeaf
         if isinstance(node, AstConstant):
             if node.name in candidate:
                 const_value = candidate[node.name]
@@ -198,6 +250,15 @@ class EqualityConstraint(ConstraintExpr):
             if node.expected_value is not None:
                 return node.expected_value
             raise ValueError(f"Constant {node.name} not in candidate and has no value")
+
+        if isinstance(node, AstLeaf):
+            if node.name in candidate:
+                leaf_value = candidate[node.name]
+                # Handle both AstConstant/AstLeaf objects and raw integers
+                if hasattr(leaf_value, 'value'):
+                    return leaf_value.value
+                return leaf_value
+            raise ValueError(f"Variable {node.name} not in candidate")
 
         # Recursive case: AstNode
         if isinstance(node, AstNode):
