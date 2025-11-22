@@ -398,31 +398,22 @@ class AndGetUpperBits_FactorRule_1(VerifiableRule):
     - c1 must be a power of 2
     - c1 == 2^c2 (shift amount matches multiplier)
 
-    The replacement constant c_res = (MAX - c1) & c3, where MAX is
-    the maximum value for the operand size.
+    The replacement constant c_res = (-c1) & c3.
 
     Example:
         If size=4 bytes (32-bit):
-        - MAX = 0xFFFFFFFF
         - c1 = 256, c2 = 8, c3 = 0xFF
-        - c_res = (0xFFFFFFFF - 256) & 0xFF = 0xFFFFFF00 & 0xFF = 0
+        - c_res = (-256) & 0xFF = 0xFFFFFF00 & 0xFF = 0
     """
 
-    from d810.hexrays.hexrays_helpers import SUB_TABLE
-
     c1, c2, c3 = Const("c_1"), Const("c_2"), Const("c_3")
-    c_res = DynamicConst(
-        "c_res",
-        lambda ctx: (
-            (SUB_TABLE[ctx["c_1"].size] - ctx["c_1"].value) & ctx["c_3"].value
-        ),
-        size_from="x_0",
-    )
+    c_res = Const("c_res")  # (-c1) & c3
 
     PATTERN = c1 * ((x >> c2) & c3)
     REPLACEMENT = x & c_res
 
     CONSTRAINTS = [
+        c_res == ((-c1) & c3),  # Result mask: (-c1) AND c3
         # Check that c1 is a power of 2 and equals 2^c2
         lambda ctx: (2 ** ctx["c_2"].value) == ctx["c_1"].value
     ]

@@ -6,8 +6,7 @@ multiplication operations, primarily MBA (Mixed Boolean-Arithmetic) patterns.
 All rules are verified using Z3 SMT solver.
 """
 
-from d810.hexrays.hexrays_helpers import SUB_TABLE
-from d810.optimizers.dsl import Var, Const, DynamicConst, when
+from d810.optimizers.dsl import Var, Const, when
 from d810.optimizers.rules import VerifiableRule
 
 # Define variables for pattern matching
@@ -16,6 +15,7 @@ bnot_x, bnot_y = Var("bnot_x_0"), Var("bnot_x_1")
 
 # Common constants
 TWO = Const("2", 2)
+NEG_TWO = Const("-2", -2)
 
 
 # ============================================================================
@@ -104,13 +104,10 @@ class Mul_FactorRule_2(VerifiableRule):
 
     Proof:
         -(x & y) - (x & y) = -2*(x & y)
-        The result uses DynamicConst to generate -2 for the operand size.
     """
 
-    val_fe = DynamicConst("val_fe", lambda ctx: SUB_TABLE[ctx.size] - 2, size_from="x_0")
-
     PATTERN = -(x & y) - (x & y)
-    REPLACEMENT = val_fe * (x & y)
+    REPLACEMENT = NEG_TWO * (x & y)
 
     DESCRIPTION = "Simplify -(x & y) - (x & y) to -2 * (x & y)"
     REFERENCE = "Negation to multiplication by -2"
