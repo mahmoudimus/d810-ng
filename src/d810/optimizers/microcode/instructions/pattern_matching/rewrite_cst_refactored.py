@@ -15,8 +15,9 @@ x, y = Var("x_0"), Var("x_1")
 bnot_x = Var("bnot_x_0")
 
 # Common constants
-ONE = Const("1", 1)
-TWO = Const("2", 2)
+ZERO = Const("ZERO", 0)
+ONE = Const("ONE", 1)
+TWO = Const("TWO", 2)
 
 
 # ============================================================================
@@ -236,8 +237,8 @@ class CstSimplificationRule10(VerifiableRule):
 
     CONSTRAINTS = [
         c_and == ~c_1 & c_2,  # Compute result mask
-        # Check that c_1 is subset of c_2
-        lambda ctx: (ctx["c_1"].value & ctx["c_2"].value) == ctx["c_1"].value
+        # Check that c_1 is subset of c_2 (c_1 & c_2 == c_1)
+        (c_1 & c_2) == c_1
     ]
 
     PATTERN = (x & c_1) - (x & c_2)
@@ -326,9 +327,9 @@ class CstSimplificationRule14(VerifiableRule):
     CONSTRAINTS = [
         lnot_c_1 == ~c_1,  # NOT of c_1
         # Check (~c_1) ^ c_2 == 1
-        lambda ctx: ((ctx["c_1"].value ^ AND_TABLE[ctx["c_1"].size]) ^ ctx["c_2"].value) == 1,
+        (lnot_c_1 ^ c_2) == ONE,
         # Check ~c_1 is even (LSB = 0)
-        lambda ctx: ((ctx["c_1"].value ^ AND_TABLE[ctx["c_1"].size]) & 1) == 0,
+        (lnot_c_1 & ONE) == ZERO,
     ]
 
     PATTERN = (x & c_1) + c_2
@@ -480,7 +481,7 @@ class CstSimplificationRule20(VerifiableRule):
         c_and_res == c_and_1 ^ c_and_2,  # XOR of masks
         c_xor_res == c_and_1 ^ c_xor,     # XOR result
         # Check disjoint masks
-        lambda ctx: (ctx["c_and_1"].value & ctx["c_and_2"].value) == 0,
+        (c_and_1 & c_and_2) == ZERO,
     ]
 
     PATTERN = (bnot_x & c_and_1) | ((x & c_and_2) ^ c_xor)
@@ -508,7 +509,7 @@ class CstSimplificationRule21(VerifiableRule):
         bnot_c_and == ~c_and,           # NOT relationship
         c_xor_res == c_xor_1 ^ c_xor_2,  # XOR result
         # Check disjoint XOR constants
-        lambda ctx: (ctx["c_xor_1"].value & ctx["c_xor_2"].value) == 0,
+        (c_xor_1 & c_xor_2) == ZERO,
     ]
 
     PATTERN = ((x & c_and) ^ c_xor_1) | ((x & bnot_c_and) ^ c_xor_2)
@@ -543,11 +544,11 @@ class CstSimplificationRule22(VerifiableRule):
         bnot_c_and == ~c_and,            # Constant NOT
         c_xor_res == c_xor_1 ^ c_xor_2,   # XOR result
         # Disjoint XOR constants
-        lambda ctx: (ctx["c_xor_1"].value & ctx["c_xor_2"].value) == 0,
-        # c_xor_1 lives in c_and
-        lambda ctx: (ctx["c_xor_1"].value & (ctx["c_and"].value ^ AND_TABLE[ctx["c_and"].size])) == 0,
-        # c_xor_2 lives in ~c_and
-        lambda ctx: (ctx["c_xor_2"].value & ctx["c_and"].value) == 0,
+        (c_xor_1 & c_xor_2) == ZERO,
+        # c_xor_1 lives in c_and (c_xor_1 & ~c_and == 0)
+        (c_xor_1 & bnot_c_and) == ZERO,
+        # c_xor_2 lives in ~c_and (c_xor_2 & c_and == 0)
+        (c_xor_2 & c_and) == ZERO,
     ]
 
     PATTERN = ((x & c_and) ^ c_xor_1) | ((bnot_x & bnot_c_and) ^ c_xor_2)
