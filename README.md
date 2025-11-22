@@ -50,6 +50,213 @@ Test reloading exists without needing to restart `IDA Pro` and you can execute d
 
 !["Test Runner Context Menu"](./docs/source/images/test_runner_example-ctx-menu.png "Test Runner Context Menu")
 
+## Adding New Deobfuscation Rules
+
+D-810 ng uses a modern, declarative DSL for defining optimization rules. Rules are automatically registered, tested with Z3, and integrated into the deobfuscation pipeline.
+
+### Quick Start: Create a Simple Rule
+
+```python
+from d810.optimizers.rules import VerifiableRule
+from d810.optimizers.dsl import Var, Const
+
+# Define symbolic variables
+x, y = Var("x_0"), Var("x_1")
+
+class MySimpleRule(VerifiableRule):
+    """Simplify: (x | y) - (x & y) => x ^ y
+
+    This is a standard bitwise identity.
+    """
+
+    PATTERN = (x | y) - (x & y)
+    REPLACEMENT = x ^ y
+
+    DESCRIPTION = "Simplify OR-AND pattern to XOR"
+    REFERENCE = "Hacker's Delight, Chapter 2"
+```
+
+**That's it!** Your rule is now:
+- ✅ Automatically registered with d810
+- ✅ Automatically tested with Z3 to prove correctness
+- ✅ Ready to use in deobfuscation
+
+### Rule with Constraints
+
+For rules that require additional conditions:
+
+```python
+class MyConstrainedRule(VerifiableRule):
+    """Simplify: (x ^ c1) + 2*(x & c2) => x + c1 where c1 == c2"""
+
+    c_1 = Const("c_1")
+    c_2 = Const("c_2")
+
+    PATTERN = (x ^ c_1) + 2 * (x & c_2)
+    REPLACEMENT = x + c_1
+
+    # Declarative constraint - automatically converted to Z3
+    CONSTRAINTS = [c_1 == c_2]
+
+    DESCRIPTION = "Simplify XOR-AND with equal constants"
+```
+
+### Rule with Dynamic Constants
+
+For constants computed from matched values:
+
+```python
+class MyDynamicRule(VerifiableRule):
+    """Simplify: (x & c1) | ((x & c2) ^ c3) => (x & c_res) ^ c_xor_res"""
+
+    c_and_1 = Const("c_and_1")
+    c_and_2 = Const("c_and_2")
+    c_xor = Const("c_xor")
+    c_and_res = Const("c_and_res")  # c_and_1 | c_and_2
+    c_xor_res = Const("c_xor_res")  # c_and_1 ^ c_xor
+
+    PATTERN = (x & c_and_1) | ((x & c_and_2) ^ c_xor)
+    REPLACEMENT = (x & c_and_res) ^ c_xor_res
+
+    CONSTRAINTS = [
+        # Masks must be disjoint
+        (c_and_1 & c_and_2) == 0,
+        # Define result constants
+        c_and_res == c_and_1 | c_and_2,
+        c_xor_res == c_and_1 ^ c_xor,
+    ]
+
+    DESCRIPTION = "OLLVM obfuscation pattern"
+```
+
+### Advanced: Custom Z3 Constraints
+
+For rules with BIT_WIDTH-dependent constraints:
+
+```python
+class MyAdvancedRule(VerifiableRule):
+    """Simplify: (x >> c1) >> c2 => x >> (c1 + c2)"""
+
+    c_1 = Const("c_1")
+    c_2 = Const("c_2")
+    c_res = Const("c_res")
+
+    PATTERN = (x >> c_1) >> c_2
+    REPLACEMENT = x >> c_res
+
+    CONSTRAINTS = [
+        c_res == c_1 + c_2  # Declarative for runtime
+    ]
+
+    def get_constraints(self, z3_vars):
+        """Override to add BIT_WIDTH-specific Z3 constraints."""
+        import z3
+
+        base = super().get_constraints(z3_vars)
+
+        return base + [
+            # Check for overflow
+            z3.And(
+                z3.ULT(z3_vars["c_1"], z3_vars["c_1"] + z3_vars["c_2"]),
+                z3.ULT(z3_vars["c_2"], z3_vars["c_1"] + z3_vars["c_2"])
+            ),
+            # Check sum is within bounds
+            z3.ULT(z3_vars["c_1"] + z3_vars["c_2"], self.BIT_WIDTH),
+        ]
+```
+
+### Marking Known Failures
+
+For rules that can't be verified with Z3:
+
+```python
+class MyUnverifiableRule(VerifiableRule):
+    """This rule has size-dependent constraints."""
+
+    SKIP_VERIFICATION = True  # Skip Z3 verification
+
+    val_fe = Const("val_fe")
+
+    PATTERN = ~(x ^ y) - (val_fe * (x | y))
+    REPLACEMENT = (x + y) - 1
+
+    CONSTRAINTS = [
+        # Size-dependent constraint - can't auto-convert to Z3
+        lambda ctx: (ctx['val_fe'].value + 2) & ((1 << (ctx['val_fe'].size * 8)) - 1) == 0
+    ]
+```
+
+For mathematically incorrect rules:
+
+```python
+class MyKnownIncorrectRule(VerifiableRule):
+    """This rule is only valid under very specific conditions."""
+
+    KNOWN_INCORRECT = True  # Mark as incorrect
+
+    PATTERN = ...
+    REPLACEMENT = ...
+```
+
+### File Organization
+
+Create your rules in the appropriate file under:
+```
+src/d810/optimizers/microcode/instructions/pattern_matching/
+├── rewrite_add_refactored.py      # Addition/subtraction rules
+├── rewrite_and_refactored.py      # Bitwise AND rules
+├── rewrite_xor_refactored.py      # Bitwise XOR rules
+├── rewrite_bnot_refactored.py     # Bitwise NOT rules
+└── rewrite_cst_refactored.py      # Constant simplification rules
+```
+
+Then import your module in `tests/unit/optimizers/test_verifiable_rules.py`:
+
+```python
+import d810.optimizers.microcode.instructions.pattern_matching.rewrite_add_refactored
+```
+
+### Running Tests
+
+Test all rules:
+```bash
+pytest tests/unit/optimizers/test_verifiable_rules.py
+```
+
+Test a specific rule:
+```bash
+pytest tests/unit/optimizers/test_verifiable_rules.py::TestVerifiableRules::test_rule_is_correct[MySimpleRule] -v
+```
+
+### DSL Reference
+
+**Variables:**
+- `Var("name")` - Symbolic variable (matches any expression)
+- `x, y, z = Var("x_0"), Var("x_1"), Var("x_2")` - Pre-defined variables
+
+**Constants:**
+- `Const("name")` - Pattern-matching constant (symbolic)
+- `Const("name", value)` - Concrete constant (e.g., `Const("ONE", 1)`)
+
+**Operators:**
+- Arithmetic: `+`, `-`, `*`
+- Bitwise: `&`, `|`, `^`, `~`
+- Shifts: `>>` (logical right), `.sar()` (arithmetic right), `<<` (left)
+
+**Constraints:**
+- Declarative: `c_1 == c_2`, `c_res == c_1 + c_2`
+- Runtime: `lambda ctx: ctx["c_1"].value < 100`
+- Helper: `when.is_bnot("x", "bnot_x")` - Check if one variable is bitwise NOT of another
+
+### Best Practices
+
+1. **Always add a docstring** explaining what the rule does
+2. **Add meaningful DESCRIPTION and REFERENCE** fields
+3. **Prefer declarative constraints** over lambdas (they auto-convert to Z3)
+4. **Use clear variable names** (e.g., `c_mask` instead of `c_1`)
+5. **Test edge cases** manually before relying on Z3
+6. **Document why a rule is KNOWN_INCORRECT or SKIP_VERIFICATION**
+
 ## Examples
 
 In `samples/src`, there are various `C` programs compiled using the `samples/src/Makefile` into a shared library, without optimizations (`-O0`). On Windows, that shared library is a `.dll`, on Darwin(Mac)/Linux, it is a `.so`. Included is an example compiled dll, `libobfuscated.dll`, that can serve as a testing ground for seeing the plugin in action. Please make a pull request with more obfuscation `C` examples to build a repository of obfuscated sample code for further research.
