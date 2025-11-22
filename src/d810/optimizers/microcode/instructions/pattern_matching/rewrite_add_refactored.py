@@ -175,9 +175,12 @@ class Add_SpecialConstantRule_1(VerifiableRule):
         (a ^ 5) + 2*(a & 5) => a + 5
     """
 
-    PATTERN = (x ^ Const("c_1")) + TWO * (x & Const("c_2"))
-    REPLACEMENT = x + Const("c_1")
-    CONSTRAINTS = [when.equal_mops("c_1", "c_2")]
+    c_1 = Const("c_1")
+    c_2 = Const("c_2")
+
+    PATTERN = (x ^ c_1) + TWO * (x & c_2)
+    REPLACEMENT = x + c_1
+    CONSTRAINTS = [c_1 == c_2]
 
     DESCRIPTION = "Simplify XOR-AND with equal constants"
     REFERENCE = "Special constant pattern 1"
@@ -192,11 +195,15 @@ class Add_SpecialConstantRule_2(VerifiableRule):
         ((a & 0xFF) ^ 0x12) + 2*(a & 0x12) => (a & 0xFF) + 0x12
     """
 
-    PATTERN = ((x & Const("val_ff", 0xFF)) ^ Const("c_1")) + TWO * (x & Const("c_2"))
-    REPLACEMENT = (x & Const("val_ff", 0xFF)) + Const("c_1")
+    c_1 = Const("c_1")
+    c_2 = Const("c_2")
+    val_ff = Const("val_ff", 0xFF)
+
+    PATTERN = ((x & val_ff) ^ c_1) + TWO * (x & c_2)
+    REPLACEMENT = (x & val_ff) + c_1
 
     CONSTRAINTS = [
-        lambda ctx: (ctx['c_1'].value & 0xFF) == ctx['c_2'].value
+        (c_1 & val_ff) == c_2
     ]
 
     DESCRIPTION = "Simplify masked XOR-AND pattern"
@@ -242,9 +249,8 @@ class Add_OllvmRule_DynamicConst(VerifiableRule):
         ~(a ^ b) + 2*(b | a) => (a + b) - 1
     """
 
-
     PATTERN = ~(x ^ y) + TWO * (y | x)
-    REPLACEMENT = ONE
+    REPLACEMENT = (x + y) - ONE
 
     DESCRIPTION = "OLLVM pattern with dynamic constant"
     REFERENCE = "OLLVM obfuscation, dynamic variant"
@@ -265,7 +271,7 @@ class Add_OllvmRule_2(VerifiableRule):
     val_fe = Const("val_fe")
 
     PATTERN = ~(x ^ y) - (val_fe * (x | y))
-    REPLACEMENT = ONE
+    REPLACEMENT = (x + y) - ONE
 
     CONSTRAINTS = [
         lambda ctx: (ctx['val_fe'].value + 2) & ((1 << (ctx['val_fe'].size * 8)) - 1) == 0
@@ -310,7 +316,7 @@ class AddXor_Rule_1(VerifiableRule):
     bnot_y = Var("bnot_y")
 
     PATTERN = (x - y) - TWO * (x | bnot_y)
-    REPLACEMENT = TWO
+    REPLACEMENT = (x ^ y) + TWO
 
     CONSTRAINTS = [when.is_bnot("y", "bnot_y")]
 
@@ -330,7 +336,7 @@ class AddXor_Rule_2(VerifiableRule):
     bnot_x = Var("bnot_x")
 
     PATTERN = (x - y) - TWO * ~(bnot_x & y)
-    REPLACEMENT = TWO
+    REPLACEMENT = (x ^ y) + TWO
 
     CONSTRAINTS = [when.is_bnot("x", "bnot_x")]
 
