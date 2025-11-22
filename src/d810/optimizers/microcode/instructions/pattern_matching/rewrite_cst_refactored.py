@@ -441,10 +441,10 @@ class CstSimplificationRule19(VerifiableRule):
 
     c_1 = Const("c_1")
     c_2 = Const("c_2")
-
     c_res = Const("c_res")  # c_1 >> c_2
 
     CONSTRAINTS = [
+        c_res == c_1 >> c_2,  # Shift constant
         # Check MSB of c_1 is 0
         lambda ctx: (ctx["c_1"].value & (1 << (ctx["c_1"].size - 1))) == 0
     ]
