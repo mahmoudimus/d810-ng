@@ -12,9 +12,49 @@ except ImportError:
         pass
     class minsn_t:  # type: ignore
         pass
+
+    # Create a mock ida_hexrays module with all opcode constants needed for Z3 verification
+    # The actual integer values don't matter - only that they're unique and consistent
     class _MockIDAHexrays:  # type: ignore
         mop_t = mop_t
         minsn_t = minsn_t
+
+        # Opcode constants (must match those in dsl.py and hexrays_helpers.py)
+        m_add = 0
+        m_and = 1
+        m_bnot = 2
+        m_mul = 3
+        m_neg = 4
+        m_or = 5
+        m_sar = 6
+        m_shl = 7
+        m_shr = 8
+        m_sub = 9
+        m_xor = 10
+
+        # Additional opcodes used in Z3 conversion
+        m_lnot = 11
+        m_udiv = 12
+        m_sdiv = 13
+        m_umod = 14
+        m_smod = 15
+        m_setnz = 16
+        m_setz = 17
+        m_setae = 18
+        m_setb = 19
+        m_seta = 20
+        m_setbe = 21
+        m_setg = 22
+        m_setge = 23
+        m_setl = 24
+        m_setle = 25
+        m_setp = 26
+        m_sets = 27
+        m_xdu = 28
+        m_xds = 29
+        m_low = 30
+        m_high = 31
+
     ida_hexrays = _MockIDAHexrays()
 
 from d810.conf.loggers import getLogger

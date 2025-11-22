@@ -35,8 +35,8 @@ try:
     )
 except ImportError:
     # Mock IDA constants for unit testing without IDA Pro
-    # These are placeholder opcodes that allow the DSL to be imported.
-    # The actual values don't matter for Z3 verification - only the symbolic structure.
+    # These values MUST match those in z3_utils.py and hexrays_helpers.py
+    # for Z3 verification to work correctly
     m_add = 0
     m_and = 1
     m_bnot = 2
