@@ -3,7 +3,17 @@ import json
 import pathlib
 import typing
 
-import ida_diskio
+# Try to import IDA modules, allow module to be imported for unit testing
+try:
+    import ida_diskio
+    IDA_AVAILABLE = True
+except ImportError:
+    # Mock for unit testing - use temp directory
+    IDA_AVAILABLE = False
+    class ida_diskio:  # type: ignore
+        @staticmethod
+        def get_user_idadir():
+            return str(pathlib.Path.home() / ".idapro")
 
 from .loggers import getLogger
 

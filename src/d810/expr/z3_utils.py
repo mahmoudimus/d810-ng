@@ -1,7 +1,21 @@
 import functools
 import typing
 
-import ida_hexrays
+# Try to import IDA modules, allow module to be imported for unit testing
+try:
+    import ida_hexrays
+    IDA_AVAILABLE = True
+except ImportError:
+    IDA_AVAILABLE = False
+    # Mock IDA types for function signatures
+    class mop_t:  # type: ignore
+        pass
+    class minsn_t:  # type: ignore
+        pass
+    class _MockIDAHexrays:  # type: ignore
+        mop_t = mop_t
+        minsn_t = minsn_t
+    ida_hexrays = _MockIDAHexrays()
 
 from d810.conf.loggers import getLogger
 from d810.errors import D810Z3Exception

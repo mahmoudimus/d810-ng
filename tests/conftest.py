@@ -1,34 +1,15 @@
 """Pytest configuration for d810-ng tests.
 
-This conftest ensures IDA Pro modules are available before test collection.
+Shared configuration for all test suites.
 """
 
 import sys
-import os
 from pathlib import Path
 
-# Try to import idapro first to initialize IDA Python environment
-try:
-    import idapro
-    print("✓ idapro module initialized")
-except ImportError:
-    # idapro not available - likely running outside IDA environment
-    # This is OK, tests will skip if IDA modules aren't available
-    pass
-
-# Add project root to path
+# Add project root to path for all tests
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root / "tests"))
-
-# Try to import IDA modules early to ensure they're available
-try:
-    import idaapi
-    IDA_AVAILABLE = True
-    print(f"✓ IDA Pro available: {idaapi.get_kernel_version()}")
-except ImportError:
-    IDA_AVAILABLE = False
-    print("⚠ IDA Pro not available - only non-IDA tests will run")
 
 
 def pytest_configure(config):
@@ -39,15 +20,3 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "integration: mark test as integration test"
     )
-
-
-def pytest_collection_modifyitems(config, items):
-    """Skip tests that require IDA if IDA is not available."""
-    if IDA_AVAILABLE:
-        return
-
-    import pytest as _pytest
-    skip_ida = _pytest.mark.skip(reason="IDA Pro not available")
-    for item in items:
-        if "system" in str(item.fspath) or "integration" in str(item.fspath):
-            item.add_marker(skip_ida)

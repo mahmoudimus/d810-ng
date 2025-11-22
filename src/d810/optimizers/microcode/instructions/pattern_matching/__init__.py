@@ -6,6 +6,10 @@ are registered automatically when their modules are imported.
 """
 
 # Import handler base classes for type checking
-from .handler import PatternMatchingRule, GenericPatternRule
-
-__all__ = ["PatternMatchingRule", "GenericPatternRule"]
+try:
+    from .handler import PatternMatchingRule, GenericPatternRule
+    __all__ = ["PatternMatchingRule", "GenericPatternRule"]
+except ImportError:
+    # Allow module to be imported without IDA for unit testing
+    # Rule modules can still be imported individually
+    __all__ = []

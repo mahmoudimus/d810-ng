@@ -4,8 +4,17 @@ import abc
 import dataclasses
 import typing
 
-import ida_hexrays
-import idaapi
+# Try to import IDA modules, fall back to None for unit testing
+try:
+    import ida_hexrays
+    import idaapi
+    IDA_AVAILABLE = True
+except ImportError:
+    # Allow module to be imported for unit testing without IDA Pro
+    # Type hints will still work via TYPE_CHECKING
+    ida_hexrays = None  # type: ignore
+    idaapi = None  # type: ignore
+    IDA_AVAILABLE = False
 
 import d810._compat as _compat
 from d810.conf.loggers import getLogger
@@ -1000,6 +1009,8 @@ class AstConstant(AstLeaf):
     def value(self):
         # For Z3 verification before pattern matching, use expected_value
         if self.mop is None:
+            return self.expected_value
+        if not IDA_AVAILABLE:
             return self.expected_value
         assert self.mop.t == ida_hexrays.mop_n
         return self.mop.nnn.value

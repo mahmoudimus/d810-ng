@@ -2,9 +2,26 @@ import functools
 import pathlib
 import typing
 
-import ida_hexrays
-import idaapi
-from ida_hexrays import mbl_array_t, minsn_t, mop_t, vd_printer_t
+# Try to import IDA modules, allow module to be imported for unit testing
+try:
+    import ida_hexrays
+    import idaapi
+    from ida_hexrays import mbl_array_t, minsn_t, mop_t, vd_printer_t
+    IDA_AVAILABLE = True
+except ImportError:
+    # Mock for unit testing
+    IDA_AVAILABLE = False
+    ida_hexrays = None  # type: ignore
+    idaapi = None  # type: ignore
+    # Mock IDA types used in function signatures
+    class mbl_array_t:  # type: ignore
+        pass
+    class minsn_t:  # type: ignore
+        pass
+    class mop_t:  # type: ignore
+        pass
+    class vd_printer_t:  # type: ignore
+        pass
 
 from d810.conf.loggers import getLogger
 from d810.hexrays.hexrays_helpers import (
