@@ -84,6 +84,11 @@ def ast_to_z3_expression(ast: AstNode | AstLeaf | None, use_bitvecval=False):
     if ast.is_leaf():
         ast = typing.cast(AstLeaf, ast)
         if ast.is_constant():
+            # Check if this is a pattern-matching constant with z3_var assigned
+            # (e.g., Const("c_1") without concrete value)
+            if hasattr(ast, 'z3_var') and ast.z3_var is not None:
+                return ast.z3_var  # Use symbolic Z3 variable
+            # Concrete constant (e.g., Const("ONE", 1))
             return z3.BitVecVal(ast.value, 32)
         return ast.z3_var
 
@@ -456,11 +461,21 @@ def z3_prove_equivalence(
                 leaf.z3_var = z3_vars[leaf.name]
                 leaf.z3_var_name = leaf.name
     else:
-        # Use provided z3_vars
+        # Use provided z3_vars (includes both variables and pattern-matching constants)
         for leaf in all_leaves:
-            if not leaf.is_constant() and hasattr(leaf, 'name') and leaf.name in z3_vars:
+            if not hasattr(leaf, 'name'):
+                continue
+
+            # Assign z3_var to regular variables
+            if not leaf.is_constant() and leaf.name in z3_vars:
                 leaf.z3_var = z3_vars[leaf.name]
                 leaf.z3_var_name = leaf.name
+            # Also assign z3_var to pattern-matching constants (symbolic constants)
+            elif leaf.is_constant() and leaf.name in z3_vars:
+                # Pattern-matching constant like Const("c_1") - treat as symbolic
+                if hasattr(leaf, 'expected_value') and leaf.expected_value is None:
+                    leaf.z3_var = z3_vars[leaf.name]
+                    leaf.z3_var_name = leaf.name
 
     # Convert both AST patterns to Z3 expressions
     try:
