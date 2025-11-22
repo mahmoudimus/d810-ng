@@ -409,6 +409,8 @@ class VerifiableRule(SymbolicRule):
                     continue
                 except Exception as e:
                     logger.debug(f"Could not convert ConstraintExpr to Z3: {e}")
+                    # Continue to try legacy constraint handling
+                    pass
 
             # Legacy: Try to auto-convert callable constraints (when.is_bnot, etc.)
             if callable(constraint) and hasattr(constraint, '__closure__') and constraint.__closure__:
