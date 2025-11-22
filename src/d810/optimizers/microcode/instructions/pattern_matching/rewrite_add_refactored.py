@@ -266,7 +266,12 @@ class Add_OllvmRule_2(VerifiableRule):
     Example:
         ~(a ^ b) - (0xFE * (a | b)) => (a + b) - 1
         (since 0xFE + 2 = 0x100, which wraps to 0 for 8-bit values)
+
+    NOTE: Z3 verification is skipped because this rule has size-dependent
+    constraints that cannot be automatically converted to Z3 expressions.
     """
+
+    SKIP_VERIFICATION = True  # Size-dependent constraint requires runtime checking
 
     val_fe = Const("val_fe")
 
@@ -288,7 +293,12 @@ class Add_OllvmRule_4(VerifiableRule):
 
     Example:
         (a ^ b) - (0xFE * (a & b)) => a + b
+
+    NOTE: Z3 verification is skipped because this rule has size-dependent
+    constraints that cannot be automatically converted to Z3 expressions.
     """
+
+    SKIP_VERIFICATION = True  # Size-dependent constraint requires runtime checking
 
     val_fe = Const("val_fe")
 

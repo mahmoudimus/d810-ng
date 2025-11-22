@@ -182,6 +182,8 @@ class VerifiableRule(SymbolicRule):
     # REPLACEMENT: SymbolicExpression = None
     CONSTRAINTS: List = []  # Runtime constraints (list of callables)
     DYNAMIC_CONSTS: Dict[str, Any] = {}  # Dynamic constant generators
+    KNOWN_INCORRECT: bool = False  # Set to True for rules that are mathematically incorrect
+    SKIP_VERIFICATION: bool = False  # Set to True to skip Z3 verification (e.g., for size-dependent constraints)
 
     def __init_subclass__(cls, **kwargs):
         """Automatically register any subclass and convert DSL patterns to AstNodes.

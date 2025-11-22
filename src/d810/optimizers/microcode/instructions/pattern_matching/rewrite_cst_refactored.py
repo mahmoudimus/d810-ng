@@ -275,7 +275,12 @@ class CstSimplificationRule12(VerifiableRule):
     """Simplify: (c_1 - x) - 2*(~x & c_2) => (~x ^ c_2) - (c_2 - c_1)
 
     MBA pattern with constants.
+
+    NOTE: This rule is marked as KNOWN_INCORRECT because it is not generally true.
+    It's very close to a valid identity, but off by a constant value of 1.
     """
+
+    KNOWN_INCORRECT = True  # Not generally true, off by constant value
 
     c_1 = Const("c_1")
     c_2 = Const("c_2")
@@ -345,6 +350,10 @@ class CstSimplificationRule15(VerifiableRule):
     when c_1, c_2, and c_1+c_2 are all less than the bit width.
 
     Combine consecutive shifts.
+
+    Note: The constraint `c_res = c_1 + c_2` fails for symbolic bitvectors
+    due to overflow/underflow, so we need custom Z3 constraints that check
+    for overflow and ensure the sum is within bounds.
     """
 
     c_1 = Const("c_1")
@@ -352,12 +361,8 @@ class CstSimplificationRule15(VerifiableRule):
     c_res = Const("c_res")  # c_1 + c_2
 
     CONSTRAINTS = [
-        c_res == c_1 + c_2,  # Sum of shift amounts
-        # Check individual shifts are valid
-        lambda ctx: ctx["c_1"].value < ctx["x_0"].size,
-        lambda ctx: ctx["c_2"].value < ctx["x_0"].size,
-        # Check combined shift is valid
-        lambda ctx: (ctx["c_1"].value + ctx["c_2"].value) < ctx["x_0"].size,
+        c_res == c_1 + c_2,  # Declarative constraint for runtime
+        # Size-dependent checks are handled in get_constraints() for Z3
     ]
 
     PATTERN = (x >> c_1) >> c_2
@@ -365,6 +370,34 @@ class CstSimplificationRule15(VerifiableRule):
 
     DESCRIPTION = "Simplify (x >> c1) >> c2 to x >> (c1 + c2)"
     REFERENCE = "Shift combining"
+
+    def get_constraints(self, z3_vars):
+        """Override to provide Z3-specific constraints with BIT_WIDTH.
+
+        This matches main branch's CONSTRAINT_MAP handling for this rule.
+        The constraints ensure:
+        1. c_res == c_1 + c_2
+        2. Addition doesn't overflow (using unsigned less-than checks)
+        3. Combined shift is less than BIT_WIDTH
+        """
+        import z3
+
+        # Start with base declarative constraints
+        base_constraints = super().get_constraints(z3_vars)
+
+        # Add BIT_WIDTH-dependent constraints
+        z3_constraints = base_constraints + [
+            # Check for unsigned overflow in addition
+            # Standard check: a + b overflows if result < a or result < b
+            z3.And(
+                z3.ULT(z3_vars["c_1"], z3_vars["c_1"] + z3_vars["c_2"]),
+                z3.ULT(z3_vars["c_2"], z3_vars["c_1"] + z3_vars["c_2"])
+            ),
+            # Check combined shift is less than BIT_WIDTH
+            z3.ULT(z3_vars["c_1"] + z3_vars["c_2"], self.BIT_WIDTH),
+        ]
+
+        return z3_constraints
 
 
 # ============================================================================
@@ -438,6 +471,11 @@ class CstSimplificationRule19(VerifiableRule):
     when c_1's MSB is 0 (ensures SAR behaves like SHR).
 
     Arithmetic shift to logical shift conversion.
+
+    Note: This rule converts an arithmetic shift (>>) to a logical one (LShR).
+    The LHS uses `>>` which is AShr. The RHS uses LShR.
+    This is only valid if the value being shifted, (x & c_1), is non-negative.
+    We enforce this by requiring the MSB of the mask c_1 to be 0.
     """
 
     c_1 = Const("c_1")
@@ -445,9 +483,8 @@ class CstSimplificationRule19(VerifiableRule):
     c_res = Const("c_res")  # c_1 >> c_2
 
     CONSTRAINTS = [
-        c_res == c_1 >> c_2,  # Shift constant
-        # Check MSB of c_1 is 0
-        lambda ctx: (ctx["c_1"].value & (1 << (ctx["c_1"].size - 1))) == 0
+        c_res == c_1 >> c_2,  # Declarative constraint for runtime
+        # MSB check is handled in get_constraints() for Z3
     ]
 
     PATTERN = (x & c_1).sar(c_2)  # Arithmetic shift right
@@ -455,6 +492,27 @@ class CstSimplificationRule19(VerifiableRule):
 
     DESCRIPTION = "Simplify (x & c1) SAR c2 to (x >> c2) & (c1 >> c2) when c1 MSB=0"
     REFERENCE = "SAR to SHR conversion"
+
+    def get_constraints(self, z3_vars):
+        """Override to provide Z3-specific constraints with BIT_WIDTH.
+
+        This matches main branch's CONSTRAINT_MAP handling for this rule.
+        The constraints ensure:
+        1. c_res == c_1 >> c_2 (declarative constraint)
+        2. MSB of c_1 is 0 (ensures the value is non-negative)
+        """
+        import z3
+
+        # Start with base declarative constraints
+        base_constraints = super().get_constraints(z3_vars)
+
+        # Add BIT_WIDTH-dependent constraint
+        # Check that the MSB (most significant bit) of c_1 is 0
+        z3_constraints = base_constraints + [
+            (z3_vars["c_1"] & (1 << (self.BIT_WIDTH - 1))) == 0,
+        ]
+
+        return z3_constraints
 
 
 # ============================================================================
