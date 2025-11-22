@@ -17,9 +17,18 @@ from d810.optimizers.rules import RULE_REGISTRY, VerifiableRule
 # Import all refactored rule modules to populate the registry
 # As you refactor more rules, add them here
 try:
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_xor_refactored
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_neg_refactored
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_add_refactored
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_and_refactored
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_bnot_refactored
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_cst_refactored
     import d810.optimizers.microcode.instructions.pattern_matching.rewrite_misc_refactored
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_mov_refactored
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_mul_refactored
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_neg_refactored
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_or_refactored
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_predicates_refactored
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_sub_refactored
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_xor_refactored
 except ImportError as e:
     # If running in an environment without IDA, some imports might fail
     # The test will be skipped if no rules are registered
