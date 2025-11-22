@@ -317,7 +317,9 @@ class VerifiableRule(SymbolicRule):
         """Check if all runtime constraints are satisfied for this match.
 
         This method evaluates the CONSTRAINTS list against the matched values.
-        Each constraint is a callable that takes the match context and returns bool.
+        Constraints can be either:
+        1. ConstraintExpr objects (new declarative style)
+        2. Callable predicates (legacy style)
 
         Args:
             match_context: Dictionary mapping variable names to matched AstNodes/values.
@@ -326,7 +328,12 @@ class VerifiableRule(SymbolicRule):
             True if all constraints pass, False otherwise.
 
         Example:
-            >>> # In a rule definition:
+            >>> # New declarative style:
+            >>> CONSTRAINTS = [
+            ...     c1 == ~c2,          # Checking constraint
+            ...     val_res == c2 - ONE  # Defining constraint
+            ... ]
+            >>> # Legacy style:
             >>> from d810.optimizers.dsl import when
             >>> CONSTRAINTS = [
             ...     when.equal_mops("c_1", "c_2"),
@@ -338,8 +345,24 @@ class VerifiableRule(SymbolicRule):
 
         for constraint in self.CONSTRAINTS:
             try:
-                if not constraint(match_context):
-                    return False
+                # Check if this is a ConstraintExpr (new declarative style)
+                from d810.optimizers.constraints import is_constraint_expr
+                if is_constraint_expr(constraint):
+                    # Try to extract a variable definition
+                    var_name, value = constraint.eval_and_define(match_context)
+
+                    if var_name is not None:
+                        # This is a defining constraint - add the computed value
+                        from d810.expr.ast import AstConstant
+                        match_context[var_name] = AstConstant(var_name, value)
+                    else:
+                        # This is a checking constraint - verify it holds
+                        if not constraint.check(match_context):
+                            return False
+                else:
+                    # Legacy callable constraint
+                    if not constraint(match_context):
+                        return False
             except (KeyError, AttributeError, TypeError) as e:
                 logger.debug(
                     f"Constraint check failed for {self.name}: {e}"
@@ -376,7 +399,18 @@ class VerifiableRule(SymbolicRule):
         z3_constraints = []
 
         for constraint in self.CONSTRAINTS:
-            # Try to auto-convert known constraint types
+            # Check if this is a ConstraintExpr (new declarative style)
+            from d810.optimizers.constraints import is_constraint_expr
+            if is_constraint_expr(constraint):
+                # Direct conversion to Z3
+                try:
+                    z3_constraint = constraint.to_z3(z3_vars)
+                    z3_constraints.append(z3_constraint)
+                    continue
+                except Exception as e:
+                    logger.debug(f"Could not convert ConstraintExpr to Z3: {e}")
+
+            # Legacy: Try to auto-convert callable constraints (when.is_bnot, etc.)
             if callable(constraint) and hasattr(constraint, '__closure__') and constraint.__closure__:
                 # Extract variable names from closure (for when.is_bnot, when.equal_mops)
                 closure_vars = []
