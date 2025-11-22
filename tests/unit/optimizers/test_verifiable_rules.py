@@ -14,21 +14,20 @@ import pytest
 
 from d810.optimizers.rules import RULE_REGISTRY, VerifiableRule
 
-# Import all refactored rule modules to populate the registry
-# As you refactor more rules, add them here
+# Import all rule modules to populate the registry
 try:
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_add_refactored
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_and_refactored
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_bnot_refactored
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_cst_refactored
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_misc_refactored
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_mov_refactored
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_mul_refactored
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_neg_refactored
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_or_refactored
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_predicates_refactored
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_sub_refactored
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_xor_refactored
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_add
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_and
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_bnot
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_cst
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_misc
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_mov
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_mul
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_neg
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_or
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_predicates
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_sub
+    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_xor
 except ImportError as e:
     # If running in an environment without IDA, some imports might fail
     # The test will be skipped if no rules are registered
