@@ -203,17 +203,24 @@ class MyKnownIncorrectRule(VerifiableRule):
 Create your rules in the appropriate file under:
 ```
 src/d810/optimizers/microcode/instructions/pattern_matching/
-├── rewrite_add_refactored.py      # Addition/subtraction rules
-├── rewrite_and_refactored.py      # Bitwise AND rules
-├── rewrite_xor_refactored.py      # Bitwise XOR rules
-├── rewrite_bnot_refactored.py     # Bitwise NOT rules
-└── rewrite_cst_refactored.py      # Constant simplification rules
+├── rewrite_add.py          # Addition/subtraction rules
+├── rewrite_and.py          # Bitwise AND rules
+├── rewrite_bnot.py         # Bitwise NOT rules
+├── rewrite_cst.py          # Constant simplification rules
+├── rewrite_misc.py         # Miscellaneous complex identities
+├── rewrite_mov.py          # Move/assignment rules
+├── rewrite_mul.py          # Multiplication rules
+├── rewrite_neg.py          # Negation rules
+├── rewrite_or.py           # Bitwise OR rules
+├── rewrite_predicates.py   # Predicate/conditional rules
+├── rewrite_sub.py          # Subtraction rules
+└── rewrite_xor.py          # Bitwise XOR rules
 ```
 
 Then import your module in `tests/unit/optimizers/test_verifiable_rules.py`:
 
 ```python
-import d810.optimizers.microcode.instructions.pattern_matching.rewrite_add_refactored
+import d810.optimizers.microcode.instructions.pattern_matching.rewrite_add
 ```
 
 ### Running Tests

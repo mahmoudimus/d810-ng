@@ -88,6 +88,51 @@ python scripts/converter.py --in-place src/d810/
 
 A utility script for handling Unicode transformations (exact purpose depends on implementation).
 
+## Test Scripts
+
+### `run_integration_tests.sh`
+Runs integration tests against sample binaries.
+
+**Usage:**
+```bash
+./scripts/run_integration_tests.sh
+```
+
+### `test_with_docker.sh`
+Runs tests inside a Docker container with IDA Pro installed.
+
+**Usage:**
+```bash
+./scripts/test_with_docker.sh
+```
+
+## Migration Scripts
+
+Located in `scripts/migration/` - these were used during the DSL migration and are kept for reference.
+
+### `bulk_migrate_cst.py`
+Automated migration of constant simplification rules from imperative to declarative DSL.
+
+### `constraint_dsl_implementation.py`
+Prototype implementation of constraint system for VerifiableRule.
+
+### `dsl_constraints_proposal.py`
+Design proposal for declarative constraint syntax.
+
+### `fol_converter_poc.py`
+Proof of concept for First-Order Logic conversion (not used in final implementation).
+
+### `migrate_dynamic_const.py`
+Helper script to migrate rules using DynamicConst patterns.
+
+### `test_constraint*.py`
+Various test scripts for constraint system validation.
+
+### `test_imports.py`
+Module import testing utility.
+
+**Note:** Most migration scripts are historical and kept for reference. The DSL migration is complete.
+
 ## Development
 
 When adding new scripts to this directory:
@@ -97,3 +142,4 @@ When adding new scripts to this directory:
 3. Add command-line argument parsing for flexibility
 4. Update this README with usage instructions
 5. Make scripts executable: `chmod +x scripts/your_script.py`
+6. Place migration tools in `scripts/migration/`
