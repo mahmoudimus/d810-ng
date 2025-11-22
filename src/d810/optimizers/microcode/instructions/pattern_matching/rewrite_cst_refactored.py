@@ -467,21 +467,26 @@ class CstSimplificationRule20(VerifiableRule):
 
     OLLVM obfuscation pattern with disjoint constant masks.
 
-    Requires: c_and_1 & c_and_2 == 0 (disjoint masks)
+    Requires:
+    - c_and_1 & c_and_2 == 0 (disjoint masks)
+    - c_xor & (c_and_1 | c_and_2) == 0 (c_xor outside combined mask)
     """
 
     c_and_1 = Const("c_and_1")
     c_and_2 = Const("c_and_2")
     c_xor = Const("c_xor")
-    c_and_res = Const("c_and_res")  # c_and_1 ^ c_and_2
+    c_and_res = Const("c_and_res")  # c_and_1 | c_and_2 (OR for disjoint masks)
     c_xor_res = Const("c_xor_res")  # c_and_1 ^ c_xor
 
     CONSTRAINTS = [
         when.is_bnot("x_0", "bnot_x_0"),
-        c_and_res == c_and_1 ^ c_and_2,  # XOR of masks
-        c_xor_res == c_and_1 ^ c_xor,     # XOR result
         # Check disjoint masks
         (c_and_1 & c_and_2) == ZERO,
+        # Check c_xor is outside the combined mask (newly discovered required condition)
+        (c_xor & (c_and_1 | c_and_2)) == ZERO,
+        # Definitions of derived constants
+        c_and_res == c_and_1 | c_and_2,  # OR for combining disjoint masks
+        c_xor_res == c_and_1 ^ c_xor,     # XOR result
     ]
 
     PATTERN = (bnot_x & c_and_1) | ((x & c_and_2) ^ c_xor)
@@ -496,20 +501,27 @@ class CstSimplificationRule21(VerifiableRule):
 
     OLLVM pattern with complementary masks.
 
-    Requires: c_xor_1 & c_xor_2 == 0 (disjoint XOR constants)
+    Requires:
+    - c_xor_1 & c_xor_2 == 0 (disjoint XOR constants)
+    - c_xor_1 lives in c_and mask
+    - c_xor_2 lives in ~c_and mask
     """
 
     c_and = Const("c_and")
     bnot_c_and = Const("bnot_c_and")
     c_xor_1 = Const("c_xor_1")
     c_xor_2 = Const("c_xor_2")
-    c_xor_res = Const("c_xor_res")  # c_xor_1 ^ c_xor_2
+    c_xor_res = Const("c_xor_res")  # c_xor_1 | c_xor_2 (OR for disjoint sets)
 
     CONSTRAINTS = [
         bnot_c_and == ~c_and,           # NOT relationship
-        c_xor_res == c_xor_1 ^ c_xor_2,  # XOR result
         # Check disjoint XOR constants
         (c_xor_1 & c_xor_2) == ZERO,
+        # Newly discovered required conditions
+        (c_xor_1 & bnot_c_and) == ZERO,  # c_xor_1 lives in c_and mask
+        (c_xor_2 & c_and) == ZERO,       # c_xor_2 lives in ~c_and mask
+        # Definition of derived constant
+        c_xor_res == c_xor_1 | c_xor_2,  # Use OR for disjoint sets
     ]
 
     PATTERN = ((x & c_and) ^ c_xor_1) | ((x & bnot_c_and) ^ c_xor_2)
@@ -536,19 +548,20 @@ class CstSimplificationRule22(VerifiableRule):
     bnot_c_and = Const("bnot_c_and")
     c_xor_1 = Const("c_xor_1")
     c_xor_2 = Const("c_xor_2")
-    c_xor_res = Const("c_xor_res")  # c_xor_1 ^ c_xor_2
+    c_xor_res = Const("c_xor_res")  # c_xor_1 ^ c_xor_2 ^ ~c_and
 
     CONSTRAINTS = [
         # Variable NOT verification
         when.is_bnot("x_0", "bnot_x_0"),
         bnot_c_and == ~c_and,            # Constant NOT
-        c_xor_res == c_xor_1 ^ c_xor_2,   # XOR result
         # Disjoint XOR constants
         (c_xor_1 & c_xor_2) == ZERO,
         # c_xor_1 lives in c_and (c_xor_1 & ~c_and == 0)
         (c_xor_1 & bnot_c_and) == ZERO,
         # c_xor_2 lives in ~c_and (c_xor_2 & c_and == 0)
         (c_xor_2 & c_and) == ZERO,
+        # Definition of derived constant
+        c_xor_res == c_xor_1 ^ c_xor_2 ^ bnot_c_and,   # XOR with ~c_and
     ]
 
     PATTERN = ((x & c_and) ^ c_xor_1) | ((bnot_x & bnot_c_and) ^ c_xor_2)
