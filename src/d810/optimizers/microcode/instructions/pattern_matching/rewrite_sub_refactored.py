@@ -7,7 +7,7 @@ All rules are verified using Z3 SMT solver.
 """
 
 from d810.hexrays.hexrays_helpers import SUB_TABLE
-from d810.optimizers.dsl import Var, Const, DynamicConst, when
+from d810.optimizers.dsl import Var, Const, when
 from d810.optimizers.rules import VerifiableRule
 
 # Define variables for pattern matching
@@ -115,10 +115,9 @@ class Sub1_Factor1(VerifiableRule):
     """
 
     c_minus_2 = Const("c_minus_2")
-    val_1 = DynamicConst("val_1", lambda ctx: 1, size_from="x_0")
 
     PATTERN = (-x - ONE) - (c_minus_2 * x)
-    REPLACEMENT = x - val_1
+    REPLACEMENT = x - ONE
 
     CONSTRAINTS = [
         # Check that c_minus_2 == -2 for its bit width
@@ -152,10 +151,9 @@ class Sub1Add_HackersDelight1(VerifiableRule):
     Proof: Complex MBA obfuscation that reduces to (x + y) - 1.
     """
 
-    val_1 = DynamicConst("val_1", lambda ctx: 1, size_from="x_1")
 
     PATTERN = TWO * (x | y) + (x ^ bnot_y)
-    REPLACEMENT = (x + y) - val_1
+    REPLACEMENT = (x + y) - ONE
 
     CONSTRAINTS = [when.is_bnot("x_1", "bnot_x_1")]
 
@@ -174,10 +172,9 @@ class Sub1And_HackersDelight1(VerifiableRule):
                      = (x & y) - 1  [algebraic simplification]
     """
 
-    val_1 = DynamicConst("val_1", lambda ctx: 1, size_from="x_0")
 
     PATTERN = (x | bnot_y) + y
-    REPLACEMENT = (x & y) - val_1
+    REPLACEMENT = (x & y) - ONE
 
     CONSTRAINTS = [when.is_bnot("x_1", "bnot_x_1")]
 
@@ -196,10 +193,9 @@ class Sub1Or_MBA1(VerifiableRule):
                             = (x | y) - 1  [OR identity]
     """
 
-    val_1 = DynamicConst("val_1", lambda ctx: 1, size_from="x_0")
 
     PATTERN = (x + y) + ~(x & y)
-    REPLACEMENT = (x | y) - val_1
+    REPLACEMENT = (x | y) - ONE
 
     DESCRIPTION = "Simplify (x + y) + ~(x & y) to (x | y) - 1"
     REFERENCE = "MBA OR obfuscation"
@@ -216,11 +212,9 @@ class Sub1And1_MBA1(VerifiableRule):
                      = (x & 1) - 1
     """
 
-    val_1_1 = DynamicConst("val_1_1", lambda ctx: 1, size_from="x_0")
-    val_1_2 = DynamicConst("val_1_2", lambda ctx: 1, size_from="x_0")
 
     PATTERN = (~x | ONE) + x
-    REPLACEMENT = (x & val_1_1) - val_1_2
+    REPLACEMENT = (x & ONE) - ONE
 
     DESCRIPTION = "Simplify (~x | 1) + x to (x & 1) - 1"
     REFERENCE = "MBA constant pattern"
@@ -251,5 +245,5 @@ Code metrics:
 Constraint types used:
 - when.is_bnot() for bitwise NOT verification
 - Lambda with SUB_TABLE for -2 constant validation
-- DynamicConst for runtime constant generation (val_1)
+- DynamicConst for runtime constant generation (ONE)
 """
