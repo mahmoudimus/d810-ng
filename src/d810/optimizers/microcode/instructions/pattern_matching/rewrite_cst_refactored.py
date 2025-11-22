@@ -558,9 +558,7 @@ class CstSimplificationRule22(VerifiableRule):
     c_xor_1 = Const("c_xor_1")
     c_xor_2 = Const("c_xor_2")
 
-    c_xor_res = Const("c_xor_res")  # c_xor_1 ^ c_xor_2,
-        size_from="c_xor_1",
-    )
+    c_xor_res = Const("c_xor_res")  # c_xor_1 ^ c_xor_2
 
     CONSTRAINTS = [
         # Variable NOT verification
