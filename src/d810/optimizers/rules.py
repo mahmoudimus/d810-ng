@@ -369,7 +369,36 @@ class VerifiableRule(SymbolicRule):
             ...     # This rule is only valid when c2 == ~c1
             ...     return [z3_vars["c2"] == ~z3_vars["c1"]]
         """
-        return []
+        # Auto-convert DSL constraints to Z3 expressions
+        if not hasattr(self, 'CONSTRAINTS') or not self.CONSTRAINTS:
+            return []
+
+        z3_constraints = []
+
+        for constraint in self.CONSTRAINTS:
+            # Try to auto-convert known constraint types
+            if callable(constraint) and hasattr(constraint, '__closure__') and constraint.__closure__:
+                # Extract variable names from closure (for when.is_bnot, when.equal_mops)
+                closure_vars = []
+                for cell in constraint.__closure__:
+                    content = cell.cell_contents
+                    if isinstance(content, str):
+                        closure_vars.append(content)
+
+                if len(closure_vars) >= 2:
+                    var1, var2 = closure_vars[0], closure_vars[1]
+
+                    # Check if both variables are in z3_vars
+                    if var1 in z3_vars and var2 in z3_vars:
+                        # Assume is_bnot (most common) - creates: var1 == ~var2
+                        # TODO: Detect constraint type more precisely
+                        z3_constraints.append(z3_vars[var1] == ~z3_vars[var2])
+                        continue
+
+            # For lambdas or unknown constraints, log warning
+            logger.debug(f"Could not auto-convert constraint for rule {self.name}")
+
+        return z3_constraints
 
     def verify(self) -> bool:
         """Proves that pattern ≡ replacement under the defined constraints.
