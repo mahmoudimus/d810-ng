@@ -204,23 +204,30 @@ class Add_SpecialConstantRule_2(VerifiableRule):
 
 
 class Add_SpecialConstantRule_3(VerifiableRule):
-    """Simplify: (x ^ c1) + 2*(x | c2) => x + (c2 - 1)
+    """Simplify: (x ^ c1) + 2*(x | c2) => x + val_res
 
-    where c1 == ~c2
-
-    The replacement constant is computed as c2 - 1.
+    where:
+        c1 == ~c2           (checking constraint)
+        val_res == c2 - 1   (defining constraint)
 
     Example:
         (a ^ 0xFE) + 2*(a | 0x01) => a + 0  (since ~0x01 = 0xFE, result is 0x01 - 1 = 0)
+
+    NOTE: This rule now uses the new declarative constraint DSL instead of
+    DynamicConst and lambda parsing. The constraint val_res == c2 - ONE serves
+    both Z3 verification and runtime value computation.
     """
 
     c1, c2 = Const("c_1"), Const("c_2")
-    val_res = DynamicConst("val_res", lambda ctx: ctx['c_2'].value - 1, size_from="x")
+    val_res = Const("val_res")  # Symbolic constant, value defined by constraint
 
     PATTERN = (x ^ c1) + TWO * (x | c2)
     REPLACEMENT = x + val_res
 
-    CONSTRAINTS = [when.is_bnot("c_1", "c_2")]
+    CONSTRAINTS = [
+        c1 == ~c2,          # Relationship between matched constants
+        val_res == c2 - ONE  # Definition of replacement constant
+    ]
 
     DESCRIPTION = "Simplify XOR-OR with inverted constants"
     REFERENCE = "Special constant pattern 3"

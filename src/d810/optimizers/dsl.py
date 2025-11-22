@@ -34,6 +34,7 @@ from ida_hexrays import (
 
 if TYPE_CHECKING:
     from d810.expr.ast import AstBase, AstNode
+    from d810.optimizers.constraints import ConstraintExpr
 
 
 class SymbolicExpression:
@@ -117,6 +118,24 @@ class SymbolicExpression:
     def __str__(self) -> str:
         """Return a string representation of this expression."""
         return str(self.node)
+
+    def __eq__(self, other: SymbolicExpression) -> ConstraintExpr:
+        """Equality constraint: self == other.
+
+        NOTE: This overrides Python's default equality to return a ConstraintExpr
+        instead of bool. This allows writing declarative constraints like:
+            val_res == c2 - ONE
+
+        For object identity comparison, use `is` instead.
+
+        Args:
+            other: The right-hand side of the equality
+
+        Returns:
+            An EqualityConstraint that can be used in CONSTRAINTS list
+        """
+        from d810.optimizers.constraints import EqualityConstraint
+        return EqualityConstraint(self, other)
 
 
 def Var(name: str) -> SymbolicExpression:
