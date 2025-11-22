@@ -1,3 +1,7 @@
+# CRITICAL: Import idapro FIRST before any IDA modules!
+# See: https://docs.hex-rays.com/user-guide/idalib#using-the-ida-library-python-module
+import idapro  # noqa: F401
+
 import pathlib
 import sys
 
