@@ -337,7 +337,8 @@ class Xor_Rule_2(VerifiableRule):
     PATTERN = ((x ^ z) & (y ^ bnot_z)) | ((x ^ bnot_z) & (y ^ z))
     REPLACEMENT = x ^ y
 
-    CONSTRAINTS = [when.is_bnot("x_2", "bnot_x2")]
+    # New declarative constraint syntax - reads like mathematics!
+    CONSTRAINTS = [bnot_z == ~z]
 
     DESCRIPTION = "Simplify complex OLLVM XOR pattern to x ^ y"
     REFERENCE = "OLLVM obfuscation"
@@ -355,7 +356,8 @@ class Xor_Rule_3(VerifiableRule):
     PATTERN = ((x ^ z) & (y ^ z)) | ((x ^ bnot_z) & (y ^ bnot_z))
     REPLACEMENT = ~x ^ y
 
-    CONSTRAINTS = [when.is_bnot("x_2", "bnot_x2")]
+    # New declarative constraint syntax - reads like mathematics!
+    CONSTRAINTS = [bnot_z == ~z]
 
     DESCRIPTION = "Simplify complex OLLVM pattern to ~x ^ y"
     REFERENCE = "OLLVM obfuscation variant"
