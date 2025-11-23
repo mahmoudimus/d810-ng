@@ -175,6 +175,23 @@ class Z3VerificationVisitor:
             case "sar":
                 return left >> right  # Arithmetic shift right
 
+            # Extension operations
+            case "zext":
+                # Zero-extend to target width
+                # expr.value contains target_width, left contains the expression
+                target_width = expr.value
+                if target_width > self.bit_width:
+                    # Extending beyond current bit_width - add zeros at the top
+                    extend_bits = target_width - self.bit_width
+                    return z3.ZeroExt(extend_bits, left)
+                elif target_width == self.bit_width:
+                    # Already at target width, no extension needed
+                    return left
+                else:
+                    # Target width smaller than current - this shouldn't happen in practice
+                    # but handle it by extracting the low bits
+                    return z3.Extract(target_width - 1, 0, left)
+
             # Comparison operations (return 0 or 1)
             case "setnz":
                 return z3.If(
