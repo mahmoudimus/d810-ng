@@ -96,7 +96,7 @@ class Z3VerificationVisitor:
 
         return self.var_map[expr.name]
 
-    def _visit_operation(self, expr: SymbolicExpression) -> z3.BitVecRef:
+    def _visit_operation(self, expr: SymbolicExpression) -> z3.BitVecRef | z3.BoolRef:
         """Visit an operation node (binary/unary operation).
 
         Args:
@@ -108,6 +108,10 @@ class Z3VerificationVisitor:
         Raises:
             ValueError: If the operation is unsupported.
         """
+        # Handle bool_to_int specially - it has a constraint instead of left/right
+        if expr.operation == "bool_to_int":
+            return self._visit_bool_to_int(expr)
+
         # Recursively visit children
         left = self.visit(expr.left) if expr.left else None
         right = self.visit(expr.right) if expr.right else None
@@ -247,6 +251,117 @@ class Z3VerificationVisitor:
                     f"Unsupported operation in Z3VerificationVisitor: {expr.operation}. "
                     f"Add support for this operation in visitors.py"
                 )
+
+    def _visit_bool_to_int(self, expr: SymbolicExpression) -> z3.BitVecRef:
+        """Visit a bool_to_int operation: converts ConstraintExpr to 0 or 1.
+
+        This is the bridge between boolean formulas (ConstraintExpr) and arithmetic
+        terms (SymbolicExpression). It implements the C-like behavior where comparison
+        results can be used as integers.
+
+        Args:
+            expr: SymbolicExpression with operation="bool_to_int" and constraint set.
+
+        Returns:
+            Z3 If-expression: If(constraint, 1, 0)
+
+        Example:
+            constraint = x != 0  # ConstraintExpr
+            expr = constraint.to_int()  # SymbolicExpression(operation="bool_to_int")
+            z3_expr = visitor._visit_bool_to_int(expr)  # If(x != 0, 1, 0)
+        """
+        if expr.constraint is None:
+            raise ValueError("bool_to_int operation requires a constraint")
+
+        # Convert the ConstraintExpr to a Z3 boolean
+        bool_expr = self._constraint_to_z3(expr.constraint)
+
+        # Wrap in If: returns 1 if true, 0 if false
+        return z3.If(
+            bool_expr,
+            z3.BitVecVal(1, self.bit_width),
+            z3.BitVecVal(0, self.bit_width),
+        )
+
+    def _constraint_to_z3(self, constraint) -> z3.BoolRef:
+        """Convert a ConstraintExpr to a Z3 boolean expression.
+
+        Args:
+            constraint: ConstraintExpr (EqualityConstraint, ComparisonConstraint, etc.)
+
+        Returns:
+            Z3 BoolRef representing the constraint
+
+        Raises:
+            ValueError: If constraint type is unsupported
+        """
+        from d810.optimizers.constraints import (
+            AndConstraint,
+            ComparisonConstraint,
+            EqualityConstraint,
+            NotConstraint,
+            OrConstraint,
+        )
+
+        if isinstance(constraint, EqualityConstraint):
+            left_z3 = self._expr_to_z3_helper(constraint.left)
+            right_z3 = self._expr_to_z3_helper(constraint.right)
+            return left_z3 == right_z3
+
+        if isinstance(constraint, ComparisonConstraint):
+            left_z3 = self._expr_to_z3_helper(constraint.left)
+            right_z3 = self._expr_to_z3_helper(constraint.right)
+
+            match constraint.op_name:
+                case "ne":
+                    return left_z3 != right_z3
+                case "lt":
+                    return z3.ULT(left_z3, right_z3)
+                case "le":
+                    return z3.ULE(left_z3, right_z3)
+                case "gt":
+                    return z3.UGT(left_z3, right_z3)
+                case "ge":
+                    return z3.UGE(left_z3, right_z3)
+                case _:
+                    raise ValueError(f"Unsupported comparison operator: {constraint.op_name}")
+
+        if isinstance(constraint, AndConstraint):
+            left_bool = self._constraint_to_z3(constraint.left)
+            right_bool = self._constraint_to_z3(constraint.right)
+            return z3.And(left_bool, right_bool)
+
+        if isinstance(constraint, OrConstraint):
+            left_bool = self._constraint_to_z3(constraint.left)
+            right_bool = self._constraint_to_z3(constraint.right)
+            return z3.Or(left_bool, right_bool)
+
+        if isinstance(constraint, NotConstraint):
+            inner_bool = self._constraint_to_z3(constraint.constraint)
+            return z3.Not(inner_bool)
+
+        raise ValueError(f"Unsupported constraint type: {type(constraint)}")
+
+    def _expr_to_z3_helper(self, expr):
+        """Helper to convert expression (SymbolicExpression or value) to Z3.
+
+        Args:
+            expr: Can be SymbolicExpression, int, or other value
+
+        Returns:
+            Z3 BitVecRef
+        """
+        from d810.optimizers.dsl import SymbolicExpression
+
+        if isinstance(expr, SymbolicExpression):
+            return self.visit(expr)
+
+        # Handle raw integer values (from constraint evaluation)
+        if isinstance(expr, int):
+            return z3.BitVecVal(expr, self.bit_width)
+
+        # Fallback - try to visit as SymbolicExpression
+        return self.visit(expr)
 
     def get_variables(self) -> dict[str, z3.BitVecRef]:
         """Get all Z3 variables created during visitation.
