@@ -93,14 +93,12 @@ class PredSetnz_3(VerifiableRule):
     - If x doesn't have bit 1: (x | 2) = x + 2, (x ^ 2) = x + 2, sum = 2x + 4 != 0
 
     Mathematical proof: (x | 2) + (x ^ 2) >= 2 for all x, so never equals 0.
+
+    Uses .to_int() to bridge boolean constraint to integer result (0 or 1).
     """
 
-
-    PATTERN = (x | TWO) + (x ^ TWO)
+    PATTERN = (((x | TWO) + (x ^ TWO)) != ZERO).to_int()
     REPLACEMENT = ONE
-
-    # Skip Z3 verification - comparison value (0) not in pattern, added by framework
-    SKIP_VERIFICATION = True
 
     DESCRIPTION = "Constant-fold (x | 2) + (x ^ 2) != 0 to 1"
     REFERENCE = "Algebraic simplification"
@@ -141,14 +139,12 @@ class PredSetnz_5(VerifiableRule):
 
     Actually, this can only be false when x = 0 and (~x & 1) = 1,
     but that's impossible since ~0 & 1 = 0xFF...FE & 1 = 0.
+
+    Uses .to_int() to bridge boolean constraint to integer result (0 or 1).
     """
 
-
-    PATTERN = -(~x & ONE)
+    PATTERN = ((-(~x & ONE)) != x).to_int()
     REPLACEMENT = ONE
-
-    # Skip Z3 verification - comparison value not in pattern, added by framework
-    SKIP_VERIFICATION = True
 
     DESCRIPTION = "Constant-fold -(~x & 1) != x to 1"
     REFERENCE = "Algebraic simplification"
@@ -257,15 +253,12 @@ class PredSetz_3(VerifiableRule):
     """Simplify: (x | 2) + (x ^ 2) == 0 => 0
 
     This expression is never zero (see PredSetnz3), so == 0 is always false.
+
+    Uses .to_int() to bridge boolean constraint to integer result (0 or 1).
     """
 
-
-
-    PATTERN = (x | TWO) + (x ^ TWO)
+    PATTERN = (((x | TWO) + (x ^ TWO)) == ZERO).to_int()
     REPLACEMENT = ZERO
-
-    # Skip Z3 verification - comparison value not in pattern, added by framework
-    SKIP_VERIFICATION = True
 
     DESCRIPTION = "Constant-fold (x | 2) + (x ^ 2) == 0 to 0"
     REFERENCE = "Algebraic simplification"

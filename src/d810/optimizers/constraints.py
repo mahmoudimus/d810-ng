@@ -93,6 +93,30 @@ class ConstraintExpr:
         """Logical NOT: ~self."""
         return NotConstraint(self)
 
+    def to_int(self) -> "SymbolicExpression":
+        """Convert boolean constraint to integer expression (0 or 1).
+
+        This bridges the gap between boolean constraints (formulas) and arithmetic
+        expressions (terms). In C-like languages and IDA microcode, comparison
+        results are treated as integers (0 for false, 1 for true).
+
+        Equivalent to:
+        - C: (int)(x != y)
+        - Z3: If(x != y, 1, 0)
+        - IDA: SETNZ, SETZ instructions
+
+        Example:
+            >>> x = Var("x")
+            >>> constraint = x != Const("0", 0)  # Returns ConstraintExpr (boolean)
+            >>> int_expr = constraint.to_int()   # Returns SymbolicExpression (0 or 1)
+            >>> pattern = int_expr + Const("5", 5)  # Now can use in arithmetic!
+
+        Returns:
+            SymbolicExpression representing 0 (false) or 1 (true)
+        """
+        from d810.optimizers.dsl import SymbolicExpression
+        return SymbolicExpression(operation="bool_to_int", constraint=self)
+
 
 @dataclass
 class EqualityConstraint(ConstraintExpr):
