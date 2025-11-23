@@ -276,6 +276,14 @@ class SymbolicExpression:
         if self.operation == "bool_to_int":
             return self._constraint_to_node(self.constraint)
 
+        # Handle zext specially - converts to xdu (zero extend) opcode
+        if self.operation == "zext":
+            from d810.opcodes import M_XDU
+            # M_XDU is a unary operation that extends the operand
+            # self.left contains the expression, self.value contains target_width
+            left_node = self.left.node if self.left else None
+            return AstNode(M_XDU, left_node, None)
+
         # Map operation strings to opcodes
         op_map = {
             "add": M_ADD,
@@ -405,6 +413,30 @@ def Const(name: str, value: int | None = None) -> SymbolicExpression:
         >>> pattern = x + Const("c_1")  # x plus any constant
     """
     return SymbolicExpression(name=name, value=value)
+
+
+def Zext(expr: SymbolicExpression, target_width: int) -> SymbolicExpression:
+    """Zero-extend an expression to a larger bit-width.
+
+    This represents the `xdu` (extend-unsigned-double) operation in IDA microcode.
+    Zero-extension pads the high bits with zeros when converting to a larger width.
+
+    Args:
+        expr: The expression to zero-extend
+        target_width: The target bit-width (e.g., 32 for extending to 32 bits)
+
+    Returns:
+        A SymbolicExpression representing the zero-extended value.
+
+    Examples:
+        >>> # Extend (x & 1) to 32 bits
+        >>> pattern = Zext(x & ONE, 32)
+
+        >>> # Pattern: xdu(x & 1) == 2 is always false
+        >>> PATTERN = (Zext(x & ONE, 32) == TWO).to_int()
+        >>> REPLACEMENT = ZERO  # Always false
+    """
+    return SymbolicExpression(operation="zext", left=expr, value=target_width)
 
 
 # Common symbolic constants for convenience

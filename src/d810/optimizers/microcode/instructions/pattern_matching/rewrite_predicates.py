@@ -17,7 +17,7 @@ All rules are verified using Z3 SMT solver.
 """
 
 from d810.hexrays.hexrays_helpers import AND_TABLE
-from d810.optimizers.dsl import Var, Const, DynamicConst, when
+from d810.optimizers.dsl import Var, Const, DynamicConst, when, Zext
 from d810.optimizers.rules import VerifiableRule
 
 # Define variables for pattern matching
@@ -355,25 +355,28 @@ class Pred0Rule3(VerifiableRule):
 
 
 class Pred0Rule4(VerifiableRule):
-    """Simplify: xdu(x & 1) == 2 => 0
+    """Simplify: Zext(x & 1, 32) == 2 => 0
 
-    xdu extends (x & 1) which is either 0 or 1.
-    Neither 0 nor 1 equals 2, so the comparison is always false.
+    Zero-extending (x & 1) to 32 bits produces either 0 or 1.
+    Since neither 0 nor 1 equals 2, the comparison is always false (returns 0).
+
+    Mathematical proof:
+        (x & 1) ∈ {0, 1}  (only the low bit)
+        Zext((x & 1), 32) ∈ {0, 1}  (zero-extension preserves value)
+        {0, 1} ∩ {2} = ∅  (no intersection)
+        Therefore: (Zext(x & 1, 32) == 2) is always False (0)
+
+    Now fully verifiable: Uses Zext operation and .to_int() for comparison.
     """
 
-    c1, c2 = Const("c_1", 1), Const("c_2", 2)
+    # Pattern: Zext(x & 1, 32) == 2
+    # This captures the full comparison using .to_int()
+    PATTERN = (Zext(x & ONE, 32) == TWO).to_int()
 
-
-    # Note: m_xdu is extend-unsigned-double
-    # Pattern: xdu(x & 1) == 2
-    # We can't directly express xdu in the DSL yet, so this is approximate
-    PATTERN = x & c1  # Simplified for demonstration
+    # Replacement: 0 (always false)
     REPLACEMENT = ZERO
 
-    # Skip Z3 verification - comparison value not in pattern, added by framework
-    SKIP_VERIFICATION = True
-
-    DESCRIPTION = "Constant-fold xdu(x & 1) == 2 to 0"
+    DESCRIPTION = "Constant-fold Zext(x & 1, 32) == 2 to 0"
     REFERENCE = "Range analysis"
 
 
