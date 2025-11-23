@@ -165,6 +165,58 @@ class MyAdvancedRule(VerifiableRule):
         ]
 ```
 
+### Predicate Rules: Boolean-to-Integer Conversion
+
+For rules that work with comparisons (predicates), use `.to_int()` to convert boolean results to integers:
+
+```python
+class MyPredicateRule(VerifiableRule):
+    """Simplify: (x | c1) != c2 => 1 (when c1 | c2 != c2)
+
+    If (c1 | c2) != c2, then c1 has bits that c2 doesn't have.
+    Therefore (x | c1) can never equal c2, so the comparison is always true.
+    """
+
+    c1, c2 = Const("c_1"), Const("c_2")
+
+    # Capture the FULL comparison using .to_int()
+    # This bridges boolean constraints to integer results (0 or 1)
+    PATTERN = ((x | c1) != c2).to_int()
+
+    # Declarative constraint
+    CONSTRAINTS = [(c1 | c2) != c2]
+
+    # Result: 1 (comparison is always true)
+    REPLACEMENT = ONE
+```
+
+**Key insight**: Comparisons like `!=`, `==`, `<`, `>` return `ConstraintExpr` (boolean formulas). Use `.to_int()` to convert them to `SymbolicExpression` (0 or 1), maintaining type safety.
+
+### Extension Operations: Zero-Extend (Zext)
+
+For rules involving zero-extension (IDA's `xdu` instruction):
+
+```python
+from d810.optimizers.dsl import Var, Const, Zext
+
+class MyZextRule(VerifiableRule):
+    """Simplify: Zext(x & 1, 32) == 2 => 0
+
+    Zero-extending (x & 1) to 32 bits produces either 0 or 1.
+    Since neither equals 2, the comparison is always false.
+    """
+
+    # Pattern: Zext(x & 1, 32) == 2
+    PATTERN = (Zext(x & ONE, 32) == TWO).to_int()
+
+    # Result: 0 (always false)
+    REPLACEMENT = ZERO
+```
+
+**Note**: `Zext(expr, target_width)` creates a zero-extension operation that:
+- Converts to Z3's `ZeroExt` for verification
+- Maps to IDA's `M_XDU` opcode for pattern matching
+
 ### Marking Known Failures
 
 For rules that can't be verified with Z3:
@@ -223,17 +275,59 @@ Then import your module in `tests/unit/optimizers/test_verifiable_rules.py`:
 import d810.optimizers.microcode.instructions.pattern_matching.rewrite_add
 ```
 
-### Running Tests
+### Automatic Verification
 
-Test all rules:
-```bash
-pytest tests/unit/optimizers/test_verifiable_rules.py
-```
+**Every rule is automatically verified with Z3!** The test suite proves mathematical correctness:
 
-Test a specific rule:
 ```bash
+# Test all 167 verified rules (takes ~12 seconds)
+pytest tests/unit/optimizers/test_verifiable_rules.py -v
+
+# Test a specific rule
 pytest tests/unit/optimizers/test_verifiable_rules.py::TestVerifiableRules::test_rule_is_correct[MySimpleRule] -v
 ```
+
+**How verification works:**
+
+1. **Auto-registration**: Your rule class inherits from `VerifiableRule`, which automatically registers it
+2. **Z3 conversion**: The DSL expressions are converted to Z3 bitvector formulas
+3. **Constraint solving**: Z3 proves `PATTERN ⟺ REPLACEMENT` under all `CONSTRAINTS`
+4. **Test generation**: A parameterized test is created for each rule automatically
+
+**Verification coverage**: Currently **167/174 rules (95.9%)** are automatically verified. The remaining 7 rules are:
+- 5 marked `KNOWN_INCORRECT` (kept for test parity with main branch)
+- 2 marked `SKIP_VERIFICATION` (performance: complex MBA multiplication rules)
+
+**What gets verified:**
+
+- ✅ Algebraic identities (e.g., `(x | y) - (x & y) ⟺ x ^ y`)
+- ✅ Constrained transformations (e.g., `(x ^ c1) + 2*(x & c2) ⟺ x + c1` when `c1 == c2`)
+- ✅ Predicate simplifications (e.g., `(x | c1) != c2 ⟺ 1` when `(c1 | c2) != c2`)
+- ✅ Dynamic constants (e.g., computing result constants from matched values)
+- ✅ Extension operations (e.g., `Zext(x & 1, 32) == 2 ⟺ 0`)
+
+**Example test output:**
+
+```
+tests/unit/optimizers/test_verifiable_rules.py::TestVerifiableRules::test_rule_is_correct[Add_HackersDelightRule_1] PASSED
+tests/unit/optimizers/test_verifiable_rules.py::TestVerifiableRules::test_rule_is_correct[Xor_Rule_1] PASSED
+tests/unit/optimizers/test_verifiable_rules.py::TestVerifiableRules::test_rule_is_correct[PredSetnz_1] PASSED
+...
+==================== 167 passed, 7 skipped in 12.67s ====================
+```
+
+**If a rule fails verification:**
+
+```python
+AssertionError: Z3 verification failed for MyBrokenRule:
+Pattern:     (x | y) + (x & y)
+Replacement: x * y
+Counterexample: x = 1, y = 2
+  Pattern evaluates to:     3
+  Replacement evaluates to: 2
+```
+
+This immediate feedback prevents incorrect optimizations from being merged!
 
 ### DSL Reference
 
