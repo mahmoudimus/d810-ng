@@ -28,6 +28,7 @@ try:
     import d810.optimizers.microcode.instructions.pattern_matching.rewrite_predicates
     import d810.optimizers.microcode.instructions.pattern_matching.rewrite_sub
     import d810.optimizers.microcode.instructions.pattern_matching.rewrite_xor
+    import d810.optimizers.microcode.instructions.pattern_matching.hodur_verifiable
 except ImportError as e:
     # If running in an environment without IDA, some imports might fail
     # The test will be skipped if no rules are registered
