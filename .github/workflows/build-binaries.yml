@@ -100,18 +100,34 @@ jobs:
         run: |
           make TARGET_OS=${{ matrix.os }} BUILD_ARCH=${{ matrix.arch }} BINARY_NAME=libobfuscated_${{ matrix.os }}_${{ matrix.arch }}
 
-      - name: List built binaries
+      - name: Generate dSYM bundles (macOS)
+        if: runner.os == 'macOS'
         working-directory: samples
         shell: bash
         run: |
-          echo "Built binaries:"
-          ls -lh bins/
+          echo "Generating dSYM bundles..."
+          for dylib in bins/*.dylib; do
+            if [ -f "$dylib" ]; then
+              echo "Generating dSYM for $dylib"
+              dsymutil "$dylib"
+            fi
+          done
 
-      - name: Upload artifact
+      - name: List built binaries and debug symbols
+        working-directory: samples
+        shell: bash
+        run: |
+          echo "Built binaries and debug symbols:"
+          ls -lhR bins/
+
+      - name: Upload binaries and debug symbols
         uses: actions/upload-artifact@v4
         with:
           name: binary-${{ matrix.os }}-${{ matrix.arch }}
-          path: samples/bins/*.${{ matrix.output_ext }}
+          path: |
+            samples/bins/*.${{ matrix.output_ext }}
+            samples/bins/*.pdb
+            samples/bins/*.dSYM/**
           if-no-files-found: error
           retention-days: 1
 
@@ -135,7 +151,7 @@ jobs:
           pattern: binary-*
           merge-multiple: false
 
-      - name: Copy binaries to samples/bins/
+      - name: Copy binaries and debug symbols to samples/bins/
         run: |
           # Create bins directory if it doesn't exist
           mkdir -p samples/bins
@@ -144,10 +160,20 @@ jobs:
           echo "Copying binaries to samples/bins/:"
           find artifacts -type f \( -name "*.dll" -o -name "*.dylib" -o -name "*.so" \) -exec cp -v {} samples/bins/ \;
 
-          # List final binaries
+          # Copy PDB files (Windows debug symbols)
           echo ""
-          echo "Final binaries in samples/bins/:"
-          ls -lh samples/bins/
+          echo "Copying PDB files:"
+          find artifacts -type f -name "*.pdb" -exec cp -v {} samples/bins/ \; 2>/dev/null || echo "No PDB files found"
+
+          # Copy dSYM bundles (macOS debug symbols)
+          echo ""
+          echo "Copying dSYM bundles:"
+          find artifacts -type d -name "*.dSYM" -exec cp -rv {} samples/bins/ \; 2>/dev/null || echo "No dSYM bundles found"
+
+          # List final binaries and debug symbols
+          echo ""
+          echo "Final binaries and debug symbols in samples/bins/:"
+          ls -lhR samples/bins/
 
       - name: Check for changes
         id: check_changes
@@ -168,12 +194,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git commit -m "chore: auto-build binaries from source changes
+          git commit -m "chore: auto-build binaries and debug symbols from source changes
 
-          Built binaries for:
-          - Windows (x86_64, x86)
-          - macOS (x86_64, arm64)
-          - Linux (x86_64, x86, arm64)
+          Built binaries and debug symbols for:
+          - Windows (x86_64, x86) - DLL + PDB
+          - macOS (x86_64, arm64) - dylib + dSYM
+          - Linux (x86_64, x86, arm64) - SO with embedded debug info
 
           Triggered by: ${{ github.event_name }}
           Commit: ${{ github.sha }}"

@@ -39,6 +39,8 @@ samples/bins/*
 !samples/bins/**/*.dll
 !samples/bins/**/*.so
 !samples/bins/**/*.dylib
+!samples/bins/**/*.pdb
+!samples/bins/**/*.dSYM/
 
 !src/include/**/*.h
 !src/include/**/*.hpp
