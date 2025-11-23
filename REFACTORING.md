@@ -642,6 +642,17 @@ The declarative DSL refactoring has been **successfully completed** with the fol
 - Verified **5 HODUR obfuscation rules** including byte-specific patterns
 - Avoids false `SKIP_VERIFICATION` for legitimate size-specific rules
 
+**Context-Aware DSL (NEW):**
+- Declarative framework for rules that inspect/modify instruction context
+- Three key abstractions:
+  1. **Context Constraints** (`when.dst.*`): Declarative checks on destination properties
+  2. **Context Providers** (`context.dst.*`): Bind variables from instruction context
+  3. **Side Effects** (`UPDATE_DESTINATION`): Explicit destination modifications
+- Zero IDA knowledge required: Users don't import `ida_hexrays` or manipulate `mop_t`
+- Enables "average users" who know math but not IDA internals to write advanced rules
+- Migrated `ReplaceMovHigh` as proof-of-concept
+- Fully tested with 11 unit tests (all passing)
+
 #### 4. **Constraint System** ✓
 
 **Declarative Constraints:**
@@ -695,10 +706,18 @@ These have complex MBA multiplication patterns that are correct but slow to veri
    - Add more operations if new IDA opcodes need support
    - Current coverage is comprehensive for all existing rules
 
-3. **Documentation** (ongoing):
+3. **Context-Aware DSL Extensions** (as needed):
+   - ✅ Core framework implemented (constraints, providers, side effects)
+   - ✅ Destination helpers implemented (`when.dst.*`, `context.dst.*`)
+   - Future: Source operand helpers (`when.src.*`, `context.src.*`)
+   - Future: Function context helpers (`context.function.*`)
+   - Future: More providers as use cases emerge
+
+4. **Documentation** (ongoing):
    - ✅ README.md updated with complete rule creation guide
    - ✅ Automatic verification section added
-   - ✅ Advanced features documented (`.to_int()`, `Zext`)
+   - ✅ Advanced features documented (`.to_int()`, `Zext`, bit-width, context-aware)
+   - ✅ Context-aware DSL fully documented with examples
    - Future: Video tutorials for rule creation
 
 ### 🏆 Success Metrics Achieved
@@ -710,19 +729,23 @@ These have complex MBA multiplication patterns that are correct but slow to veri
 | Main Branch Parity | Match skipped rules | Exact match | ✅ |
 | Test Speed | <30s | 12.44s | ✅ |
 | Type Safety | Full separation | Complete | ✅ |
+| Context-Aware Framework | Accessible to non-experts | Implemented | ✅ |
 
 ### 📝 Migration Summary
 
 **Files Modified:**
 - `src/d810/optimizers/dsl.py` - Core DSL with operator overloading
 - `src/d810/optimizers/constraints.py` - Constraint system with `.to_int()`
-- `src/d810/optimizers/rules.py` - `VerifiableRule` base class with bit-width support
+- `src/d810/optimizers/rules.py` - `VerifiableRule` base class with bit-width and context support
 - `src/d810/expr/visitors.py` - Z3 visitor with `bool_to_int` and `zext` support
 - 12 `rewrite_*.py` files - All rules migrated to declarative DSL
 - `hodur_verifiable.py` - **NEW**: 5 HODUR obfuscation rules with byte-specific verification
+- `extensions.py` - **NEW**: Context-aware DSL (constraints, providers, side effects)
+- `rewrite_mov_context_aware.py` - **NEW**: Context-aware rule proof-of-concept
 
 **Test Files:**
 - `tests/unit/optimizers/test_verifiable_rules.py` - Automatic verification test
+- `tests/unit/optimizers/test_context_aware_dsl.py` - **NEW**: Context-aware DSL tests (11 tests)
 
 **Documentation:**
 - `README.md` - Complete rule creation guide
@@ -749,6 +772,7 @@ These have complex MBA multiplication patterns that are correct but slow to veri
 4. **Z3 is Powerful**: Proves correctness automatically, catching subtle errors humans miss
 5. **Operator Overloading Works**: Makes rules readable and mathematically precise
 6. **Bit-Width Configuration**: Size-specific rules can be verified by setting `BIT_WIDTH = 8/16/32` instead of marking as `SKIP_VERIFICATION`
+7. **Context Abstraction Enables Accessibility**: By hiding IDA's C++ API behind declarative helpers (`when.dst.*`, `context.dst.*`), the framework becomes accessible to users who understand the math but not IDA internals
 
 ### 🚀 How to Add a New Rule
 
