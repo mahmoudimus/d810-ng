@@ -112,19 +112,21 @@ class PredSetnz_4(VerifiableRule):
     - If x is even: (odd - even) = odd, odd ^ even = odd (non-zero)
     - If x is odd: (odd - odd) = even, even ^ odd = odd (non-zero)
     Therefore the result is always non-zero.
+
+    Now fully verifiable: The pattern captures the complete comparison,
+    and the constraint uses declarative parity check (cst & 1 == 1).
     """
 
     cst = Const("cst_1")
 
-    PATTERN = (cst - x) ^ x
+    # Capture the FULL comparison in the pattern
+    PATTERN = (((cst - x) ^ x) != ZERO).to_int()
+
+    # Declarative constraint: cst must be odd
+    CONSTRAINTS = [cst & ONE == ONE]
+
+    # Result: 1 (comparison is always true when cst is odd)
     REPLACEMENT = ONE
-
-    CONSTRAINTS = [
-        lambda ctx: (ctx["cst_1"].value % 2) == 1  # cst must be odd
-    ]
-
-    # Skip Z3 verification - comparison value (0) not in pattern, added by framework
-    SKIP_VERIFICATION = True
 
     DESCRIPTION = "Constant-fold (cst - x) ^ x != 0 to 1 when cst is odd"
     REFERENCE = "Parity analysis"
@@ -152,24 +154,26 @@ class PredSetnz_5(VerifiableRule):
 
 
 class PredSetnz_6(VerifiableRule):
-    """Simplify: ((x + c1) + ((x + c2) & 1)) != 0 => 1 (when (c2 - c1) & 1 == 1)
+    """Simplify: ((x + c1) + ((x + c2) & 1)) != 0 => 1 (when (c2 - c1) is odd)
 
     When (c2 - c1) is odd:
     The expression simplifies to: 2x + c1 + c2 + ((x + c2) & 1)
     The parity guarantee ensures this is never zero.
+
+    Now fully verifiable: The pattern captures the complete comparison,
+    and the constraint uses declarative parity check ((c2 - c1) & 1 == 1).
     """
 
     c1, c2 = Const("c_1"), Const("c_2")
 
-    PATTERN = (x + c1) + ((x + c2) & ONE)
+    # Capture the FULL comparison in the pattern
+    PATTERN = (((x + c1) + ((x + c2) & ONE)) != ZERO).to_int()
+
+    # Declarative constraint: (c2 - c1) must be odd
+    CONSTRAINTS = [((c2 - c1) & ONE) == ONE]
+
+    # Result: 1 (comparison is always true when constraint holds)
     REPLACEMENT = ONE
-
-    CONSTRAINTS = [
-        lambda ctx: ((ctx["c_2"].value - ctx["c_1"].value) & 0x1) == 1
-    ]
-
-    # Skip Z3 verification - comparison value not in pattern, added by framework
-    SKIP_VERIFICATION = True
 
     DESCRIPTION = "Constant-fold complex sum to 1 based on parity"
     REFERENCE = "Parity analysis"
@@ -184,14 +188,15 @@ class PredSetnz_8(VerifiableRule):
 
     Since (3 - x) ^ x is not constant, ~((3 - x) ^ x) is also not constant,
     and specifically never equals 0.
+
+    Now fully verifiable: The pattern captures the complete comparison.
     """
 
+    # Capture the FULL comparison in the pattern
+    PATTERN = ((~(THREE - x) ^ ~x) != ZERO).to_int()
 
-    PATTERN = ~(THREE - x) ^ ~x
+    # Result: 1 (comparison is always true)
     REPLACEMENT = ONE
-
-    # Skip Z3 verification - comparison value not in pattern, added by framework
-    SKIP_VERIFICATION = True
 
     DESCRIPTION = "Constant-fold ~(3 - x) ^ ~x != 0 to 1"
     REFERENCE = "Algebraic simplification"
@@ -275,19 +280,21 @@ class PredSetb_1(VerifiableRule):
 
     If c1 < c2, then (x & c1) is masked to at most c1.
     Therefore (x & c1) < c2 is always true.
+
+    Now fully verifiable: The pattern captures the complete comparison,
+    and the constraint is declarative (c1 < c2).
     """
 
     c1, c2 = Const("c_1"), Const("c_2")
 
-    PATTERN = x & c1
+    # Capture the FULL comparison in the pattern
+    PATTERN = ((x & c1) < c2).to_int()
+
+    # Declarative constraint: c1 must be less than c2
+    CONSTRAINTS = [c1 < c2]
+
+    # Result: 1 (comparison is always true when c1 < c2)
     REPLACEMENT = ONE
-
-    CONSTRAINTS = [
-        lambda ctx: ctx["c_1"].value < ctx["c_2"].value
-    ]
-
-    # Skip Z3 verification - comparison value not in pattern, added by framework
-    SKIP_VERIFICATION = True
 
     DESCRIPTION = "Constant-fold (x & c1) < c2 to 1 when c1 < c2"
     REFERENCE = "Range analysis"
