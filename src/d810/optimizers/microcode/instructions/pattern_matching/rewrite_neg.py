@@ -16,6 +16,7 @@ x, y, z = Var("x_0"), Var("x_1"), Var("x_2")
 # Common constants
 ONE = Const("1", 1)
 TWO = Const("2", 2)
+MINUS_TWO = Const("-2", -2)
 
 
 # ============================================================================
@@ -98,7 +99,8 @@ class NegAdd_HackersDelightRule_1(VerifiableRule):
     PATTERN = (val_fe * (x | y)) + (x ^ y)
     REPLACEMENT = -(x + y)
 
-    CONSTRAINTS = [when.equals_minus_two("val_fe")]
+    # New declarative constraint syntax - reads like mathematics!
+    CONSTRAINTS = [val_fe == MINUS_TWO]
 
     DESCRIPTION = "Simplify (-2 * (x | y)) + (x ^ y) to -(x + y)"
     REFERENCE = "Hacker's Delight with constant validation"
