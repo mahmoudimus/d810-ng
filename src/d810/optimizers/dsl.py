@@ -142,6 +142,71 @@ class SymbolicExpression:
 
         return EqualityConstraint(self, other)
 
+    def __ne__(self, other: SymbolicExpression) -> ConstraintExpr:  # type: ignore
+        """Inequality constraint: self != other.
+
+        Args:
+            other: The right-hand side of the inequality
+
+        Returns:
+            A ComparisonConstraint that can be used in CONSTRAINTS list
+        """
+        from d810.optimizers.constraints import ComparisonConstraint
+
+        return ComparisonConstraint(self, other, "!=", "ne")
+
+    def __lt__(self, other: SymbolicExpression) -> ConstraintExpr:
+        """Less-than constraint: self < other.
+
+        Args:
+            other: The right-hand side of the comparison
+
+        Returns:
+            A ComparisonConstraint that can be used in CONSTRAINTS list
+        """
+        from d810.optimizers.constraints import ComparisonConstraint
+
+        return ComparisonConstraint(self, other, "<", "lt")
+
+    def __le__(self, other: SymbolicExpression) -> ConstraintExpr:
+        """Less-than-or-equal constraint: self <= other.
+
+        Args:
+            other: The right-hand side of the comparison
+
+        Returns:
+            A ComparisonConstraint that can be used in CONSTRAINTS list
+        """
+        from d810.optimizers.constraints import ComparisonConstraint
+
+        return ComparisonConstraint(self, other, "<=", "le")
+
+    def __gt__(self, other: SymbolicExpression) -> ConstraintExpr:
+        """Greater-than constraint: self > other.
+
+        Args:
+            other: The right-hand side of the comparison
+
+        Returns:
+            A ComparisonConstraint that can be used in CONSTRAINTS list
+        """
+        from d810.optimizers.constraints import ComparisonConstraint
+
+        return ComparisonConstraint(self, other, ">", "gt")
+
+    def __ge__(self, other: SymbolicExpression) -> ConstraintExpr:
+        """Greater-than-or-equal constraint: self >= other.
+
+        Args:
+            other: The right-hand side of the comparison
+
+        Returns:
+            A ComparisonConstraint that can be used in CONSTRAINTS list
+        """
+        from d810.optimizers.constraints import ComparisonConstraint
+
+        return ComparisonConstraint(self, other, ">=", "ge")
+
     def __repr__(self) -> str:
         """Return a string representation of this expression."""
         if self.is_leaf():
