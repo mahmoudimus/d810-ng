@@ -1,13 +1,19 @@
-"""Visitor pattern implementations for AST traversal.
+"""Visitor pattern implementations for symbolic expression traversal.
 
-This module provides visitors that traverse AST trees and convert them
-to different representations (Z3 expressions, IDA opcodes, debug strings, etc.).
+This module provides visitors that traverse SymbolicExpression trees and convert
+them to different representations (Z3 expressions, debug strings, etc.).
+
+The key insight: SymbolicExpression is a pure tree structure with no backend
+dependencies. Visitors convert it to specific representations:
+- Z3VerificationVisitor → Z3 for theorem proving
+- (Future) IDAVisitor → AstNode with IDA opcodes for runtime matching
+- (Future) StringVisitor → Human-readable strings for debugging
 """
 
 from __future__ import annotations
 
 import typing
-from typing import Any
+from typing import TYPE_CHECKING
 
 try:
     import z3
@@ -15,110 +21,104 @@ try:
 except ImportError:
     Z3_AVAILABLE = False
 
-import d810.opcodes as opc
-from d810.expr.ast import AstLeaf, AstNode
+if TYPE_CHECKING:
+    from d810.optimizers.dsl import SymbolicExpression
 
 
-class Z3Visitor:
-    """Visitor that converts AST to Z3 expressions for verification.
+class Z3VerificationVisitor:
+    """Visitor that converts SymbolicExpression to Z3 for verification/proving.
 
-    This visitor walks an AST tree (created by the DSL) and builds equivalent
-    Z3 symbolic expressions. Each variable/constant becomes a Z3 BitVec, and
-    operations are mapped to Z3 operations.
+    This visitor walks a pure SymbolicExpression tree and builds equivalent
+    Z3 symbolic expressions for theorem proving. It has NO dependencies on
+    IDA Pro - it works entirely with platform-independent symbolic expressions.
 
     Example:
         >>> from d810.optimizers.dsl import Var
         >>> x, y = Var("x"), Var("y")
-        >>> pattern = (x | y) - (x & y)  # Creates AST
+        >>> pattern = (x | y) - (x & y)  # Pure SymbolicExpression
         >>>
-        >>> visitor = Z3Visitor()
-        >>> z3_expr = visitor.visit(pattern.node)  # Convert to Z3
-        >>> # z3_expr is now: (x | y) - (x & y) in Z3's representation
+        >>> visitor = Z3VerificationVisitor()
+        >>> z3_expr = visitor.visit(pattern)  # Convert to Z3
+        >>> # z3_expr is now a z3.BitVecRef representing (x | y) - (x & y)
     """
 
     def __init__(self, bit_width: int = 32, var_map: dict[str, z3.BitVecRef] | None = None):
-        """Initialize the Z3 visitor.
+        """Initialize the Z3 verification visitor.
 
         Args:
             bit_width: Bit width for Z3 BitVec variables (default 32).
             var_map: Optional pre-created Z3 variables. If provided, the visitor
-                    will use these instead of creating new ones.
+                    will use these instead of creating new ones. Useful when you
+                    need to share variables across multiple expressions.
         """
         if not Z3_AVAILABLE:
-            raise ImportError("Z3 is not installed. Install z3-solver to use Z3Visitor.")
+            raise ImportError("Z3 is not installed. Install z3-solver to use Z3VerificationVisitor.")
 
         self.bit_width = bit_width
         self.var_map: dict[str, z3.BitVecRef] = var_map if var_map is not None else {}
 
-    def visit(self, ast: AstNode | AstLeaf) -> z3.BitVecRef:
-        """Visit an AST node and return the equivalent Z3 expression.
+    def visit(self, expr: SymbolicExpression) -> z3.BitVecRef:
+        """Visit a SymbolicExpression and return the equivalent Z3 expression.
 
         Args:
-            ast: The AST node to visit (AstNode or AstLeaf).
+            expr: The SymbolicExpression to visit.
 
         Returns:
             A Z3 BitVecRef representing the expression.
 
         Raises:
-            ValueError: If the AST is None or invalid.
+            ValueError: If the expression is None or invalid.
         """
-        if ast is None:
-            raise ValueError("Cannot visit None AST")
+        if expr is None:
+            raise ValueError("Cannot visit None expression")
 
-        if ast.is_leaf():
-            return self._visit_leaf(typing.cast(AstLeaf, ast))
+        if expr.is_leaf():
+            return self._visit_leaf(expr)
 
-        return self._visit_node(typing.cast(AstNode, ast))
+        return self._visit_operation(expr)
 
-    def _visit_leaf(self, leaf: AstLeaf) -> z3.BitVecRef:
+    def _visit_leaf(self, expr: SymbolicExpression) -> z3.BitVecRef:
         """Visit a leaf node (variable or constant).
 
         Args:
-            leaf: The AstLeaf to visit.
+            expr: The leaf SymbolicExpression.
 
         Returns:
             Z3 BitVec for variables, Z3 BitVecVal for concrete constants.
         """
-        if leaf.is_constant():
-            # Check if this is a pattern-matching constant (no concrete value)
-            if hasattr(leaf, 'expected_value') and leaf.expected_value is None:
-                # Symbolic constant like Const("c_1") - treat as variable
-                if leaf.name not in self.var_map:
-                    self.var_map[leaf.name] = z3.BitVec(leaf.name, self.bit_width)
-                return self.var_map[leaf.name]
-
+        if expr.is_constant():
             # Concrete constant like Const("ONE", 1)
-            return z3.BitVecVal(leaf.value, self.bit_width)
+            return z3.BitVecVal(expr.value, self.bit_width)
 
-        # Regular variable like Var("x")
-        if leaf.name not in self.var_map:
-            self.var_map[leaf.name] = z3.BitVec(leaf.name, self.bit_width)
+        # Variable or pattern-matching constant like Var("x") or Const("c_1")
+        if expr.name not in self.var_map:
+            self.var_map[expr.name] = z3.BitVec(expr.name, self.bit_width)
 
-        return self.var_map[leaf.name]
+        return self.var_map[expr.name]
 
-    def _visit_node(self, node: AstNode) -> z3.BitVecRef:
+    def _visit_operation(self, expr: SymbolicExpression) -> z3.BitVecRef:
         """Visit an operation node (binary/unary operation).
 
         Args:
-            node: The AstNode to visit.
+            expr: The operation SymbolicExpression.
 
         Returns:
             Z3 expression representing the operation.
 
         Raises:
-            ValueError: If the opcode is unsupported.
+            ValueError: If the operation is unsupported.
         """
         # Recursively visit children
-        left = self.visit(node.left) if node.left else None
-        right = self.visit(node.right) if node.right else None
+        left = self.visit(expr.left) if expr.left else None
+        right = self.visit(expr.right) if expr.right else None
 
-        # Map opcode to Z3 operation
-        match node.opcode:
+        # Map operation strings to Z3 operations
+        match expr.operation:
             # Unary operations
-            case opc.M_NEG:
+            case "neg":
                 return -left
 
-            case opc.M_LNOT:
+            case "lnot":
                 # Logical NOT: returns 1 if operand is 0, else 0
                 return z3.If(
                     left == z3.BitVecVal(0, self.bit_width),
@@ -126,116 +126,116 @@ class Z3Visitor:
                     z3.BitVecVal(0, self.bit_width),
                 )
 
-            case opc.M_BNOT:
+            case "bnot":
                 return ~left
 
             # Binary arithmetic operations
-            case opc.M_ADD:
+            case "add":
                 return left + right
 
-            case opc.M_SUB:
+            case "sub":
                 return left - right
 
-            case opc.M_MUL:
+            case "mul":
                 return left * right
 
-            case opc.M_UDIV:
+            case "udiv":
                 return z3.UDiv(left, right)
 
-            case opc.M_SDIV:
+            case "sdiv":
                 return left / right
 
-            case opc.M_UMOD:
+            case "umod":
                 return z3.URem(left, right)
 
-            case opc.M_SMOD:
+            case "smod":
                 return left % right
 
             # Binary bitwise operations
-            case opc.M_OR:
+            case "or":
                 return left | right
 
-            case opc.M_AND:
+            case "and":
                 return left & right
 
-            case opc.M_XOR:
+            case "xor":
                 return left ^ right
 
             # Shift operations
-            case opc.M_SHL:
+            case "shl":
                 return left << right
 
-            case opc.M_SHR:
+            case "shr":
                 return z3.LShR(left, right)  # Logical shift right
 
-            case opc.M_SAR:
+            case "sar":
                 return left >> right  # Arithmetic shift right
 
             # Comparison operations (return 0 or 1)
-            case opc.M_SETNZ:
+            case "setnz":
                 return z3.If(
                     left != z3.BitVecVal(0, self.bit_width),
                     z3.BitVecVal(1, self.bit_width),
                     z3.BitVecVal(0, self.bit_width),
                 )
 
-            case opc.M_SETZ:
+            case "setz":
                 return z3.If(
                     left == z3.BitVecVal(0, self.bit_width),
                     z3.BitVecVal(1, self.bit_width),
                     z3.BitVecVal(0, self.bit_width),
                 )
 
-            case opc.M_SETAE:
+            case "setae":
                 return z3.If(
                     z3.UGE(left, right),
                     z3.BitVecVal(1, self.bit_width),
                     z3.BitVecVal(0, self.bit_width),
                 )
 
-            case opc.M_SETB:
+            case "setb":
                 return z3.If(
                     z3.ULT(left, right),
                     z3.BitVecVal(1, self.bit_width),
                     z3.BitVecVal(0, self.bit_width),
                 )
 
-            case opc.M_SETA:
+            case "seta":
                 return z3.If(
                     z3.UGT(left, right),
                     z3.BitVecVal(1, self.bit_width),
                     z3.BitVecVal(0, self.bit_width),
                 )
 
-            case opc.M_SETBE:
+            case "setbe":
                 return z3.If(
                     z3.ULE(left, right),
                     z3.BitVecVal(1, self.bit_width),
                     z3.BitVecVal(0, self.bit_width),
                 )
 
-            case opc.M_SETG:
+            case "setg":
                 return z3.If(
                     left > right,
                     z3.BitVecVal(1, self.bit_width),
                     z3.BitVecVal(0, self.bit_width),
                 )
 
-            case opc.M_SETGE:
+            case "setge":
                 return z3.If(
                     left >= right,
                     z3.BitVecVal(1, self.bit_width),
                     z3.BitVecVal(0, self.bit_width),
                 )
 
-            case opc.M_SETL:
+            case "setl":
                 return z3.If(
                     left < right,
                     z3.BitVecVal(1, self.bit_width),
                     z3.BitVecVal(0, self.bit_width),
                 )
 
-            case opc.M_SETLE:
+            case "setle":
                 return z3.If(
                     left <= right,
                     z3.BitVecVal(1, self.bit_width),
@@ -244,7 +244,7 @@ class Z3Visitor:
 
             case _:
                 raise ValueError(
-                    f"Unsupported opcode in Z3Visitor: {node.opcode}. "
+                    f"Unsupported operation in Z3VerificationVisitor: {expr.operation}. "
                     f"Add support for this operation in visitors.py"
                 )
 
@@ -259,20 +259,21 @@ class Z3Visitor:
 
 
 def prove_equivalence(
-    pattern_ast: AstNode | AstLeaf,
-    replacement_ast: AstNode | AstLeaf,
+    pattern: SymbolicExpression,
+    replacement: SymbolicExpression,
     z3_vars: dict[str, z3.BitVecRef] | None = None,
-    constraints: list[Any] | None = None,
+    constraints: list[typing.Any] | None = None,
     bit_width: int = 32,
 ) -> tuple[bool, dict[str, int] | None]:
-    """Prove that two AST expressions are semantically equivalent using Z3.
+    """Prove that two SymbolicExpressions are semantically equivalent using Z3.
 
-    This function uses the Z3Visitor to convert both ASTs to Z3 expressions,
-    then attempts to prove they are equivalent for all possible variable values.
+    This function uses the Z3VerificationVisitor to convert both expressions
+    to Z3, then attempts to prove they are equivalent for all possible variable
+    values (subject to any constraints).
 
     Args:
-        pattern_ast: The first AST (typically the pattern to match).
-        replacement_ast: The second AST (typically the replacement).
+        pattern: The first SymbolicExpression (typically the pattern to match).
+        replacement: The second SymbolicExpression (typically the replacement).
         z3_vars: Optional pre-created Z3 variables. If provided, these will be
                 used for pattern constants and variables. If None, variables
                 will be created automatically.
@@ -291,20 +292,20 @@ def prove_equivalence(
         >>> x, y = Var("x"), Var("y")
         >>> pattern = (x | y) - (x & y)
         >>> replacement = x ^ y
-        >>> is_equiv, _ = prove_equivalence(pattern.node, replacement.node)
+        >>> is_equiv, _ = prove_equivalence(pattern, replacement)
         >>> assert is_equiv  # These are mathematically equivalent
     """
     if not Z3_AVAILABLE:
         raise ImportError("Z3 is not installed. Install z3-solver to prove equivalence.")
 
     # Create visitor with optional pre-created variables
-    visitor = Z3Visitor(bit_width=bit_width, var_map=z3_vars)
+    visitor = Z3VerificationVisitor(bit_width=bit_width, var_map=z3_vars)
 
     try:
-        pattern_z3 = visitor.visit(pattern_ast)
-        replacement_z3 = visitor.visit(replacement_ast)
+        pattern_z3 = visitor.visit(pattern)
+        replacement_z3 = visitor.visit(replacement)
     except Exception as e:
-        # Conversion failed - ASTs are invalid or contain unsupported operations
+        # Conversion failed - expressions are invalid or contain unsupported operations
         return False, None
 
     # Create solver and add constraints

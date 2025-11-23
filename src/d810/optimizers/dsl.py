@@ -1,126 +1,129 @@
 """A declarative DSL for defining optimization rules using symbolic expressions.
 
 This module provides a high-level, declarative way to define optimization patterns
-using Python's operator overloading. Instead of manually constructing AST trees,
-rules can be written in a mathematical, self-documenting style.
+using Python's operator overloading. The symbolic expressions are pure tree structures
+with no dependencies on IDA Pro or any specific backend.
 
 Example:
-    Instead of writing:
-        AstNode(M_ADD, AstNode(M_BNOT, AstLeaf("x")), AstConstant("1", 1))
-
-    You can write:
-        ~x + one
-
-    This makes the intent clear and the code easier to verify for correctness.
+    >>> x, y = Var("x"), Var("y")
+    >>> pattern = (x | y) - (x & y)  # Pure symbolic expression
+    >>> # Can be converted to different representations by visitors:
+    >>> # - Z3VerificationVisitor → Z3 for proving
+    >>> # - IDAVisitor → AstNode for pattern matching
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-# Use platform-independent opcodes (no IDA dependency!)
-from d810.opcodes import (
-    M_ADD,
-    M_AND,
-    M_BNOT,
-    M_MUL,
-    M_NEG,
-    M_OR,
-    M_SAR,
-    M_SHL,
-    M_SHR,
-    M_SUB,
-    M_XOR,
-)
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from d810.expr.ast import AstBase, AstNode
     from d810.optimizers.constraints import ConstraintExpr
 
 
 class SymbolicExpression:
-    """A symbolic representation of a microcode expression tree.
+    """A pure symbolic expression tree with no backend dependencies.
 
-    This class wraps an AstNode and provides operator overloading to build
-    complex expressions using natural mathematical syntax. The underlying
-    AstNode tree is constructed transparently.
+    This is a self-contained tree structure representing symbolic operations.
+    It does NOT depend on IDA Pro or any specific representation - visitors
+    convert it to different backends (Z3, IDA AstNode, strings, etc.).
 
     Attributes:
-        node: The underlying AstNode representing this expression.
+        operation: The operation type ("add", "sub", "xor", etc.) or None for leaves.
+        left: Left child expression (for binary operations).
+        right: Right child expression (for binary operations).
+        name: Variable/constant name (for leaf nodes).
+        value: Concrete value (for constant leaves), None for symbolic constants.
     """
 
-    def __init__(self, node: AstBase):
-        """Initialize a symbolic expression with an AST node.
+    def __init__(
+        self,
+        operation: str | None = None,
+        left: SymbolicExpression | None = None,
+        right: SymbolicExpression | None = None,
+        name: str | None = None,
+        value: int | None = None,
+    ):
+        """Initialize a symbolic expression.
 
         Args:
-            node: The AST node (AstNode, AstLeaf, or AstConstant) to wrap.
+            operation: Operation type ("add", "sub", etc.) or None for leaves.
+            left: Left operand for binary operations.
+            right: Right operand for binary operations.
+            name: Name for variables/constants.
+            value: Concrete value for constants, None for variables/symbolic constants.
         """
-        self.node = node
+        self.operation = operation
+        self.left = left
+        self.right = right
+        self.name = name
+        self.value = value
 
+    def is_leaf(self) -> bool:
+        """Check if this is a leaf node (variable or constant)."""
+        return self.operation is None
+
+    def is_constant(self) -> bool:
+        """Check if this is a constant (has a concrete value)."""
+        return self.is_leaf() and self.value is not None
+
+    def is_variable(self) -> bool:
+        """Check if this is a variable (leaf with no concrete value)."""
+        return self.is_leaf() and self.value is None
+
+    # Binary arithmetic operations
     def __add__(self, other: SymbolicExpression) -> SymbolicExpression:
-        """Addition: self + other -> M_ADD node."""
-        from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(M_ADD, self.node, other.node))
+        """Addition: self + other."""
+        return SymbolicExpression(operation="add", left=self, right=other)
 
     def __sub__(self, other: SymbolicExpression) -> SymbolicExpression:
-        """Subtraction: self - other -> M_SUB node."""
-        from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(M_SUB, self.node, other.node))
-
-    def __xor__(self, other: SymbolicExpression) -> SymbolicExpression:
-        """XOR: self ^ other -> M_XOR node."""
-        from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(M_XOR, self.node, other.node))
-
-    def __and__(self, other: SymbolicExpression) -> SymbolicExpression:
-        """Bitwise AND: self & other -> M_AND node."""
-        from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(M_AND, self.node, other.node))
-
-    def __or__(self, other: SymbolicExpression) -> SymbolicExpression:
-        """Bitwise OR: self | other -> M_OR node."""
-        from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(M_OR, self.node, other.node))
+        """Subtraction: self - other."""
+        return SymbolicExpression(operation="sub", left=self, right=other)
 
     def __mul__(self, other: SymbolicExpression) -> SymbolicExpression:
-        """Multiplication: self * other -> M_MUL node."""
-        from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(M_MUL, self.node, other.node))
+        """Multiplication: self * other."""
+        return SymbolicExpression(operation="mul", left=self, right=other)
 
+    # Binary bitwise operations
+    def __and__(self, other: SymbolicExpression) -> SymbolicExpression:
+        """Bitwise AND: self & other."""
+        return SymbolicExpression(operation="and", left=self, right=other)
+
+    def __or__(self, other: SymbolicExpression) -> SymbolicExpression:
+        """Bitwise OR: self | other."""
+        return SymbolicExpression(operation="or", left=self, right=other)
+
+    def __xor__(self, other: SymbolicExpression) -> SymbolicExpression:
+        """Bitwise XOR: self ^ other."""
+        return SymbolicExpression(operation="xor", left=self, right=other)
+
+    # Shift operations
     def __lshift__(self, other: SymbolicExpression) -> SymbolicExpression:
-        """Left shift: self << other -> M_SHL node."""
-        from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(M_SHL, self.node, other.node))
+        """Left shift: self << other."""
+        return SymbolicExpression(operation="shl", left=self, right=other)
 
     def __rshift__(self, other: SymbolicExpression) -> SymbolicExpression:
-        """Right shift: self >> other -> M_SHR node."""
-        from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(M_SHR, self.node, other.node))
+        """Logical right shift: self >> other."""
+        return SymbolicExpression(operation="shr", left=self, right=other)
 
     def sar(self, other: SymbolicExpression) -> SymbolicExpression:
-        """Arithmetic right shift: self.sar(other) -> M_SAR node."""
-        from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(M_SAR, self.node, other.node))
+        """Arithmetic right shift: self.sar(other)."""
+        return SymbolicExpression(operation="sar", left=self, right=other)
 
+    # Unary operations
     def __invert__(self) -> SymbolicExpression:
-        """Bitwise NOT: ~self -> M_BNOT node."""
-        from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(M_BNOT, self.node))
+        """Bitwise NOT: ~self."""
+        return SymbolicExpression(operation="bnot", left=self)
 
     def __neg__(self) -> SymbolicExpression:
-        """Negation: -self -> M_NEG node."""
-        from d810.expr.ast import AstNode
-        return SymbolicExpression(AstNode(M_NEG, self.node))
+        """Arithmetic negation: -self."""
+        return SymbolicExpression(operation="neg", left=self)
 
-    def __repr__(self) -> str:
-        """Return a string representation of this expression."""
-        return str(self.node)
+    # Logical operations (return 0 or 1)
+    def lnot(self) -> SymbolicExpression:
+        """Logical NOT: returns 1 if self is 0, else 0."""
+        return SymbolicExpression(operation="lnot", left=self)
 
-    def __str__(self) -> str:
-        """Return a string representation of this expression."""
-        return str(self.node)
-
-    def __eq__(self, other: SymbolicExpression) -> ConstraintExpr:
+    def __eq__(self, other: SymbolicExpression) -> ConstraintExpr:  # type: ignore
         """Equality constraint: self == other.
 
         NOTE: This overrides Python's default equality to return a ConstraintExpr
@@ -136,58 +139,139 @@ class SymbolicExpression:
             An EqualityConstraint that can be used in CONSTRAINTS list
         """
         from d810.optimizers.constraints import EqualityConstraint
+
         return EqualityConstraint(self, other)
+
+    def __repr__(self) -> str:
+        """Return a string representation of this expression."""
+        if self.is_leaf():
+            if self.is_constant():
+                return f"{self.name or self.value}"
+            return self.name or "<?>"
+
+        if self.operation in ("neg", "bnot", "lnot"):
+            # Unary operations
+            op_sym = {"neg": "-", "bnot": "~", "lnot": "!"}[self.operation]
+            return f"({op_sym}{self.left})"
+
+        # Binary operations
+        op_sym = {
+            "add": "+",
+            "sub": "-",
+            "mul": "*",
+            "and": "&",
+            "or": "|",
+            "xor": "^",
+            "shl": "<<",
+            "shr": ">>",
+            "sar": ">>a",
+        }.get(self.operation, f"?{self.operation}?")
+
+        return f"({self.left} {op_sym} {self.right})"
+
+    def __str__(self) -> str:
+        """Return a string representation of this expression."""
+        return repr(self)
+
+    # Backward compatibility: provide 'node' property that creates AstNode on demand
+    # This allows existing code to continue working during migration
+    @property
+    def node(self) -> Any:
+        """Backward compatibility: Convert to AstNode for legacy code.
+
+        This property creates an AstNode representation on demand. It will be
+        removed once all code is migrated to use visitors directly.
+        """
+        from d810.expr.ast import AstConstant, AstLeaf, AstNode
+        from d810.opcodes import (
+            M_ADD,
+            M_AND,
+            M_BNOT,
+            M_LNOT,
+            M_MUL,
+            M_NEG,
+            M_OR,
+            M_SAR,
+            M_SHL,
+            M_SHR,
+            M_SUB,
+            M_XOR,
+        )
+
+        if self.is_leaf():
+            if self.is_constant():
+                return AstConstant(self.name, self.value)
+            return AstLeaf(self.name)
+
+        # Map operation strings to opcodes
+        op_map = {
+            "add": M_ADD,
+            "sub": M_SUB,
+            "mul": M_MUL,
+            "and": M_AND,
+            "or": M_OR,
+            "xor": M_XOR,
+            "shl": M_SHL,
+            "shr": M_SHR,
+            "sar": M_SAR,
+            "bnot": M_BNOT,
+            "neg": M_NEG,
+            "lnot": M_LNOT,
+        }
+
+        opcode = op_map.get(self.operation)
+        if opcode is None:
+            raise ValueError(f"Unknown operation: {self.operation}")
+
+        left_node = self.left.node if self.left else None
+        right_node = self.right.node if self.right else None
+
+        return AstNode(opcode, left_node, right_node)
 
 
 def Var(name: str) -> SymbolicExpression:
-    """Create a symbolic variable with the given name.
+    """Create a symbolic variable.
 
-    This factory function creates an AstLeaf (a variable in the pattern)
-    and wraps it in a SymbolicExpression for operator overloading.
+    Variables represent unknown values in patterns. During pattern matching,
+    they bind to specific expressions in the code being analyzed.
 
     Args:
-        name: The name of the variable (e.g., "x", "y", "a", "b").
+        name: The variable name (e.g., "x_0", "x_1").
 
     Returns:
-        A SymbolicExpression representing a pattern variable.
+        A SymbolicExpression representing a variable.
 
     Example:
-        >>> x = Var("x")
-        >>> y = Var("y")
-        >>> pattern = x + y  # Represents: AstNode(m_add, AstLeaf("x"), AstLeaf("y"))
+        >>> x = Var("x_0")
+        >>> y = Var("x_1")
+        >>> pattern = x + y  # Matches any addition
     """
-    from d810.expr.ast import AstLeaf
-    return SymbolicExpression(AstLeaf(name))
+    return SymbolicExpression(name=name, value=None)
 
 
 def Const(name: str, value: int | None = None) -> SymbolicExpression:
-    """Create a symbolic constant with the given name and optional value.
+    """Create a symbolic constant.
 
-    This factory function creates an AstConstant and wraps it in a
-    SymbolicExpression. Constants can have specific values (for exact matching)
-    or be unspecified (to match any constant in that position).
+    Constants can be:
+    - Pattern-matching constants (value=None): Match any constant, bind its value
+    - Concrete constants (value=int): Match only this specific value
 
     Args:
-        name: The name/identifier for this constant (e.g., "c1", "one").
-        value: The optional concrete value for this constant. If None, matches any constant.
+        name: The constant name (e.g., "c_1", "ONE").
+        value: Concrete value (e.g., 1) or None for pattern-matching.
 
     Returns:
-        A SymbolicExpression representing a constant in the pattern.
+        A SymbolicExpression representing a constant.
 
-    Example:
-        >>> one = Const("one", 1)
-        >>> x = Var("x")
-        >>> pattern = ~x + one  # Represents: ~x + 1 (two's complement negation)
+    Examples:
+        >>> c1 = Const("c_1")  # Matches any constant, stores value
+        >>> one = Const("ONE", 1)  # Matches only value 1
+        >>> pattern = x + Const("c_1")  # x plus any constant
     """
-    from d810.expr.ast import AstConstant
-    # Pass value as-is (including None for pattern-matching constants)
-    # None = pattern-matching constant (symbolic)
-    # int = concrete constant for exact matching
-    return SymbolicExpression(AstConstant(name, value))
+    return SymbolicExpression(name=name, value=value)
 
 
 # Common symbolic constants for convenience
-# These can be imported and used directly in rule definitions
 ZERO = Const("0", 0)
 ONE = Const("1", 1)
 TWO = Const("2", 2)
@@ -215,58 +299,19 @@ class DynamicConst:
         """Initialize a dynamic constant.
 
         Args:
-            name: The name for this constant in the replacement.
-            compute: A callable that takes the match context dict and returns an int.
-            size_from: Optional variable name to get the size from (e.g., "x_0").
+            name: The constant's name/identifier.
+            compute: Callable that takes match context dict and returns int value.
+            size_from: Optional variable name to determine operand size.
         """
         self.name = name
         self.compute = compute
         self.size_from = size_from
-        # Wrap in SymbolicExpression for operator overloading
-        from d810.expr.ast import AstConstant
-        # Use 0 as placeholder - actual value computed at match time
-        self._placeholder = SymbolicExpression(AstConstant(name, 0))
 
-    @property
-    def node(self):
-        """Expose the placeholder's node for Z3 verification."""
-        return self._placeholder.node
+    def __repr__(self) -> str:
+        return f"DynamicConst({self.name})"
 
-    def __add__(self, other):
-        return self._placeholder + other
-
-    def __sub__(self, other):
-        return self._placeholder - other
-
-    def __xor__(self, other):
-        return self._placeholder ^ other
-
-    def __and__(self, other):
-        return self._placeholder & other
-
-    def __or__(self, other):
-        return self._placeholder | other
-
-    def __mul__(self, other):
-        return self._placeholder * other
-
-    def __radd__(self, other):
-        return other + self._placeholder
-
-    def __rsub__(self, other):
-        return other - self._placeholder
-
-    def __rxor__(self, other):
-        return other ^ self._placeholder
-
-    def __rand__(self, other):
-        return other & self._placeholder
-
-    def __ror__(self, other):
-        return other | self._placeholder
-
-    def __rmul__(self, other):
-        return other * self._placeholder
+    def __str__(self) -> str:
+        return self.name
 
 
 class ConstraintPredicate:
@@ -299,14 +344,17 @@ class ConstraintPredicate:
             >>> # Rule is only valid when c_1 value equals c_2 value
             >>> CONSTRAINTS = [when.equal_mops("c_1", "c_2")]
         """
+
         def check(ctx):
             from d810.hexrays.hexrays_helpers import equal_mops_ignore_size
+
             if var1 not in ctx or var2 not in ctx:
                 return False
             if ignore_size:
                 return equal_mops_ignore_size(ctx[var1].mop, ctx[var2].mop)
             else:
                 return ctx[var1].mop == ctx[var2].mop
+
         return check
 
     @staticmethod
@@ -324,11 +372,14 @@ class ConstraintPredicate:
             >>> # Rule is only valid when c_1 == ~c_2
             >>> CONSTRAINTS = [when.is_bnot("c_1", "c_2")]
         """
+
         def check(ctx):
             from d810.hexrays.hexrays_helpers import equal_bnot_mop
+
             if var1 not in ctx or var2 not in ctx:
                 return False
             return equal_bnot_mop(ctx[var1].mop, ctx[var2].mop)
+
         return check
 
     @staticmethod
@@ -346,10 +397,12 @@ class ConstraintPredicate:
             >>> # Rule is only valid when c_1 equals 0xFF
             >>> CONSTRAINTS = [when.const_equals("c_1", 0xFF)]
         """
+
         def check(ctx):
             if var not in ctx:
                 return False
             return ctx[var].value == value
+
         return check
 
     @staticmethod
@@ -358,50 +411,23 @@ class ConstraintPredicate:
 
         Args:
             var: Name of the constant variable.
-            predicate: A function that takes an integer and returns bool.
+            predicate: A callable that takes the constant value and returns bool.
 
         Returns:
             A constraint function that checks the predicate.
 
         Example:
-            >>> # Rule is only valid when (val_fe + 2) & mask == 0
-            >>> from d810.hexrays.hexrays_helpers import AND_TABLE
-            >>> def check_val_fe(ctx):
-            ...     val = ctx['val_fe'].value
-            ...     size = ctx['val_fe'].size
-            ...     return (val + 2) & AND_TABLE[size] == 0
-            >>> CONSTRAINTS = [check_val_fe]
+            >>> # Rule is only valid when c_1 is even
+            >>> CONSTRAINTS = [when.const_satisfies("c_1", lambda v: v % 2 == 0)]
         """
+
         def check(ctx):
             if var not in ctx:
                 return False
             return predicate(ctx[var].value)
-        return check
 
-    @staticmethod
-    def bit_mask_check(var: str, mask_var: str, expected: int = 0):
-        """Check that (var & mask) equals expected value.
-
-        Args:
-            var: Name of the variable to mask.
-            mask_var: Name of the mask variable.
-            expected: Expected result of the AND operation.
-
-        Returns:
-            A constraint function that checks the masked value.
-
-        Example:
-            >>> # Check that c_1 & 0xFF == c_2
-            >>> CONSTRAINTS = [
-            ...     lambda ctx: (ctx['c_1'].value & 0xFF) == ctx['c_2'].value
-            ... ]
-        """
-        def check(ctx):
-            if var not in ctx or mask_var not in ctx:
-                return False
-            return (ctx[var].value & ctx[mask_var].value) == expected
         return check
 
 
-# Create a singleton instance for convenient access
+# Singleton instance for constraint predicates
 when = ConstraintPredicate()
