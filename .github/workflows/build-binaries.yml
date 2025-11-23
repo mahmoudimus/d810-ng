@@ -1,0 +1,177 @@
+name: Build Sample Binaries
+
+on:
+  push:
+    paths:
+      - 'samples/src/**'
+      - 'samples/Makefile'
+      - 'samples/include/**'
+      - '.github/workflows/build-binaries.yml'
+
+  # Allow manual trigger
+  workflow_dispatch:
+
+# Prevent concurrent builds
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }} (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows builds
+          - os: windows
+            arch: x86_64
+            runner: ubuntu-latest
+            output_ext: dll
+
+          - os: windows
+            arch: x86
+            runner: ubuntu-latest
+            output_ext: dll
+
+          # macOS builds
+          - os: darwin
+            arch: x86_64
+            runner: macos-13  # Intel runner for x86_64
+            output_ext: dylib
+
+          - os: darwin
+            arch: arm64
+            runner: macos-14  # Apple Silicon runner for arm64
+            output_ext: dylib
+
+          # Linux builds
+          - os: linux
+            arch: x86_64
+            runner: ubuntu-latest
+            output_ext: so
+
+          - os: linux
+            arch: x86
+            runner: ubuntu-latest
+            output_ext: so
+
+          - os: linux
+            arch: arm64
+            runner: ubuntu-latest
+            output_ext: so
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld gcc-multilib g++-multilib
+
+          # For cross-compiling to Windows from Linux
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            sudo apt-get install -y mingw-w64
+          fi
+
+          # For ARM64 cross-compilation on Linux
+          if [ "${{ matrix.arch }}" = "arm64" ] && [ "${{ matrix.os }}" = "linux" ]; then
+            sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          fi
+
+      - name: Install build dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          # Ensure clang is available (should be pre-installed)
+          clang --version
+
+      - name: Build binaries
+        working-directory: samples
+        run: |
+          make TARGET_OS=${{ matrix.os }} BUILD_ARCH=${{ matrix.arch }} BINARY_NAME=libobfuscated_${{ matrix.os }}_${{ matrix.arch }}
+        env:
+          CC: clang
+
+      - name: List built binaries
+        working-directory: samples
+        run: |
+          echo "Built binaries:"
+          ls -lh bins/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.os }}-${{ matrix.arch }}
+          path: samples/bins/*.${{ matrix.output_ext }}
+          if-no-files-found: error
+          retention-days: 1
+
+  commit:
+    name: Commit binaries to repository
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: binary-*
+          merge-multiple: false
+
+      - name: Copy binaries to samples/bins/
+        run: |
+          # Create bins directory if it doesn't exist
+          mkdir -p samples/bins
+
+          # Copy all binaries from artifacts to bins/
+          echo "Copying binaries to samples/bins/:"
+          find artifacts -type f \( -name "*.dll" -o -name "*.dylib" -o -name "*.so" \) -exec cp -v {} samples/bins/ \;
+
+          # List final binaries
+          echo ""
+          echo "Final binaries in samples/bins/:"
+          ls -lh samples/bins/
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          git add samples/bins/
+          if git diff --staged --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No changes to commit"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected:"
+            git diff --staged --name-only
+          fi
+
+      - name: Commit and push binaries
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git commit -m "chore: auto-build binaries from source changes
+
+          Built binaries for:
+          - Windows (x86_64, x86)
+          - macOS (x86_64, arm64)
+          - Linux (x86_64, x86, arm64)
+
+          Triggered by: ${{ github.event_name }}
+          Commit: ${{ github.sha }}"
+
+          git push
