@@ -12,7 +12,7 @@ Original rules from rewrite_add.py, now with:
 All rules are mathematically proven correct by Z3 SMT solver.
 """
 
-from d810.optimizers.dsl import Var, Const
+from d810.optimizers.dsl import Var, Const, NEGATIVE_ONE, NEGATIVE_TWO
 from d810.optimizers.rules import VerifiableRule
 
 # Create symbolic variables
@@ -257,60 +257,65 @@ class Add_OllvmRule_DynamicConst(VerifiableRule):
 
 
 class Add_OllvmRule_2(VerifiableRule):
-    """Simplify: ~(x ^ y) - (val_fe * (x | y)) => (x + y) - 1
+    """Simplify: ~(x ^ y) - (c * (x | y)) => (x + y) - 1 (when c == -2)
 
-    where (val_fe + 2) & SIZE_MASK == 0
+    In OLLVM flattening, val_fe is almost always -2 (0xFF...FE), which is
+    the value where (val_fe + 2) wraps to 0 for the operand size.
 
-    This checks that val_fe is a value such that adding 2 wraps to 0.
+    Mathematical proof:
+        ~(x ^ y) - (-2 * (x | y))
+        = ~(x ^ y) + 2*(x | y)
+        = (x + y) - 1
+
+    Now fully verifiable: The constraint c == -2 is declarative and verifiable.
 
     Example:
-        ~(a ^ b) - (0xFE * (a | b)) => (a + b) - 1
-        (since 0xFE + 2 = 0x100, which wraps to 0 for 8-bit values)
-
-    NOTE: Z3 verification is skipped because this rule has size-dependent
-    constraints that cannot be automatically converted to Z3 expressions.
+        ~(a ^ b) - (-2 * (a | b)) => (a + b) - 1
     """
 
-    SKIP_VERIFICATION = True  # Size-dependent constraint requires runtime checking
+    c = Const("c")
 
-    val_fe = Const("val_fe")
+    # Pattern: ~(x ^ y) - (c * (x | y))
+    PATTERN = ~(x ^ y) - (c * (x | y))
 
-    PATTERN = ~(x ^ y) - (val_fe * (x | y))
+    # Declarative constraint: c must be -2
+    CONSTRAINTS = [c == NEGATIVE_TWO]
+
+    # Replacement: (x + y) - 1
     REPLACEMENT = (x + y) - ONE
 
-    CONSTRAINTS = [
-        lambda ctx: (ctx['val_fe'].value + 2) & ((1 << (ctx['val_fe'].size * 8)) - 1) == 0
-    ]
-
-    DESCRIPTION = "OLLVM subtraction with size-dependent constant"
+    DESCRIPTION = "OLLVM subtraction with constant -2"
     REFERENCE = "OLLVM obfuscation, pattern 2"
 
 
 class Add_OllvmRule_4(VerifiableRule):
-    """Simplify: (x ^ y) - (val_fe * (x & y)) => x + y
+    """Simplify: (x ^ y) - (c * (x & y)) => x + y (when c == -2)
 
-    where val_fe must satisfy certain conditions (typically -2).
+    In OLLVM flattening, val_fe is -2, which allows this identity to hold.
+
+    Mathematical proof (using standard identity x + y = (x ^ y) + 2*(x & y)):
+        (x ^ y) - (-2 * (x & y))
+        = (x ^ y) + 2*(x & y)
+        = x + y
+
+    Now fully verifiable: The constraint c == -2 is declarative and verifiable.
 
     Example:
-        (a ^ b) - (0xFE * (a & b)) => a + b
-
-    NOTE: Z3 verification is skipped because this rule has size-dependent
-    constraints that cannot be automatically converted to Z3 expressions.
+        (a ^ b) - (-2 * (a & b)) => a + b
     """
 
-    SKIP_VERIFICATION = True  # Size-dependent constraint requires runtime checking
+    c = Const("c")
 
-    val_fe = Const("val_fe")
+    # Pattern: (x ^ y) - (c * (x & y))
+    PATTERN = (x ^ y) - (c * (x & y))
 
-    PATTERN = (x ^ y) - (val_fe * (x & y))
+    # Declarative constraint: c must be -2
+    CONSTRAINTS = [c == NEGATIVE_TWO]
+
+    # Replacement: x + y
     REPLACEMENT = x + y
 
-    CONSTRAINTS = [
-        # val_fe should be -2 (0xFE for 8-bit, 0xFFFE for 16-bit, etc.)
-        lambda ctx: (ctx['val_fe'].value + 2) & ((1 << (ctx['val_fe'].size * 8)) - 1) == 0
-    ]
-
-    DESCRIPTION = "OLLVM XOR-AND pattern with negated multiplier"
+    DESCRIPTION = "OLLVM XOR-AND pattern with constant -2"
     REFERENCE = "OLLVM obfuscation, pattern 4"
 
 

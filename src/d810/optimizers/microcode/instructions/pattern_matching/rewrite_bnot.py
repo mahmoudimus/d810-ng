@@ -11,8 +11,7 @@ Rules are organized by category:
 - BnotAdd_* : NOT + addition combinations (MBA)
 """
 
-from d810.hexrays.hexrays_helpers import SUB_TABLE
-from d810.optimizers.dsl import Var, Const, when
+from d810.optimizers.dsl import Var, Const, when, NEGATIVE_ONE
 from d810.optimizers.rules import VerifiableRule
 
 # Define variables for pattern matching
@@ -172,29 +171,28 @@ class Bnot_XorRule_1(VerifiableRule):
 
 
 class Bnot_FactorRule_2(VerifiableRule):
-    """Simplify: -1 - x => ~x (where -1 is max value for the size)
+    """Simplify: -1 - x => ~x
 
-    This handles the pattern where -1 is represented as the maximum unsigned
-    value for the operand size (0xFF for 1 byte, 0xFFFF for 2 bytes, etc.)
+    Two's complement identity: -x = ~x + 1, therefore ~x = -x - 1 = -1 - x.
 
-    NOTE: Z3 verification is skipped because this rule has size-dependent
-    constraints that cannot be automatically converted to Z3 expressions.
+    In two's complement representation, -1 is represented as all bits set
+    (0xFF for 1 byte, 0xFFFF for 2 bytes, 0xFFFFFFFF for 4 bytes, etc.).
+
+    Mathematical proof:
+        -1 - x = ~x
+        (Two's complement definition: ~x = -x - 1, rearranged)
+
+    Now fully verifiable: Uses concrete constant -1, no size-dependent constraints.
     """
 
-    SKIP_VERIFICATION = True  # Size-dependent constraint requires runtime checking
+    # Pattern: -1 - x (using concrete NEGATIVE_ONE constant)
+    PATTERN = NEGATIVE_ONE - x
 
-    minus_1 = Const("minus_1")
-
-    PATTERN = minus_1 - x
+    # Replacement: ~x
     REPLACEMENT = ~x
 
-    CONSTRAINTS = [
-        # Check that minus_1 equals the maximum value for its size
-        lambda ctx: ctx["minus_1"].value == SUB_TABLE[ctx["minus_1"].size] - 1
-    ]
-
-    DESCRIPTION = "Simplify -1 - x to ~x (size-aware max value)"
-    REFERENCE = "Arithmetic NOT"
+    DESCRIPTION = "Simplify -1 - x to ~x"
+    REFERENCE = "Two's complement arithmetic"
 
 
 class Bnot_FactorRule_3(VerifiableRule):

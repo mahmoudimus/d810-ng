@@ -412,6 +412,7 @@ ZERO = Const("0", 0)
 ONE = Const("1", 1)
 TWO = Const("2", 2)
 NEGATIVE_ONE = Const("-1", -1)
+NEGATIVE_TWO = Const("-2", -2)
 
 
 class DynamicConst:
