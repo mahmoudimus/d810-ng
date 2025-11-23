@@ -217,6 +217,69 @@ class MyZextRule(VerifiableRule):
 - Converts to Z3's `ZeroExt` for verification
 - Maps to IDA's `M_XDU` opcode for pattern matching
 
+### Bit-Width-Specific Verification
+
+Some rules are only valid for specific bit-widths (e.g., byte operations where 256 wraps to 0). Instead of marking these as `SKIP_VERIFICATION`, you can **configure the verification bit-width**:
+
+```python
+from d810.optimizers.dsl import Var, Const, ZERO
+from d810.optimizers.rules import VerifiableRule
+
+class Xor_Hodur_2(VerifiableRule):
+    """Simplify: (x - c_0) ^ (y ^ c_1) => (x + c_1) ^ (y ^ c_1) when c_0 + c_1 = 256
+
+    BYTE-SPECIFIC: This rule uses 8-bit Z3 bitvectors for verification.
+    In byte arithmetic: -c_0 ≡ c_1 (mod 256) when c_0 + c_1 = 256
+    """
+
+    # Configure Z3 to use 8-bit bitvectors instead of default 32-bit
+    BIT_WIDTH = 8
+
+    c_0 = Const("c_0")
+    c_1 = Const("c_1")
+
+    PATTERN = (x - c_0) ^ (y ^ c_1)
+    REPLACEMENT = (x + c_1) ^ (y ^ c_1)
+
+    def get_constraints(self, z3_vars):
+        """Custom constraint: c_0 + c_1 == 0 in 8-bit arithmetic.
+
+        At 8-bit width, 256 wraps to 0, so c_0 + c_1 == 0 means they sum to 256.
+        """
+        import z3
+
+        if "c_0" not in z3_vars or "c_1" not in z3_vars:
+            return []
+
+        # In 8-bit: 256 ≡ 0 (mod 256)
+        return [z3_vars["c_0"] + z3_vars["c_1"] == z3.BitVecVal(0, 8)]
+
+    def check_candidate(self, candidate):
+        """Runtime check: verify c_0 + c_1 == 256 with actual values.
+
+        Z3 uses 8-bit arithmetic, but IDA provides actual constant values.
+        """
+        if (candidate["c_0"].value is None) or (candidate["c_1"].value is None):
+            return False
+        return (candidate["c_0"].value + candidate["c_1"].value) == 256
+```
+
+**Key points:**
+- **`BIT_WIDTH = 8`**: Tells Z3 to create 8-bit bitvectors instead of 32-bit
+- **`get_constraints()`**: Override to provide explicit Z3 constraints that account for overflow
+- **`check_candidate()`**: Runtime validation with actual constant values from IDA
+- **Why this works**: In 8-bit arithmetic, `256 ≡ 0 (mod 256)`, so `c_0 + c_1 = 256` becomes `c_0 + c_1 = 0`
+
+**Common bit-widths:**
+- `BIT_WIDTH = 8` - Byte operations (0-255, 256 wraps to 0)
+- `BIT_WIDTH = 16` - Word operations (0-65535, 65536 wraps to 0)
+- `BIT_WIDTH = 32` - Default for most rules (0-4294967295)
+
+This approach is preferable to `SKIP_VERIFICATION` because:
+- ✅ Z3 still verifies mathematical correctness at the appropriate bit-width
+- ✅ Catches subtle bugs that might only appear in byte/word operations
+- ✅ Documents the size-specific nature of the rule explicitly
+
 ### Marking Known Failures
 
 For rules that can't be verified with Z3:
@@ -280,7 +343,7 @@ import d810.optimizers.microcode.instructions.pattern_matching.rewrite_add
 **Every rule is automatically verified with Z3!** The test suite proves mathematical correctness:
 
 ```bash
-# Test all 167 verified rules (takes ~12 seconds)
+# Test all 170 verified rules (takes ~12 seconds)
 pytest tests/unit/optimizers/test_verifiable_rules.py -v
 
 # Test a specific rule
@@ -294,7 +357,7 @@ pytest tests/unit/optimizers/test_verifiable_rules.py::TestVerifiableRules::test
 3. **Constraint solving**: Z3 proves `PATTERN ⟺ REPLACEMENT` under all `CONSTRAINTS`
 4. **Test generation**: A parameterized test is created for each rule automatically
 
-**Verification coverage**: Currently **167/174 rules (95.9%)** are automatically verified. The remaining 7 rules are:
+**Verification coverage**: Currently **170/177 rules (96.0%)** are automatically verified. The remaining 7 rules are:
 - 5 marked `KNOWN_INCORRECT` (kept for test parity with main branch)
 - 2 marked `SKIP_VERIFICATION` (performance: complex MBA multiplication rules)
 
@@ -305,6 +368,7 @@ pytest tests/unit/optimizers/test_verifiable_rules.py::TestVerifiableRules::test
 - ✅ Predicate simplifications (e.g., `(x | c1) != c2 ⟺ 1` when `(c1 | c2) != c2`)
 - ✅ Dynamic constants (e.g., computing result constants from matched values)
 - ✅ Extension operations (e.g., `Zext(x & 1, 32) == 2 ⟺ 0`)
+- ✅ Bit-width-specific rules (e.g., byte operations with `BIT_WIDTH = 8`)
 
 **Example test output:**
 
@@ -312,8 +376,9 @@ pytest tests/unit/optimizers/test_verifiable_rules.py::TestVerifiableRules::test
 tests/unit/optimizers/test_verifiable_rules.py::TestVerifiableRules::test_rule_is_correct[Add_HackersDelightRule_1] PASSED
 tests/unit/optimizers/test_verifiable_rules.py::TestVerifiableRules::test_rule_is_correct[Xor_Rule_1] PASSED
 tests/unit/optimizers/test_verifiable_rules.py::TestVerifiableRules::test_rule_is_correct[PredSetnz_1] PASSED
+tests/unit/optimizers/test_verifiable_rules.py::TestVerifiableRules::test_rule_is_correct[Xor_Hodur_2] PASSED
 ...
-==================== 167 passed, 7 skipped in 12.67s ====================
+==================== 170 passed, 7 skipped in 12.44s ====================
 ```
 
 **If a rule fails verification:**

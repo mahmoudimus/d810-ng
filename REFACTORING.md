@@ -595,7 +595,7 @@ The declarative DSL refactoring has been **successfully completed** with the fol
 ### ✅ What We've Accomplished
 
 #### 1. **Declarative DSL Implementation** ✓
-- **Complete**: All 174 optimization rules migrated from imperative `AstNode` construction to declarative DSL
+- **Complete**: All 177 optimization rules migrated from imperative `AstNode` construction to declarative DSL
 - **Operator Overloading**: Rules now use natural Python operators (`+`, `-`, `&`, `|`, `^`, `~`, `>>`, `<<`)
 - **Type Safety**: Strict separation between Terms (`SymbolicExpression`) and Formulas (`ConstraintExpr`)
 - **Examples**:
@@ -609,13 +609,13 @@ The declarative DSL refactoring has been **successfully completed** with the fol
   ```
 
 #### 2. **Automatic Z3 Verification** ✓
-- **Coverage**: **167/174 rules (95.9%)** automatically verified
+- **Coverage**: **170/177 rules (96.0%)** automatically verified
 - **Matches Main Branch**: Same 7 skipped rules as main branch (5 KNOWN_INCORRECT + 2 performance)
-- **Test Time**: 12.67 seconds for all 167 rules
+- **Test Time**: 12.44 seconds for all 170 rules
 - **Auto-Discovery**: All rules automatically registered and tested via metaclass
 - **Results**:
   ```
-  ==================== 167 passed, 7 skipped in 12.67s ====================
+  ==================== 170 passed, 7 skipped in 12.44s ====================
   ```
 
 #### 3. **Advanced Features Implemented** ✓
@@ -634,6 +634,13 @@ The declarative DSL refactoring has been **successfully completed** with the fol
 - Replaced size-dependent runtime checks with concrete constants
 - Example: Check `c == -2` instead of `(c + 2) & SIZE_MASK == 0`
 - Enabled verification of 3 additional OLLVM rules
+
+**Bit-Width-Specific Verification:**
+- Support for rules with different bit-widths (8-bit, 16-bit, 32-bit)
+- Example: Byte-specific rules use `BIT_WIDTH = 8` instead of defaulting to 32-bit
+- Handles overflow correctly: In 8-bit, `256 ≡ 0 (mod 256)`
+- Verified **5 HODUR obfuscation rules** including byte-specific patterns
+- Avoids false `SKIP_VERIFICATION` for legitimate size-specific rules
 
 #### 4. **Constraint System** ✓
 
@@ -654,10 +661,10 @@ The declarative DSL refactoring has been **successfully completed** with the fol
 
 | Metric | Value |
 |--------|-------|
-| **Total Rules** | 174 |
-| **Verified** | 167 (95.9%) |
-| **Skipped** | 7 (4.1%) |
-| **Test Time** | 12.67s |
+| **Total Rules** | 177 |
+| **Verified** | 170 (96.0%) |
+| **Skipped** | 7 (4.0%) |
+| **Test Time** | 12.44s |
 | **Main Branch Parity** | ✅ Exact match on skipped rules |
 
 ### 🔍 Remaining Skipped Rules (7 total)
@@ -699,9 +706,9 @@ These have complex MBA multiplication patterns that are correct but slow to veri
 | Goal | Target | Achieved | Status |
 |------|--------|----------|--------|
 | Declarative DSL | 100% | 100% | ✅ |
-| Automatic Verification | >90% | 95.9% | ✅ |
+| Automatic Verification | >90% | 96.0% | ✅ |
 | Main Branch Parity | Match skipped rules | Exact match | ✅ |
-| Test Speed | <30s | 12.67s | ✅ |
+| Test Speed | <30s | 12.44s | ✅ |
 | Type Safety | Full separation | Complete | ✅ |
 
 ### 📝 Migration Summary
@@ -709,9 +716,10 @@ These have complex MBA multiplication patterns that are correct but slow to veri
 **Files Modified:**
 - `src/d810/optimizers/dsl.py` - Core DSL with operator overloading
 - `src/d810/optimizers/constraints.py` - Constraint system with `.to_int()`
-- `src/d810/optimizers/rules.py` - `VerifiableRule` base class
+- `src/d810/optimizers/rules.py` - `VerifiableRule` base class with bit-width support
 - `src/d810/expr/visitors.py` - Z3 visitor with `bool_to_int` and `zext` support
 - 12 `rewrite_*.py` files - All rules migrated to declarative DSL
+- `hodur_verifiable.py` - **NEW**: 5 HODUR obfuscation rules with byte-specific verification
 
 **Test Files:**
 - `tests/unit/optimizers/test_verifiable_rules.py` - Automatic verification test
@@ -725,13 +733,13 @@ These have complex MBA multiplication patterns that are correct but slow to veri
 | Branch | Rules | Verified | Skipped | Test Time |
 |--------|-------|----------|---------|-----------|
 | **Main** | 168 | 161 (95.8%) | 7 | 7.17s |
-| **Ours** | 174 | **167 (95.9%)** | 7 | 12.67s |
+| **Ours** | 177 | **170 (96.0%)** | 7 | 12.44s |
 
 **Net Improvement:**
-- ✅ +6 rules added and verified
+- ✅ +9 rules added and verified (including 5 HODUR obfuscation rules)
 - ✅ Same 7 rules skipped (for same reasons)
-- ✅ Higher absolute verification coverage
-- ⚠️ Slower tests (+5.5s) due to +6 verified rules
+- ✅ Higher absolute verification coverage (96.0% vs 95.8%)
+- ⚠️ Slower tests (+5.3s) due to +9 verified rules
 
 ### 🎓 Key Lessons Learned
 
@@ -740,6 +748,7 @@ These have complex MBA multiplication patterns that are correct but slow to veri
 3. **Type Safety Matters**: Separating Terms and Formulas caught bugs early
 4. **Z3 is Powerful**: Proves correctness automatically, catching subtle errors humans miss
 5. **Operator Overloading Works**: Makes rules readable and mathematically precise
+6. **Bit-Width Configuration**: Size-specific rules can be verified by setting `BIT_WIDTH = 8/16/32` instead of marking as `SKIP_VERIFICATION`
 
 ### 🚀 How to Add a New Rule
 
