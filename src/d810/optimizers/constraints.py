@@ -68,6 +68,31 @@ class ConstraintExpr:
         """
         raise NotImplementedError
 
+    def __call__(self, candidate: dict[str, Any]) -> bool:
+        """Make constraints callable for backward compatibility.
+
+        This allows existing code that expects `constraint(match_context)` to work.
+
+        Args:
+            candidate: Dictionary mapping variable names to matched values
+
+        Returns:
+            True if constraint is satisfied, False otherwise
+        """
+        return self.check(candidate)
+
+    def __and__(self, other: ConstraintExpr) -> ConstraintExpr:
+        """Logical AND: self & other."""
+        return AndConstraint(self, other)
+
+    def __or__(self, other: ConstraintExpr) -> ConstraintExpr:
+        """Logical OR: self | other."""
+        return OrConstraint(self, other)
+
+    def __invert__(self) -> ConstraintExpr:
+        """Logical NOT: ~self."""
+        return NotConstraint(self)
+
 
 @dataclass
 class EqualityConstraint(ConstraintExpr):
@@ -383,6 +408,175 @@ class EqualityConstraint(ConstraintExpr):
                 return left_val >> right_val
             case _:
                 raise ValueError(f"Unknown operation: {expr.operation}")
+
+
+@dataclass
+class ComparisonConstraint(ConstraintExpr):
+    """Represents a comparison constraint: left op right.
+
+    Supports !=, <, >, <=, >= operations.
+
+    Attributes:
+        left: Left-hand side expression
+        right: Right-hand side expression
+        op_symbol: String representation of operator (for display)
+        op_name: Operation name ("ne", "lt", "gt", "le", "ge")
+    """
+
+    left: Any  # SymbolicExpression or AstBase
+    right: Any  # SymbolicExpression or AstBase
+    op_symbol: str  # For display: "!=", "<", ">", "<=", ">="
+    op_name: str    # Internal: "ne", "lt", "gt", "le", "ge"
+
+    def to_z3(self, z3_vars: dict[str, Any]) -> Any:
+        """Convert to Z3 comparison."""
+        import z3
+
+        # Reuse EqualityConstraint's conversion logic
+        eq_constraint = EqualityConstraint(self.left, self.right)
+        left_z3 = eq_constraint._expr_to_z3(self.left, z3_vars)
+        right_z3 = eq_constraint._expr_to_z3(self.right, z3_vars)
+
+        match self.op_name:
+            case "ne":
+                return left_z3 != right_z3
+            case "lt":
+                return z3.ULT(left_z3, right_z3)  # Unsigned less than
+            case "gt":
+                return z3.UGT(left_z3, right_z3)  # Unsigned greater than
+            case "le":
+                return z3.ULE(left_z3, right_z3)  # Unsigned less or equal
+            case "ge":
+                return z3.UGE(left_z3, right_z3)  # Unsigned greater or equal
+            case _:
+                raise ValueError(f"Unknown comparison: {self.op_name}")
+
+    def eval_and_define(self, candidate: dict[str, Any]) -> tuple[str | None, int | None]:
+        """Comparisons don't define variables."""
+        return (None, None)
+
+    def check(self, candidate: dict[str, Any]) -> bool:
+        """Check if comparison holds with concrete values."""
+        try:
+            eq_constraint = EqualityConstraint(self.left, self.right)
+            left_val = eq_constraint._eval_expr(self.left, candidate)
+            right_val = eq_constraint._eval_expr(self.right, candidate)
+
+            match self.op_name:
+                case "ne":
+                    return left_val != right_val
+                case "lt":
+                    return left_val < right_val
+                case "gt":
+                    return left_val > right_val
+                case "le":
+                    return left_val <= right_val
+                case "ge":
+                    return left_val >= right_val
+                case _:
+                    raise ValueError(f"Unknown comparison: {self.op_name}")
+        except (KeyError, ValueError, AttributeError):
+            # Can't evaluate
+            return False
+
+    def __repr__(self) -> str:
+        return f"({self.left} {self.op_symbol} {self.right})"
+
+
+@dataclass
+class AndConstraint(ConstraintExpr):
+    """Logical AND of two constraints.
+
+    Attributes:
+        left: Left constraint
+        right: Right constraint
+    """
+
+    left: ConstraintExpr
+    right: ConstraintExpr
+
+    def to_z3(self, z3_vars: dict[str, Any]) -> Any:
+        """Convert to Z3: And(left_z3, right_z3)."""
+        import z3
+        left_z3 = self.left.to_z3(z3_vars)
+        right_z3 = self.right.to_z3(z3_vars)
+        return z3.And(left_z3, right_z3)
+
+    def eval_and_define(self, candidate: dict[str, Any]) -> tuple[str | None, int | None]:
+        """Try to extract definitions from left first, then right."""
+        # Try left constraint
+        var_name, value = self.left.eval_and_define(candidate)
+        if var_name is not None:
+            return (var_name, value)
+
+        # Try right constraint
+        return self.right.eval_and_define(candidate)
+
+    def check(self, candidate: dict[str, Any]) -> bool:
+        """Both constraints must hold."""
+        return self.left.check(candidate) and self.right.check(candidate)
+
+    def __repr__(self) -> str:
+        return f"({self.left} && {self.right})"
+
+
+@dataclass
+class OrConstraint(ConstraintExpr):
+    """Logical OR of two constraints.
+
+    Attributes:
+        left: Left constraint
+        right: Right constraint
+    """
+
+    left: ConstraintExpr
+    right: ConstraintExpr
+
+    def to_z3(self, z3_vars: dict[str, Any]) -> Any:
+        """Convert to Z3: Or(left_z3, right_z3)."""
+        import z3
+        left_z3 = self.left.to_z3(z3_vars)
+        right_z3 = self.right.to_z3(z3_vars)
+        return z3.Or(left_z3, right_z3)
+
+    def eval_and_define(self, candidate: dict[str, Any]) -> tuple[str | None, int | None]:
+        """OR doesn't define variables - both branches would need same value."""
+        return (None, None)
+
+    def check(self, candidate: dict[str, Any]) -> bool:
+        """At least one constraint must hold."""
+        return self.left.check(candidate) or self.right.check(candidate)
+
+    def __repr__(self) -> str:
+        return f"({self.left} || {self.right})"
+
+
+@dataclass
+class NotConstraint(ConstraintExpr):
+    """Logical NOT of a constraint.
+
+    Attributes:
+        operand: The constraint to negate
+    """
+
+    operand: ConstraintExpr
+
+    def to_z3(self, z3_vars: dict[str, Any]) -> Any:
+        """Convert to Z3: Not(operand_z3)."""
+        import z3
+        operand_z3 = self.operand.to_z3(z3_vars)
+        return z3.Not(operand_z3)
+
+    def eval_and_define(self, candidate: dict[str, Any]) -> tuple[str | None, int | None]:
+        """NOT doesn't define variables."""
+        return (None, None)
+
+    def check(self, candidate: dict[str, Any]) -> bool:
+        """Negate the operand's result."""
+        return not self.operand.check(candidate)
+
+    def __repr__(self) -> str:
+        return f"!({self.operand})"
 
 
 def is_constraint_expr(obj: Any) -> bool:
