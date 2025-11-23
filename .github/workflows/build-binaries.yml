@@ -24,15 +24,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Windows builds
+          # Windows builds (native)
           - os: windows
             arch: x86_64
-            runner: ubuntu-latest
+            runner: windows-2022
             output_ext: dll
 
           - os: windows
             arch: x86
-            runner: ubuntu-latest
+            runner: windows-2022
             output_ext: dll
 
           # macOS builds
@@ -68,19 +68,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set up MSVC (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1.13.0
+
       - name: Install build dependencies (Ubuntu)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y clang lld gcc-multilib g++-multilib
 
-          # For cross-compiling to Windows from Linux
-          if [ "${{ matrix.os }}" = "windows" ]; then
-            sudo apt-get install -y mingw-w64
-          fi
-
           # For ARM64 cross-compilation on Linux
-          if [ "${{ matrix.arch }}" = "arm64" ] && [ "${{ matrix.os }}" = "linux" ]; then
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
             sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
           fi
 
@@ -90,15 +89,20 @@ jobs:
           # Ensure clang is available (should be pre-installed)
           clang --version
 
+      - name: Install make (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install make -y
+
       - name: Build binaries
         working-directory: samples
+        shell: bash
         run: |
           make TARGET_OS=${{ matrix.os }} BUILD_ARCH=${{ matrix.arch }} BINARY_NAME=libobfuscated_${{ matrix.os }}_${{ matrix.arch }}
-        env:
-          CC: clang
 
       - name: List built binaries
         working-directory: samples
+        shell: bash
         run: |
           echo "Built binaries:"
           ls -lh bins/
