@@ -183,6 +183,8 @@ class VerifiableRule(SymbolicRule):
     # REPLACEMENT: SymbolicExpression = None
     CONSTRAINTS: List = []  # Runtime constraints (list of callables)
     DYNAMIC_CONSTS: Dict[str, Any] = {}  # Dynamic constant generators
+    CONTEXT_VARS: Dict[str, Any] = {}  # Context providers (e.g., {"full_reg": context.dst.parent_register})
+    UPDATE_DESTINATION: str = None  # Variable name to use as new destination (e.g., "full_reg")
     KNOWN_INCORRECT: bool = False  # Set to True for rules that are mathematically incorrect
     SKIP_VERIFICATION: bool = False  # Set to True to skip Z3 verification (e.g., for size-dependent constraints)
 
@@ -287,7 +289,11 @@ class VerifiableRule(SymbolicRule):
         to work with PatternMatchingRule's matching system.
 
         The candidate is an AstNode that has already matched the PATTERN structure.
-        This method checks additional runtime constraints (CONSTRAINTS list).
+        This method:
+        1. Adds the candidate itself to the context (for context providers)
+        2. Runs all context providers to bind additional variables
+        3. Checks all runtime constraints
+        4. Optionally updates the destination operand
 
         Args:
             candidate: An AstNode that structurally matches PATTERN
@@ -295,10 +301,6 @@ class VerifiableRule(SymbolicRule):
         Returns:
             True if all constraints are satisfied, False otherwise
         """
-        # If no constraints, candidate is valid
-        if not hasattr(self, 'CONSTRAINTS') or not self.CONSTRAINTS:
-            return True
-
         # Build match context from candidate's matched variables
         # The candidate has a dictionary mapping variable names to matched mops
         if not hasattr(candidate, 'get_z3_vars') and not hasattr(candidate, 'mop_dict'):
@@ -313,8 +315,63 @@ class VerifiableRule(SymbolicRule):
         elif hasattr(candidate, 'get_z3_vars'):
             match_context = candidate.get_z3_vars({})
 
-        # Check all runtime constraints
-        return self.check_runtime_constraints(match_context)
+        # CRITICAL: Add the candidate itself so constraints/providers can inspect it
+        # This enables context-aware constraints like when.dst.is_high_half
+        match_context["_candidate"] = candidate
+
+        # Run context providers to bind additional variables
+        # Example: {"full_reg": context.dst.parent_register}
+        if hasattr(self, 'CONTEXT_VARS') and self.CONTEXT_VARS:
+            for var_name, provider in self.CONTEXT_VARS.items():
+                try:
+                    # Call the provider with the match context
+                    value = provider(match_context)
+                    if value is None:
+                        # Provider failed (e.g., couldn't find parent register)
+                        logger.debug(
+                            f"Context provider for '{var_name}' returned None in {self.name}"
+                        )
+                        return False
+
+                    # Add the bound variable to both contexts
+                    match_context[var_name] = value
+                    if hasattr(candidate, 'mop_dict'):
+                        candidate.mop_dict[var_name] = value
+
+                except Exception as e:
+                    logger.debug(
+                        f"Context provider for '{var_name}' failed in {self.name}: {e}"
+                    )
+                    return False
+
+        # Check all runtime constraints (including context-aware ones)
+        if not self.check_runtime_constraints(match_context):
+            return False
+
+        # Handle destination update side effect
+        # If UPDATE_DESTINATION is set, modify the candidate's destination operand
+        if hasattr(self, 'UPDATE_DESTINATION') and self.UPDATE_DESTINATION:
+            dest_var = self.UPDATE_DESTINATION
+            if dest_var in match_context:
+                bound_var = match_context[dest_var]
+                # Extract the mop from the AstNode
+                if hasattr(bound_var, 'mop') and bound_var.mop is not None:
+                    candidate.dst_mop = bound_var.mop
+                    logger.debug(
+                        f"Updated destination to '{dest_var}' in {self.name}"
+                    )
+                else:
+                    logger.warning(
+                        f"UPDATE_DESTINATION '{dest_var}' has no mop in {self.name}"
+                    )
+                    return False
+            else:
+                logger.warning(
+                    f"UPDATE_DESTINATION '{dest_var}' not found in context for {self.name}"
+                )
+                return False
+
+        return True
 
     def check_runtime_constraints(self, match_context: Dict[str, Any]) -> bool:
         """Check if all runtime constraints are satisfied for this match.
