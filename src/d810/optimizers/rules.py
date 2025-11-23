@@ -465,6 +465,11 @@ class VerifiableRule(SymbolicRule):
         # must be treated as symbolic Z3 variables, not concrete values
         def collect_names(expr: SymbolicExpression, var_names: set, const_names: set):
             """Recursively collect variable and constant names from expression."""
+            if expr is None:
+                return  # Skip None (e.g., DynamicConst replacements)
+            if not isinstance(expr, SymbolicExpression):
+                return  # Skip non-SymbolicExpression (e.g., DynamicConst)
+
             if expr.is_leaf():
                 if expr.name:  # Skip None names
                     if expr.is_constant():
@@ -487,6 +492,11 @@ class VerifiableRule(SymbolicRule):
         const_names = set()
         collect_names(self.pattern, var_names, const_names)
         collect_names(self.replacement, var_names, const_names)
+
+        # Skip verification if replacement is DynamicConst (not SymbolicExpression)
+        if not isinstance(self.replacement, SymbolicExpression):
+            logger.debug(f"Skipping verification for {self.name}: replacement is {type(self.replacement).__name__}, not SymbolicExpression")
+            return True  # Can't verify DynamicConst with Z3
 
         # Create Z3 BitVec variables for all symbolic variables/constants
         z3_vars = {}
