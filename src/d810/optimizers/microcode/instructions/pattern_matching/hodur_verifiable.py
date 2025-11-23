@@ -7,7 +7,7 @@ All rules have been migrated to the declarative DSL and are automatically
 verified with Z3.
 """
 
-from d810.optimizers.dsl import Const, Var, ONE
+from d810.optimizers.dsl import Const, Var, ONE, ZERO
 from d810.optimizers.rules import VerifiableRule
 
 # Common variables for HODUR patterns
@@ -146,37 +146,55 @@ class Xor_Hodur_2(VerifiableRule):
 
     This rule handles HODUR's use of modular arithmetic where c_0 + c_1 = 256.
 
-    SIZE-DEPENDENT: This rule is only correct for byte-sized operations.
+    BYTE-SPECIFIC VERIFICATION: This rule uses 8-bit Z3 bitvectors for verification.
     In byte arithmetic: -c_0 ≡ c_1 (mod 256) when c_0 + c_1 = 256
     Therefore: x - c_0 ≡ x + c_1 (mod 256)
 
-    However, in 32-bit arithmetic, the sign-extension of negative values prevents
-    the identity from holding. For example, with c_0=128, c_1=128:
-    - Pattern: (0 - 128) ^ (0 ^ 128) = -128 ^ 128 = 0xFFFFFF80 ^ 0x80 ≠ 0
-    - Replacement: (0 + 128) ^ (0 ^ 128) = 128 ^ 128 = 0
-
-    The rule works correctly when applied to actual byte-sized IDA microcode,
-    but cannot be verified with 32-bit Z3 bitvectors.
+    Mathematical proof (8-bit arithmetic):
+        c_0 + c_1 = 256 ≡ 0 (mod 256)
+        Therefore: c_1 ≡ -c_0 (mod 256)
+        So: x - c_0 ≡ x + c_1 (mod 256)
+        And: (x - c_0) ^ (y ^ c_1) ≡ (x + c_1) ^ (y ^ c_1)
 
     Example (HODUR pattern 5, with c_0=0x1D=29, c_1=0xE3=227):
-        0x1D + 0xE3 = 256 (wraps to 0 in byte arithmetic)
+        0x1D + 0xE3 = 256 = 0x100 (wraps to 0 in byte arithmetic)
         (y - 0x1D) ^ (x ^ 0xE3) => (y + 0xE3) ^ (x ^ 0xE3)
+
+    Now fully verifiable with 8-bit Z3 bitvectors!
     """
+
+    # Use 8-bit verification for byte-specific rule
+    BIT_WIDTH = 8
 
     c_0 = Const("c_0")
     c_1 = Const("c_1")
-    TWO_FIVE_SIX = Const("256", 256)
 
     PATTERN = (x - c_0) ^ (y ^ c_1)
     REPLACEMENT = (x + c_1) ^ (y ^ c_1)
 
-    # Constraint: c_0 + c_1 must equal 256
-    # This is checked at runtime during pattern matching
-    CONSTRAINTS = [c_0 + c_1 == TWO_FIVE_SIX]
+    def get_constraints(self, z3_vars):
+        """Custom constraint: c_0 + c_1 == 0 in 8-bit arithmetic.
 
-    # Skip Z3 verification because this rule is byte-specific
-    # and cannot be verified with 32-bit bitvectors
-    SKIP_VERIFICATION = True
+        This override provides explicit Z3 constraint generation.
+        At 8-bit width, 256 wraps to 0, so c_0 + c_1 == 0 means they sum to 256.
+        """
+        import z3
+
+        if "c_0" not in z3_vars or "c_1" not in z3_vars:
+            return []
+
+        # Explicit constraint: sum must be zero (representing 256 overflow in 8-bit)
+        return [z3_vars["c_0"] + z3_vars["c_1"] == z3.BitVecVal(0, 8)]
+
+    def check_candidate(self, candidate):
+        """Runtime check: verify c_0 + c_1 == 256 with actual values.
+
+        The Z3 constraint checks (c_0 + c_1) == 0 in 8-bit arithmetic.
+        At runtime, we need to verify the actual constant values sum to 256.
+        """
+        if (candidate["c_0"].value is None) or (candidate["c_1"].value is None):
+            return False
+        return (candidate["c_0"].value + candidate["c_1"].value) == 256
 
     DESCRIPTION = "HODUR: Convert subtraction to addition using modular arithmetic (byte-specific)"
     REFERENCE = "HODUR obfuscator, pattern 5"
