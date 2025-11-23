@@ -20,7 +20,7 @@ except ImportError:
     Z3_AVAILABLE = False
 
 from d810.conf.loggers import getLogger
-from d810.expr.z3_utils import z3_prove_equivalence
+from d810.expr.visitors import prove_equivalence
 from d810.optimizers.dsl import SymbolicExpression
 
 # Import types only for type checking to avoid circular imports and IDA dependencies
@@ -96,7 +96,7 @@ class SymbolicRule(abc.ABC):
                 "Install z3-solver to enable rule verification."
             )
 
-        is_equivalent, counterexample = z3_prove_equivalence(
+        is_equivalent, counterexample = prove_equivalence(
             self.pattern.node,
             self.replacement.node
         )
@@ -497,8 +497,8 @@ class VerifiableRule(SymbolicRule):
         # Get rule-specific constraints (now has access to constant symbols)
         constraints = self.get_constraints(z3_vars)
 
-        # Prove equivalence
-        is_equivalent, counterexample = z3_prove_equivalence(
+        # Prove equivalence using Z3Visitor
+        is_equivalent, counterexample = prove_equivalence(
             pattern_node,
             replacement_node,
             z3_vars=z3_vars,
