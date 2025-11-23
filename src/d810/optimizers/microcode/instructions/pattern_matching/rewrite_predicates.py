@@ -54,6 +54,9 @@ class PredSetnz_1(VerifiableRule):
         lambda ctx: (ctx["c_1"].value | ctx["c_2"].value) != ctx["c_2"].value
     ]
 
+    # Skip Z3 verification - c_2 is not in pattern, only in constraint
+    SKIP_VERIFICATION = True
+
     DESCRIPTION = "Constant-fold (x | c1) != c2 to 1"
     REFERENCE = "Predicate simplification"
 
@@ -74,6 +77,9 @@ class PredSetnz_2(VerifiableRule):
     CONSTRAINTS = [
         lambda ctx: (ctx["c_1"].value & ctx["c_2"].value) != ctx["c_2"].value
     ]
+
+    # Skip Z3 verification - c_2 is not in pattern, only in constraint
+    SKIP_VERIFICATION = True
 
     DESCRIPTION = "Constant-fold (x & c1) != c2 to 1"
     REFERENCE = "Predicate simplification"
@@ -201,6 +207,9 @@ class PredSetz_1(VerifiableRule):
         lambda ctx: (ctx["c_1"].value | ctx["c_2"].value) != ctx["c_2"].value
     ]
 
+    # Skip Z3 verification - c_2 is not in pattern, only in constraint
+    SKIP_VERIFICATION = True
+
     DESCRIPTION = "Constant-fold (x | c1) == c2 to 0"
     REFERENCE = "Predicate simplification"
 
@@ -221,6 +230,9 @@ class PredSetz_2(VerifiableRule):
     CONSTRAINTS = [
         lambda ctx: (ctx["c_1"].value & ctx["c_2"].value) != ctx["c_2"].value
     ]
+
+    # Skip Z3 verification - c_2 is not in pattern, only in constraint
+    SKIP_VERIFICATION = True
 
     DESCRIPTION = "Constant-fold (x & c1) == c2 to 0"
     REFERENCE = "Predicate simplification"

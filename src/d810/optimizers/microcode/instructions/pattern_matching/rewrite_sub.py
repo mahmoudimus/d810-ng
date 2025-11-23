@@ -119,10 +119,7 @@ class Sub1_Factor1(VerifiableRule):
     PATTERN = (-x - ONE) - (c_minus_2 * x)
     REPLACEMENT = x - ONE
 
-    CONSTRAINTS = [
-        # Check that c_minus_2 == -2 for its bit width
-        lambda ctx: ctx["c_minus_2"].value == SUB_TABLE[ctx["c_minus_2"].size] - 2
-    ]
+    CONSTRAINTS = [when.equals_minus_two("c_minus_2")]
 
     DESCRIPTION = "Simplify (-x - 1) - (-2 * x) to x - 1"
     REFERENCE = "Constant validation with SUB_TABLE"

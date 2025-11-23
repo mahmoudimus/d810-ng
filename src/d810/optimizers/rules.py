@@ -415,6 +415,17 @@ class VerifiableRule(SymbolicRule):
                     # Continue to try legacy constraint handling
                     pass
 
+            # Check if constraint has _to_z3 attribute (new constraint helpers like when.or_inequality)
+            if callable(constraint) and hasattr(constraint, '_to_z3'):
+                try:
+                    z3_constraint = constraint._to_z3(z3_vars)
+                    if z3_constraint is not None:
+                        z3_constraints.append(z3_constraint)
+                        continue
+                except Exception as e:
+                    logger.debug(f"Could not convert constraint with _to_z3: {e}")
+                    # Fall through to other methods
+
             # Legacy: Try to auto-convert callable constraints (when.is_bnot, etc.)
             if callable(constraint) and hasattr(constraint, '__closure__') and constraint.__closure__:
                 # Extract variable names from closure (for when.is_bnot, when.equal_mops)

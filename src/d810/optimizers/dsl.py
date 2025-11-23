@@ -428,6 +428,100 @@ class ConstraintPredicate:
 
         return check
 
+    @staticmethod
+    def or_inequality(var1: str, var2: str):
+        """Check that (var1 | var2) != var2.
+
+        This is useful for predicate simplification where (x | c1) can never equal c2
+        if (c1 | c2) != c2.
+
+        Args:
+            var1: First variable name
+            var2: Second variable name
+
+        Returns:
+            Constraint function with Z3 conversion attached
+
+        Example:
+            >>> CONSTRAINTS = [when.or_inequality("c_1", "c_2")]
+        """
+        def check(ctx):
+            if var1 not in ctx or var2 not in ctx:
+                return False
+            return (ctx[var1].value | ctx[var2].value) != ctx[var2].value
+
+        # Attach Z3 conversion
+        def to_z3(z3_vars):
+            import z3
+            if var1 not in z3_vars or var2 not in z3_vars:
+                return None
+            return (z3_vars[var1] | z3_vars[var2]) != z3_vars[var2]
+
+        check._to_z3 = to_z3
+        return check
+
+    @staticmethod
+    def and_inequality(var1: str, var2: str):
+        """Check that (var1 & var2) != var2.
+
+        Args:
+            var1: First variable name
+            var2: Second variable name
+
+        Returns:
+            Constraint function with Z3 conversion attached
+
+        Example:
+            >>> CONSTRAINTS = [when.and_inequality("c_1", "c_2")]
+        """
+        def check(ctx):
+            if var1 not in ctx or var2 not in ctx:
+                return False
+            return (ctx[var1].value & ctx[var2].value) != ctx[var2].value
+
+        def to_z3(z3_vars):
+            import z3
+            if var1 not in z3_vars or var2 not in z3_vars:
+                return None
+            return (z3_vars[var1] & z3_vars[var2]) != z3_vars[var2]
+
+        check._to_z3 = to_z3
+        return check
+
+    @staticmethod
+    def equals_minus_two(var: str):
+        """Check that var equals -2 in two's complement.
+
+        For size-independent verification, this checks: (var + 2) masked to bit width == 0.
+
+        Args:
+            var: Variable name to check
+
+        Returns:
+            Constraint function with Z3 conversion attached
+
+        Example:
+            >>> CONSTRAINTS = [when.equals_minus_two("val_fe")]
+        """
+        def check(ctx):
+            if var not in ctx:
+                return False
+            from d810.hexrays.hexrays_helpers import AND_TABLE
+            # Check (val + 2) & mask == 0, which means val == -2 in two's complement
+            return (ctx[var].value + 2) & AND_TABLE[ctx[var].size] == 0
+
+        def to_z3(z3_vars):
+            import z3
+            if var not in z3_vars:
+                return None
+            # For 32-bit: val == -2 is equivalent to val == 0xFFFFFFFE
+            # Which is (val + 2) & 0xFFFFFFFF == 0
+            # In Z3, this is simply: z3_var == -2 (Z3 handles two's complement)
+            return z3_vars[var] == z3.BitVecVal(-2, 32)
+
+        check._to_z3 = to_z3
+        return check
+
 
 # Singleton instance for constraint predicates
 when = ConstraintPredicate()

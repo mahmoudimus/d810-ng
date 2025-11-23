@@ -7,7 +7,7 @@ All rules are verified using Z3 SMT solver.
 """
 
 from d810.hexrays.hexrays_helpers import AND_TABLE
-from d810.optimizers.dsl import Var, Const
+from d810.optimizers.dsl import Var, Const, when
 from d810.optimizers.rules import VerifiableRule
 
 # Define variables for pattern matching
@@ -98,11 +98,7 @@ class NegAdd_HackersDelightRule_1(VerifiableRule):
     PATTERN = (val_fe * (x | y)) + (x ^ y)
     REPLACEMENT = -(x + y)
 
-    CONSTRAINTS = [
-        # Check that val_fe == -2 for its bit width
-        # -2 in two's complement is: AND_TABLE[size] - 2
-        lambda ctx: (ctx["val_fe"].value + 2) & AND_TABLE[ctx["val_fe"].size] == 0
-    ]
+    CONSTRAINTS = [when.equals_minus_two("val_fe")]
 
     DESCRIPTION = "Simplify (-2 * (x | y)) + (x ^ y) to -(x + y)"
     REFERENCE = "Hacker's Delight with constant validation"
