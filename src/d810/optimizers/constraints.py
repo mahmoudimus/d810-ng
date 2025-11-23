@@ -126,17 +126,31 @@ class EqualityConstraint(ConstraintExpr):
 
     def _is_simple_constant(self, expr) -> bool:
         """Check if expression is a simple constant (not compound)."""
+        from d810.optimizers.dsl import SymbolicExpression
         from d810.expr.ast import AstConstant
 
-        # SymbolicExpression wrapping AstConstant
+        # Pure SymbolicExpression leaf
+        if isinstance(expr, SymbolicExpression):
+            return expr.is_leaf() and expr.name is not None
+
+        # SymbolicExpression wrapping AstConstant (legacy)
         if hasattr(expr, 'node'):
             return isinstance(expr.node, AstConstant)
 
-        # Direct AstConstant
+        # Direct AstConstant (legacy)
         return isinstance(expr, AstConstant)
 
     def _get_name(self, expr) -> str:
         """Get the name of a constant."""
+        from d810.optimizers.dsl import SymbolicExpression
+
+        # Pure SymbolicExpression
+        if isinstance(expr, SymbolicExpression):
+            if expr.name:
+                return expr.name
+            raise ValueError(f"SymbolicExpression has no name: {expr}")
+
+        # Legacy: AstNode/AstConstant
         if hasattr(expr, 'node') and hasattr(expr.node, 'name'):
             return expr.node.name
         if hasattr(expr, 'name'):
@@ -146,17 +160,21 @@ class EqualityConstraint(ConstraintExpr):
     def _expr_to_z3(self, expr, z3_vars: dict) -> Any:
         """Convert DSL expression to Z3.
 
-        This converts expressions WITHOUT needing z3_var to be pre-assigned.
-        It looks up variable/constant names directly in z3_vars.
+        This converts SymbolicExpression directly to Z3 using the Z3VerificationVisitor.
         """
         import z3
-        from d810.expr.ast import AstConstant, AstLeaf, AstNode
-        from ida_hexrays import (
-            m_add, m_sub, m_mul, m_and, m_or, m_xor,
-            m_bnot, m_neg, m_shl, m_shr, m_sar
-        )
+        from d810.optimizers.dsl import SymbolicExpression
 
-        # Unwrap SymbolicExpression
+        # If it's a SymbolicExpression, use Z3VerificationVisitor
+        if isinstance(expr, SymbolicExpression):
+            from d810.expr.visitors import Z3VerificationVisitor
+            visitor = Z3VerificationVisitor(bit_width=32, var_map=z3_vars)
+            return visitor.visit(expr)
+
+        # Legacy path: Handle old AstNode-based expressions
+        from d810.expr.ast import AstConstant, AstLeaf, AstNode
+
+        # Unwrap SymbolicExpression to node if needed
         if hasattr(expr, 'node'):
             node = expr.node
         else:
@@ -179,38 +197,41 @@ class EqualityConstraint(ConstraintExpr):
                 return z3_vars[node.name]
             raise ValueError(f"Variable {node.name} not in z3_vars")
 
-        # Recursive case: AstNode with operator
+        # Recursive case: AstNode with operator (legacy path - use opcodes)
         if isinstance(node, AstNode):
+            # Use platform-independent opcodes for comparison
+            import d810.opcodes as opc
+
             left_z3 = self._expr_to_z3(node.left, z3_vars)
 
             # Unary operators
             if node.right is None:
-                if node.opcode == m_bnot:
+                if node.opcode == opc.M_BNOT:
                     return ~left_z3
-                elif node.opcode == m_neg:
+                elif node.opcode == opc.M_NEG:
                     return -left_z3
                 raise ValueError(f"Unknown unary opcode: {node.opcode}")
 
             # Binary operators
             right_z3 = self._expr_to_z3(node.right, z3_vars)
 
-            if node.opcode == m_add:
+            if node.opcode == opc.M_ADD:
                 return left_z3 + right_z3
-            elif node.opcode == m_sub:
+            elif node.opcode == opc.M_SUB:
                 return left_z3 - right_z3
-            elif node.opcode == m_mul:
+            elif node.opcode == opc.M_MUL:
                 return left_z3 * right_z3
-            elif node.opcode == m_and:
+            elif node.opcode == opc.M_AND:
                 return left_z3 & right_z3
-            elif node.opcode == m_or:
+            elif node.opcode == opc.M_OR:
                 return left_z3 | right_z3
-            elif node.opcode == m_xor:
+            elif node.opcode == opc.M_XOR:
                 return left_z3 ^ right_z3
-            elif node.opcode == m_shl:
+            elif node.opcode == opc.M_SHL:
                 return left_z3 << right_z3
-            elif node.opcode == m_shr:
+            elif node.opcode == opc.M_SHR:
                 return z3.LShR(left_z3, right_z3)  # Logical shift right
-            elif node.opcode == m_sar:
+            elif node.opcode == opc.M_SAR:
                 return left_z3 >> right_z3  # Arithmetic shift right
 
             raise ValueError(f"Unknown binary opcode: {node.opcode}")
@@ -227,13 +248,17 @@ class EqualityConstraint(ConstraintExpr):
         Returns:
             Integer result of evaluation
         """
-        from d810.expr.ast import AstConstant, AstLeaf, AstNode
-        from ida_hexrays import (
-            m_add, m_sub, m_mul, m_and, m_or, m_xor,
-            m_bnot, m_neg, m_shl, m_shr, m_sar
-        )
+        from d810.optimizers.dsl import SymbolicExpression
 
-        # Unwrap SymbolicExpression
+        # If it's a SymbolicExpression, evaluate directly
+        if isinstance(expr, SymbolicExpression):
+            return self._eval_symbolic_expr(expr, candidate)
+
+        # Legacy path: Handle AstNode-based expressions
+        from d810.expr.ast import AstConstant, AstLeaf, AstNode
+        import d810.opcodes as opc
+
+        # Unwrap SymbolicExpression to node if needed
         if hasattr(expr, 'node'):
             node = expr.node
         else:
@@ -270,32 +295,32 @@ class EqualityConstraint(ConstraintExpr):
 
             # Unary operators
             if node.right is None:
-                if node.opcode == m_bnot:
+                if node.opcode == opc.M_BNOT:
                     return (~left_val) & mask
-                elif node.opcode == m_neg:
+                elif node.opcode == opc.M_NEG:
                     return (-left_val) & mask
                 raise ValueError(f"Unknown unary opcode: {node.opcode}")
 
             # Binary operators
             right_val = self._eval_expr(node.right, candidate)
 
-            if node.opcode == m_add:
+            if node.opcode == opc.M_ADD:
                 return (left_val + right_val) & mask
-            elif node.opcode == m_sub:
+            elif node.opcode == opc.M_SUB:
                 return (left_val - right_val) & mask
-            elif node.opcode == m_mul:
+            elif node.opcode == opc.M_MUL:
                 return (left_val * right_val) & mask
-            elif node.opcode == m_and:
+            elif node.opcode == opc.M_AND:
                 return left_val & right_val
-            elif node.opcode == m_or:
+            elif node.opcode == opc.M_OR:
                 return left_val | right_val
-            elif node.opcode == m_xor:
+            elif node.opcode == opc.M_XOR:
                 return left_val ^ right_val
-            elif node.opcode == m_shl:
+            elif node.opcode == opc.M_SHL:
                 return (left_val << right_val) & mask
-            elif node.opcode == m_shr:
+            elif node.opcode == opc.M_SHR:
                 return (left_val >> right_val) & mask
-            elif node.opcode == m_sar:
+            elif node.opcode == opc.M_SAR:
                 # Arithmetic right shift - preserve sign bit
                 if left_val & (1 << (width - 1)):
                     # Negative - fill with 1s
@@ -305,6 +330,59 @@ class EqualityConstraint(ConstraintExpr):
             raise ValueError(f"Unknown binary opcode: {node.opcode}")
 
         raise ValueError(f"Cannot evaluate {expr}")
+
+    def _eval_symbolic_expr(self, expr, candidate: dict[str, Any]) -> int:
+        """Evaluate a pure SymbolicExpression with concrete values."""
+        from d810.optimizers.dsl import SymbolicExpression
+
+        # Get width for masking (default 32-bit)
+        width = candidate.get('_width', 32)
+        mask = (1 << width) - 1
+
+        # Leaf node
+        if expr.is_leaf():
+            if expr.name in candidate:
+                value = candidate[expr.name]
+                if hasattr(value, 'value'):
+                    return value.value
+                return value
+            if expr.value is not None:
+                return expr.value
+            raise ValueError(f"Variable/constant {expr.name} not in candidate")
+
+        # Operation node - evaluate recursively
+        left_val = self._eval_symbolic_expr(expr.left, candidate) if expr.left else None
+        right_val = self._eval_symbolic_expr(expr.right, candidate) if expr.right else None
+
+        match expr.operation:
+            case "neg":
+                return (-left_val) & mask
+            case "bnot":
+                return (~left_val) & mask
+            case "add":
+                return (left_val + right_val) & mask
+            case "sub":
+                return (left_val - right_val) & mask
+            case "mul":
+                return (left_val * right_val) & mask
+            case "and":
+                return left_val & right_val
+            case "or":
+                return left_val | right_val
+            case "xor":
+                return left_val ^ right_val
+            case "shl":
+                return (left_val << right_val) & mask
+            case "shr":
+                return (left_val >> right_val) & mask
+            case "sar":
+                # Arithmetic right shift - preserve sign bit
+                if left_val & (1 << (width - 1)):
+                    # Negative - fill with 1s
+                    return (left_val >> right_val) | (~mask >> right_val)
+                return left_val >> right_val
+            case _:
+                raise ValueError(f"Unknown operation: {expr.operation}")
 
 
 def is_constraint_expr(obj: Any) -> bool:
