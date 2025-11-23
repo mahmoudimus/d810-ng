@@ -328,7 +328,7 @@ class AddXor_Rule_1(VerifiableRule):
     PATTERN = (x - y) - TWO * (x | bnot_y)
     REPLACEMENT = (x ^ y) + TWO
 
-    CONSTRAINTS = [when.is_bnot("y", "bnot_y")]
+    CONSTRAINTS = [bnot_y == ~y]
 
     DESCRIPTION = "Simplify SUB-OR pattern to XOR"
     REFERENCE = "AddXor pattern 1"
@@ -348,7 +348,7 @@ class AddXor_Rule_2(VerifiableRule):
     PATTERN = (x - y) - TWO * ~(bnot_x & y)
     REPLACEMENT = (x ^ y) + TWO
 
-    CONSTRAINTS = [when.is_bnot("x", "bnot_x")]
+    CONSTRAINTS = [bnot_x == ~x]
 
     DESCRIPTION = "Simplify SUB-NOT-AND pattern to XOR"
     REFERENCE = "AddXor pattern 2"

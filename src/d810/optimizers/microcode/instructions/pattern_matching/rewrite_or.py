@@ -251,7 +251,7 @@ class Or_HackersDelightRule_1(VerifiableRule):
     PATTERN = (x & bnot_y) + y
     REPLACEMENT = x | y
 
-    CONSTRAINTS = [when.is_bnot("x_1", "bnot_x_1")]
+    CONSTRAINTS = [bnot_y == ~y]
 
     DESCRIPTION = "Simplify (x & ~y) + y to x | y"
     REFERENCE = "Hacker's Delight with bnot constraint"
@@ -273,8 +273,8 @@ class Or_FactorRule_3(VerifiableRule):
     REPLACEMENT = x | y
 
     CONSTRAINTS = [
-        when.is_bnot("x_0", "bnot_x_0"),
-        when.is_bnot("x_1", "bnot_x_1"),
+        bnot_x == ~x,
+        bnot_y == ~y,
     ]
 
     DESCRIPTION = "Simplify (x | y) | (~x ^ ~y) to x | y"
@@ -297,7 +297,7 @@ class Or_OLLVM_1(VerifiableRule):
     PATTERN = (x & y) | ~(bnot_x ^ y)
     REPLACEMENT = x | y
 
-    CONSTRAINTS = [when.is_bnot("x_0", "bnot_x_0")]
+    CONSTRAINTS = [bnot_x == ~x]
 
     DESCRIPTION = "Simplify (x & y) | ~(~x ^ y) to x | y"
     REFERENCE = "OLLVM obfuscation with bnot constraint"
@@ -318,7 +318,7 @@ class Or_Rule_1(VerifiableRule):
     PATTERN = (bnot_x & y) | x
     REPLACEMENT = x | y
 
-    CONSTRAINTS = [when.is_bnot("x_0", "bnot_x_0")]
+    CONSTRAINTS = [bnot_x == ~x]
 
     DESCRIPTION = "Simplify (~x & y) | x to x | y"
     REFERENCE = "Absorption with bnot constraint"
@@ -340,8 +340,8 @@ class Or_Rule_3(VerifiableRule):
     REPLACEMENT = x | y
 
     CONSTRAINTS = [
-        when.is_bnot("x_0", "bnot_x_0"),
-        when.is_bnot("x_1", "bnot_x_1"),
+        bnot_x == ~x,
+        bnot_y == ~y,
     ]
 
     DESCRIPTION = "Simplify ~(~x | ~y) | (x ^ y) to x | y"
@@ -363,7 +363,7 @@ class OrBnot_FactorRule_3(VerifiableRule):
     PATTERN = (x - y) + (bnot_x | y)
     REPLACEMENT = x | ~y
 
-    CONSTRAINTS = [when.is_bnot("x_0", "bnot_x_0")]
+    CONSTRAINTS = [bnot_x == ~x]
 
     DESCRIPTION = "Simplify (x - y) + (~x | y) to x | ~y"
     REFERENCE = "Complex factoring with bnot constraint"
@@ -384,7 +384,7 @@ class OrBnot_FactorRule_4(VerifiableRule):
     PATTERN = (bnot_x | y) ^ (x ^ y)
     REPLACEMENT = x | ~y
 
-    CONSTRAINTS = [when.is_bnot("x_0", "bnot_x_0")]
+    CONSTRAINTS = [bnot_x == ~x]
 
     DESCRIPTION = "Simplify (~x | y) ^ (x ^ y) to x | ~y"
     REFERENCE = "XOR factoring with bnot constraint"

@@ -17,6 +17,7 @@ bnot_x, bnot_y = Var("bnot_x_0"), Var("bnot_x_1")
 # Common constants
 ONE = Const("1", 1)
 TWO = Const("2", 2)
+MINUS_TWO = Const("-2", -2)
 
 
 # ============================================================================
@@ -73,8 +74,8 @@ class Sub_HackersDelightRule_3(VerifiableRule):
     REPLACEMENT = x - y
 
     CONSTRAINTS = [
-        when.is_bnot("x_0", "bnot_x_0"),
-        when.is_bnot("x_1", "bnot_x_1"),
+        bnot_x == ~x,
+        bnot_y == ~y,
     ]
 
     DESCRIPTION = "Simplify (x & ~y) - (~x & y) to x - y"
@@ -93,7 +94,7 @@ class Sub_HackersDelightRule_4(VerifiableRule):
     PATTERN = TWO * (x & bnot_y) - (x ^ y)
     REPLACEMENT = x - y
 
-    CONSTRAINTS = [when.is_bnot("x_1", "bnot_x_1")]
+    CONSTRAINTS = [bnot_y == ~y]
 
     DESCRIPTION = "Simplify 2*(x & ~y) - (x ^ y) to x - y"
     REFERENCE = "Hacker's Delight with bnot verification"
@@ -119,7 +120,7 @@ class Sub1_Factor1(VerifiableRule):
     PATTERN = (-x - ONE) - (c_minus_2 * x)
     REPLACEMENT = x - ONE
 
-    CONSTRAINTS = [when.equals_minus_two("c_minus_2")]
+    CONSTRAINTS = [c_minus_2 == MINUS_TWO]
 
     DESCRIPTION = "Simplify (-x - 1) - (-2 * x) to x - 1"
     REFERENCE = "Constant validation with SUB_TABLE"
@@ -152,7 +153,7 @@ class Sub1Add_HackersDelight1(VerifiableRule):
     PATTERN = TWO * (x | y) + (x ^ bnot_y)
     REPLACEMENT = (x + y) - ONE
 
-    CONSTRAINTS = [when.is_bnot("x_1", "bnot_x_1")]
+    CONSTRAINTS = [bnot_y == ~y]
 
     DESCRIPTION = "Simplify 2*(x | y) + (x ^ ~y) to (x + y) - 1"
     REFERENCE = "Hacker's Delight MBA with bnot verification"
@@ -173,7 +174,7 @@ class Sub1And_HackersDelight1(VerifiableRule):
     PATTERN = (x | bnot_y) + y
     REPLACEMENT = (x & y) - ONE
 
-    CONSTRAINTS = [when.is_bnot("x_1", "bnot_x_1")]
+    CONSTRAINTS = [bnot_y == ~y]
 
     DESCRIPTION = "Simplify (x | ~y) + y to (x & y) - 1"
     REFERENCE = "Hacker's Delight with bnot verification"

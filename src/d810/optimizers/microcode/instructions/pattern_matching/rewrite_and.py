@@ -293,7 +293,7 @@ class And_HackersDelightRule_2(VerifiableRule):
     PATTERN = (bnot_x | y) + (x + ONE)
     REPLACEMENT = x & y
 
-    CONSTRAINTS = [when.is_bnot("x_0", "bnot_x_0")]
+    CONSTRAINTS = [bnot_x == ~x]
 
     DESCRIPTION = "Simplify (~x | y) + (x + 1) to x & y"
     REFERENCE = "Hacker's Delight with bnot constraint"
@@ -314,7 +314,7 @@ class And_OLLVM_2(VerifiableRule):
     PATTERN = (x | y) & (x ^ bnot_y)
     REPLACEMENT = x & y
 
-    CONSTRAINTS = [when.is_bnot("x_1", "bnot_x_1")]
+    CONSTRAINTS = [bnot_y == ~y]
 
     DESCRIPTION = "Simplify (x | y) & (x ^ ~y) to x & y"
     REFERENCE = "OLLVM obfuscation with bnot constraint"
@@ -335,7 +335,7 @@ class And_FactorRule_1(VerifiableRule):
     PATTERN = (x ^ bnot_y) & y
     REPLACEMENT = x & y
 
-    CONSTRAINTS = [when.is_bnot("x_1", "bnot_x_1")]
+    CONSTRAINTS = [bnot_y == ~y]
 
     DESCRIPTION = "Simplify (x ^ ~y) & y to x & y"
     REFERENCE = "Factoring with bnot constraint"
@@ -357,7 +357,7 @@ class AndBnot_FactorRule_4(VerifiableRule):
     PATTERN = (y ^ x) & ~(x & bnot_y)
     REPLACEMENT = y & ~x
 
-    CONSTRAINTS = [when.is_bnot("x_1", "bnot_x_1")]
+    CONSTRAINTS = [bnot_y == ~y]
 
     DESCRIPTION = "Simplify (y ^ x) & ~(x & ~y) to y & ~x"
     REFERENCE = "Complex factoring with bnot constraint"

@@ -18,6 +18,7 @@ bnot_x, bnot_y, bnot_z = Var("bnot_x_0"), Var("bnot_x_1"), Var("bnot_x_2")
 # Common constants
 ONE = Const("1", 1)
 TWO = Const("2", 2)
+MINUS_TWO = Const("-2", -2)
 
 
 # ============================================================================
@@ -185,8 +186,8 @@ class Xor_FactorRule_1(VerifiableRule):
     REPLACEMENT = x ^ y
 
     CONSTRAINTS = [
-        when.is_bnot("x_0", "bnot_x_0"),
-        when.is_bnot("x_1", "bnot_x_1"),
+        bnot_x == ~x,
+        bnot_y == ~y,
     ]
 
     DESCRIPTION = "Simplify (x & ~y) | (~x & y) to x ^ y"
@@ -204,8 +205,8 @@ class Xor_FactorRule_2(VerifiableRule):
     REPLACEMENT = x ^ y
 
     CONSTRAINTS = [
-        when.is_bnot("x_0", "bnot_x_0"),
-        when.is_bnot("x_1", "bnot_x_1"),
+        bnot_x == ~x,
+        bnot_y == ~y,
     ]
 
     DESCRIPTION = "Simplify (~x & y) ^ (x & ~y) to x ^ y"
@@ -240,8 +241,8 @@ class Xor_Rule_4(VerifiableRule):
     REPLACEMENT = x ^ y
 
     CONSTRAINTS = [
-        when.is_bnot("x_0", "bnot_x_0"),
-        when.is_bnot("x_1", "bnot_x_1"),
+        bnot_x == ~x,
+        bnot_y == ~y,
     ]
 
     DESCRIPTION = "Simplify (x & ~y) | (~x & y) to x ^ y"
@@ -281,7 +282,7 @@ class Xor_SpecialConstantRule_2(VerifiableRule):
     PATTERN = (x + y) + (c_minus_2 * (x & y))
     REPLACEMENT = x ^ y
 
-    CONSTRAINTS = [when.equals_minus_two("c_minus_2")]
+    CONSTRAINTS = [c_minus_2 == MINUS_TWO]
 
     DESCRIPTION = "Simplify (x + y) + (-2 * (x & y)) to x ^ y"
     REFERENCE = "Constant validation pattern"
