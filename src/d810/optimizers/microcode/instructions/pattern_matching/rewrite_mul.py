@@ -162,11 +162,8 @@ class Mul_FactorRule_1(VerifiableRule):
                               = 2*x  [but with AND masking]
                               = 2*(x & y)
 
-    NOTE: This rule is skipped from Z3 verification because it contains multiple
-    multiplications, making it computationally expensive for the SMT solver.
+    Now fully verifiable: Matches main branch behavior. Verifies in ~0.16s.
     """
-
-    SKIP_VERIFICATION = True  # Too expensive: multiple multiplications make Z3 slow
 
     PATTERN = TWO + TWO * (y + (x | bnot_y))
     REPLACEMENT = TWO * (x & y)
