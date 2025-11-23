@@ -280,6 +280,81 @@ This approach is preferable to `SKIP_VERIFICATION` because:
 - ✅ Catches subtle bugs that might only appear in byte/word operations
 - ✅ Documents the size-specific nature of the rule explicitly
 
+### Context-Aware Rules (Advanced)
+
+Some rules need to inspect or modify the instruction context beyond just the source operands. The **context-aware DSL** provides declarative helpers for these advanced cases without requiring direct manipulation of IDA's internal API.
+
+**Use cases:**
+- Rules that only apply to specific destination types (registers, memory, high-half registers)
+- Rules that need to bind values from the instruction context (parent register, operand size)
+- Rules that modify the destination operand (e.g., changing from high-half to full register)
+
+**Example: Fix IDA's constant propagation for high-half register writes**
+
+```python
+from d810.optimizers.dsl import Const, Var, VerifiableRule
+from d810.optimizers.extensions import context, when
+
+c_0 = Const("c_0")
+full_reg = Var("full_reg")
+
+class ReplaceMovHighContext(VerifiableRule):
+    """Transform: mov #c, rX^2 → mov (#c << 16) | (rX & 0xFFFF), rX
+
+    IDA doesn't propagate constants through high-half register writes.
+    This rule fixes that by writing to the full register instead.
+    """
+
+    # Pattern: mov #constant, dst (where dst will be checked by constraint)
+    PATTERN = c_0
+
+    # Replacement: Combine new high bits with existing low bits
+    REPLACEMENT = (c_0 << 16) | (full_reg & 0xFFFF)
+
+    # Constraint: Destination must be a high-half register (e.g., r6^2)
+    CONSTRAINTS = [
+        when.dst.is_high_half
+    ]
+
+    # Context: Bind 'full_reg' to the parent register (e.g., r6 from r6^2)
+    CONTEXT_VARS = {
+        "full_reg": context.dst.parent_register
+    }
+
+    # Side effect: Change destination from r6^2 to r6
+    UPDATE_DESTINATION = "full_reg"
+
+    # Skip verification: This rule changes the destination size
+    SKIP_VERIFICATION = True
+```
+
+**Available helpers:**
+
+**Context constraints (used in `CONSTRAINTS`):**
+- `when.dst.is_high_half` - Check if destination is high-half register (e.g., r6^2)
+- `when.dst.is_register` - Check if destination is a register
+- `when.dst.is_memory` - Check if destination is a memory location
+
+**Context providers (used in `CONTEXT_VARS`):**
+- `context.dst.parent_register` - Get parent register (e.g., r6 from r6^2)
+- `context.dst.operand_size` - Get destination size in bytes
+
+**How it works:**
+
+1. **Context inspection**: Constraints like `when.dst.is_high_half` check instruction properties
+2. **Variable binding**: Providers like `context.dst.parent_register` bind values to variables
+3. **Side effects**: `UPDATE_DESTINATION` modifies the instruction's destination operand
+4. **No IDA imports**: Users write pure declarative logic; the framework handles IDA internals
+
+**Why use context-aware DSL?**
+- ✅ **Abstraction**: No need to understand IDA's C++ API (`mop_t`, `mop_r`, etc.)
+- ✅ **Safety**: Framework handles dangerous mop creation and modification
+- ✅ **Discoverability**: IDE autocomplete shows available helpers (`context.dst.*`, `when.dst.*`)
+- ✅ **Testability**: Helpers are unit-testable in isolation
+- ✅ **Maintainability**: Architecture-specific logic centralized in one place
+
+For more examples, see `src/d810/optimizers/microcode/instructions/pattern_matching/rewrite_mov_context_aware.py`.
+
 ### Marking Known Failures
 
 For rules that can't be verified with Z3:
