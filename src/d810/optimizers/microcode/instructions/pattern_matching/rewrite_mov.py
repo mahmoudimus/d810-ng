@@ -40,7 +40,7 @@ class GetIdent_1(VerifiableRule):
     PATTERN = (x & y) + (x & bnot_y)
     REPLACEMENT = x
 
-    CONSTRAINTS = [when.is_bnot("x_1", "bnot_x_1")]
+    CONSTRAINTS = [bnot_y == ~y]
 
     DESCRIPTION = "Simplify (x & y) + (x & ~y) to x"
     REFERENCE = "Boolean algebra distributive identity"
@@ -62,7 +62,7 @@ class GetIdent_2(VerifiableRule):
     PATTERN = (x & y) ^ (x & bnot_y)
     REPLACEMENT = x
 
-    CONSTRAINTS = [when.is_bnot("x_1", "bnot_x_1")]
+    CONSTRAINTS = [bnot_y == ~y]
 
     DESCRIPTION = "Simplify (x & y) ^ (x & ~y) to x"
     REFERENCE = "Boolean algebra XOR identity"

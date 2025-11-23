@@ -465,7 +465,7 @@ class PredFF_2(VerifiableRule):
     PATTERN = (x ^ y) | (bnot_x | y)
     REPLACEMENT = val_ff
 
-    CONSTRAINTS = [when.is_bnot("x_0", "bnot_x_0")]
+    CONSTRAINTS = [bnot_x == ~x]
 
     DESCRIPTION = "Simplify (x ^ y) | (~x | y) to 0xFF...FF"
     REFERENCE = "Boolean algebra with NOT verification"

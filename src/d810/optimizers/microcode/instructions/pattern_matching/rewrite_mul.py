@@ -42,8 +42,8 @@ class Mul_MBA_1(VerifiableRule):
     REPLACEMENT = x * y
 
     CONSTRAINTS = [
-        when.is_bnot("x_0", "bnot_x_0"),
-        when.is_bnot("x_1", "bnot_x_1"),
+        bnot_x == ~x,
+        bnot_y == ~y,
     ]
 
     DESCRIPTION = "Simplify MBA multiplication pattern to x * y"
@@ -73,8 +73,8 @@ class Mul_MBA_2(VerifiableRule):
     REPLACEMENT = x * c
 
     CONSTRAINTS = [
-        when.is_bnot("c_1", "bnot_c_1"),
-        when.is_bnot("x_0", "bnot_x_0"),
+        bnot_c == ~c,
+        bnot_x == ~x,
     ]
 
     DESCRIPTION = "INCORRECT: MBA multiplication with constant (marked as false)"
@@ -104,7 +104,7 @@ class Mul_MBA_3(VerifiableRule):
     REPLACEMENT = x * c
 
     CONSTRAINTS = [
-        when.is_bnot("x_0", "bnot_x_0"),
+        bnot_x == ~x,
     ]
 
     DESCRIPTION = "INCORRECT: MBA multiplication with even constant (marked as false)"
@@ -124,7 +124,7 @@ class Mul_MBA_4(VerifiableRule):
     PATTERN = (x | y) * (x & y) + ~(x | bnot_y) * (x & bnot_y)
     REPLACEMENT = x * y
 
-    CONSTRAINTS = [when.is_bnot("x_1", "bnot_x_1")]
+    CONSTRAINTS = [bnot_y == ~y]
 
     DESCRIPTION = "Simplify MBA NOT-OR multiplication to x * y"
     REFERENCE = "MBA obfuscation with bnot verification"
@@ -154,7 +154,7 @@ class Mul_FactorRule_1(VerifiableRule):
     PATTERN = TWO + TWO * (y + (x | bnot_y))
     REPLACEMENT = TWO * (x & y)
 
-    CONSTRAINTS = [when.is_bnot("x_1", "bnot_x_1")]
+    CONSTRAINTS = [bnot_y == ~y]
 
     DESCRIPTION = "Simplify 2 + 2*(y + (x | ~y)) to 2*(x & y)"
     REFERENCE = "Multiplication factoring with bnot verification"

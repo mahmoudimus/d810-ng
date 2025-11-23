@@ -206,7 +206,7 @@ class Bnot_FactorRule_3(VerifiableRule):
     PATTERN = (x & y) ^ (x | bnot_y)
     REPLACEMENT = ~y
 
-    CONSTRAINTS = [when.is_bnot("x_1", "bnot_x_1")]
+    CONSTRAINTS = [bnot_y == ~y]
 
     DESCRIPTION = "Simplify (x & y) ^ (x | ~y) to ~y"
     REFERENCE = "Factoring with NOT"
@@ -222,8 +222,8 @@ class BnotXor_Rule_1(VerifiableRule):
     REPLACEMENT = ~(x ^ y)
 
     CONSTRAINTS = [
-        when.is_bnot("x_0", "bnot_x_0"),
-        when.is_bnot("x_1", "bnot_x_1"),
+        bnot_x == ~x,
+        bnot_y == ~y,
     ]
 
     DESCRIPTION = "Simplify (x & y) | (~x & ~y) to ~(x ^ y)"
@@ -240,8 +240,8 @@ class BnotXor_Rule_2(VerifiableRule):
     REPLACEMENT = ~(x ^ y)
 
     CONSTRAINTS = [
-        when.is_bnot("x_0", "bnot_x_0"),
-        when.is_bnot("x_1", "bnot_x_1"),
+        bnot_x == ~x,
+        bnot_y == ~y,
     ]
 
     DESCRIPTION = "Simplify (x | y) ^ (~x | ~y) to ~(x ^ y)"
@@ -258,8 +258,8 @@ class BnotXor_Rule_3(VerifiableRule):
     REPLACEMENT = ~(x ^ y)
 
     CONSTRAINTS = [
-        when.is_bnot("x_0", "bnot_x_0"),
-        when.is_bnot("x_1", "bnot_x_1"),
+        bnot_x == ~x,
+        bnot_y == ~y,
     ]
 
     DESCRIPTION = "Simplify (x | ~y) & (~x | y) to ~(x ^ y)"
@@ -276,8 +276,8 @@ class BnotAnd_FactorRule_2(VerifiableRule):
     REPLACEMENT = ~(x & y)
 
     CONSTRAINTS = [
-        when.is_bnot("x_0", "bnot_x_0"),
-        when.is_bnot("x_1", "bnot_x_1"),
+        bnot_x == ~x,
+        bnot_y == ~y,
     ]
 
     DESCRIPTION = "Simplify (~x | ~y) | (x ^ y) to ~(x & y)"
@@ -293,7 +293,7 @@ class BnotAnd_FactorRule_4(VerifiableRule):
     PATTERN = bnot_x | (x ^ y)
     REPLACEMENT = ~(x & y)
 
-    CONSTRAINTS = [when.is_bnot("x_0", "bnot_x_0")]
+    CONSTRAINTS = [bnot_x == ~x]
 
     DESCRIPTION = "Simplify ~x | (x ^ y) to ~(x & y)"
     REFERENCE = "Factoring with NOT"
@@ -309,7 +309,7 @@ class BnotAdd_MBA_1(VerifiableRule):
     PATTERN = (x ^ bnot_y) - (TWO * (x & y))
     REPLACEMENT = ~(x + y)
 
-    CONSTRAINTS = [when.is_bnot("x_1", "bnot_x_1")]
+    CONSTRAINTS = [bnot_y == ~y]
 
     DESCRIPTION = "Simplify MBA pattern (x ^ ~y) - 2*(x & y) to ~(x + y)"
     REFERENCE = "MBA obfuscation"
@@ -325,7 +325,7 @@ class Bnot_Rule_1(VerifiableRule):
     PATTERN = (x & bnot_y) | ~(x | y)
     REPLACEMENT = bnot_y
 
-    CONSTRAINTS = [when.is_bnot("x_1", "bnot_x_1")]
+    CONSTRAINTS = [bnot_y == ~y]
 
     DESCRIPTION = "Simplify (x & ~y) | ~(x | y) to ~y"
     REFERENCE = "Absorption with NOT"

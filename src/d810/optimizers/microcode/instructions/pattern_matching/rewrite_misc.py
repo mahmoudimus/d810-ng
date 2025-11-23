@@ -80,7 +80,7 @@ class WeirdRule4(VerifiableRule):
     REPLACEMENT = (x ^ y) - y
 
     CONSTRAINTS = [
-        when.is_bnot("x_1", "bnot_x_1")
+        bnot_y == ~y
     ]
 
     DESCRIPTION = "Simplify (x & ~y) - (x & y) to (x ^ y) - y"
@@ -98,8 +98,8 @@ class WeirdRule5(VerifiableRule):
     REPLACEMENT = x | (y | ~z)
 
     CONSTRAINTS = [
-        when.is_bnot("x_0", "bnot_x_0"),
-        when.is_bnot("x_1", "bnot_x_1")
+        bnot_x == ~x,
+        bnot_y == ~y
     ]
 
     DESCRIPTION = "Complex 3-variable identity to OR form"

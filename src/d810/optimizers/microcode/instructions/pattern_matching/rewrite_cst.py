@@ -543,7 +543,7 @@ class CstSimplificationRule20(VerifiableRule):
     c_xor_res = Const("c_xor_res")  # c_and_1 ^ c_xor
 
     CONSTRAINTS = [
-        when.is_bnot("x_0", "bnot_x_0"),
+        bnot_x == ~x,
         # Check disjoint masks
         (c_and_1 & c_and_2) == ZERO,
         # Check c_xor is outside the combined mask (newly discovered required condition)
@@ -616,7 +616,7 @@ class CstSimplificationRule22(VerifiableRule):
 
     CONSTRAINTS = [
         # Variable NOT verification
-        when.is_bnot("x_0", "bnot_x_0"),
+        bnot_x == ~x,
         bnot_c_and == ~c_and,            # Constant NOT
         # Disjoint XOR constants
         (c_xor_1 & c_xor_2) == ZERO,
