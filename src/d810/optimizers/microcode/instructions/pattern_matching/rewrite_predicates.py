@@ -39,49 +39,50 @@ THREE = Const("3", 3)
 class PredSetnz_1(VerifiableRule):
     """Simplify: (x | c1) != c2 => 1 (when c1 | c2 != c2)
 
-    If (c1 | c2) != c2, then no matter what x is, (x | c1) will never equal c2.
-    Therefore the != comparison always returns 1.
+    If (c1 | c2) != c2, then c1 has bits set that are NOT in c2.
+    Therefore (x | c1) will always have those bits set, so it can never equal c2.
+    Thus (x | c1) != c2 is always true (returns 1).
+
+    Now fully verifiable: The pattern captures the complete comparison,
+    and the constraint is declarative (no lambda).
     """
 
     c1, c2 = Const("c_1"), Const("c_2")
 
-    # Using m_mov as a placeholder for the constant result
-    # In real IDA microcode, this would be an m_setnz that resolves to constant
-    PATTERN = x | c1  # Will be wrapped in m_setnz(pattern, c2) by framework
+    # Capture the FULL comparison in the pattern
+    # This binds c_2 so it can be used in constraints
+    PATTERN = ((x | c1) != c2).to_int()
+
+    # Declarative constraint (no lambda!)
+    CONSTRAINTS = [(c1 | c2) != c2]
+
+    # Result: 1 (comparison is always true)
     REPLACEMENT = ONE
 
-    CONSTRAINTS = [
-        lambda ctx: (ctx["c_1"].value | ctx["c_2"].value) != ctx["c_2"].value
-    ]
-
-    # Skip Z3 verification - c_2 is not in pattern, only in constraint
-    SKIP_VERIFICATION = True
-
-    DESCRIPTION = "Constant-fold (x | c1) != c2 to 1"
+    DESCRIPTION = "Constant-fold (x | c1) != c2 to 1 when c1 has extra bits"
     REFERENCE = "Predicate simplification"
 
 
 class PredSetnz_2(VerifiableRule):
     """Simplify: (x & c1) != c2 => 1 (when c1 & c2 != c2)
 
-    If (c1 & c2) != c2, then (x & c1) can never equal c2.
-    The AND with c1 masks off bits, so if c2 needs bits that c1 doesn't have,
-    the comparison will never be true.
+    If (c1 & c2) != c2, then c2 needs bits that c1 doesn't have.
+    The AND with c1 masks off bits, so (x & c1) can never equal c2.
+    Thus (x & c1) != c2 is always true (returns 1).
+
+    Now fully verifiable with explicit comparison in pattern.
     """
 
     c1, c2 = Const("c_1"), Const("c_2")
 
-    PATTERN = x & c1
+    PATTERN = ((x & c1) != c2).to_int()
+
+    # Declarative constraint (no lambda!)
+    CONSTRAINTS = [(c1 & c2) != c2]
+
     REPLACEMENT = ONE
 
-    CONSTRAINTS = [
-        lambda ctx: (ctx["c_1"].value & ctx["c_2"].value) != ctx["c_2"].value
-    ]
-
-    # Skip Z3 verification - c_2 is not in pattern, only in constraint
-    SKIP_VERIFICATION = True
-
-    DESCRIPTION = "Constant-fold (x & c1) != c2 to 1"
+    DESCRIPTION = "Constant-fold (x & c1) != c2 to 1 when c2 needs masked bits"
     REFERENCE = "Predicate simplification"
 
 
@@ -204,48 +205,48 @@ class PredSetnz_8(VerifiableRule):
 class PredSetz_1(VerifiableRule):
     """Simplify: (x | c1) == c2 => 0 (when c1 | c2 != c2)
 
-    If (c1 | c2) != c2, then (x | c1) can never equal c2.
-    Therefore the == comparison always returns 0 (false).
+    If (c1 | c2) != c2, then c1 has bits that c2 doesn't have.
+    Therefore (x | c1) can never equal c2.
+    Thus (x | c1) == c2 is always false (returns 0).
+
+    Now fully verifiable with explicit comparison in pattern.
     """
 
     c1, c2 = Const("c_1"), Const("c_2")
 
+    # Capture the FULL comparison
+    PATTERN = ((x | c1) == c2).to_int()
 
-    PATTERN = x | c1
+    # Declarative constraint (no lambda!)
+    CONSTRAINTS = [(c1 | c2) != c2]
+
+    # Result: 0 (comparison is always false)
     REPLACEMENT = ZERO
 
-    CONSTRAINTS = [
-        lambda ctx: (ctx["c_1"].value | ctx["c_2"].value) != ctx["c_2"].value
-    ]
-
-    # Skip Z3 verification - c_2 is not in pattern, only in constraint
-    SKIP_VERIFICATION = True
-
-    DESCRIPTION = "Constant-fold (x | c1) == c2 to 0"
+    DESCRIPTION = "Constant-fold (x | c1) == c2 to 0 when c1 has extra bits"
     REFERENCE = "Predicate simplification"
 
 
 class PredSetz_2(VerifiableRule):
     """Simplify: (x & c1) == c2 => 0 (when c1 & c2 != c2)
 
-    If (c1 & c2) != c2, then (x & c1) can never equal c2.
-    Therefore the == comparison always returns 0 (false).
+    If (c1 & c2) != c2, then c2 needs bits that c1 doesn't have.
+    The AND with c1 masks off bits, so (x & c1) can never equal c2.
+    Thus (x & c1) == c2 is always false (returns 0).
+
+    Now fully verifiable with explicit comparison in pattern.
     """
 
     c1, c2 = Const("c_1"), Const("c_2")
 
+    PATTERN = ((x & c1) == c2).to_int()
 
-    PATTERN = x & c1
+    # Declarative constraint (no lambda!)
+    CONSTRAINTS = [(c1 & c2) != c2]
+
     REPLACEMENT = ZERO
 
-    CONSTRAINTS = [
-        lambda ctx: (ctx["c_1"].value & ctx["c_2"].value) != ctx["c_2"].value
-    ]
-
-    # Skip Z3 verification - c_2 is not in pattern, only in constraint
-    SKIP_VERIFICATION = True
-
-    DESCRIPTION = "Constant-fold (x & c1) == c2 to 0"
+    DESCRIPTION = "Constant-fold (x & c1) == c2 to 0 when c2 needs masked bits"
     REFERENCE = "Predicate simplification"
 
 
