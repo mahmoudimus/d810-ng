@@ -96,9 +96,10 @@ class SymbolicRule(abc.ABC):
                 "Install z3-solver to enable rule verification."
             )
 
+        # Prove equivalence using pure SymbolicExpression (no .node needed!)
         is_equivalent, counterexample = prove_equivalence(
-            self.pattern.node,
-            self.replacement.node
+            self.pattern,
+            self.replacement
         )
 
         if not is_equivalent:
@@ -459,48 +460,46 @@ class VerifiableRule(SymbolicRule):
                 "Install z3-solver to enable rule verification."
             )
 
-        # Get AST nodes from symbolic expressions
-        pattern_node = self.pattern.node
-        replacement_node = self.replacement.node
-
-        # Find all unique variable and constant names
+        # Find all unique variable and constant names from pure SymbolicExpression
         # CRITICAL: Pattern-matching constants (e.g., Const("c_1") without value)
         # must be treated as symbolic Z3 variables, not concrete values
-        pattern_leaves = pattern_node.get_leaf_list()
-        replacement_leaves = replacement_node.get_leaf_list()
+        def collect_names(expr: SymbolicExpression, var_names: set, const_names: set):
+            """Recursively collect variable and constant names from expression."""
+            if expr.is_leaf():
+                if expr.name:  # Skip None names
+                    if expr.is_constant():
+                        # Concrete constant - Z3VerificationVisitor handles it
+                        pass
+                    else:
+                        # Variable or pattern-matching constant (value=None)
+                        if expr.value is None:
+                            # Pattern-matching: could be Var("x") or Const("c_1")
+                            # Both treated as symbolic variables
+                            var_names.add(expr.name)
+            else:
+                # Recurse into children
+                if expr.left:
+                    collect_names(expr.left, var_names, const_names)
+                if expr.right:
+                    collect_names(expr.right, var_names, const_names)
 
         var_names = set()
         const_names = set()
+        collect_names(self.pattern, var_names, const_names)
+        collect_names(self.replacement, var_names, const_names)
 
-        for leaf in pattern_leaves + replacement_leaves:
-            if not hasattr(leaf, 'name'):
-                continue
-
-            if leaf.is_constant():
-                # AstConstant - check if it's a pattern-matching constant
-                # (symbolic) or a concrete constant
-                if hasattr(leaf, 'expected_value') and leaf.expected_value is None:
-                    # Pattern-matching constant like Const("c_1") - treat as symbolic
-                    const_names.add(leaf.name)
-                # else: concrete constant like Const("ONE", 1) - handled by ast_to_z3
-            else:
-                # AstLeaf - regular variable
-                var_names.add(leaf.name)
-
-        # Create Z3 BitVec variables for BOTH variables and pattern-matching constants
+        # Create Z3 BitVec variables for all symbolic variables/constants
         z3_vars = {}
         for name in sorted(var_names):
-            z3_vars[name] = z3.BitVec(name, self.BIT_WIDTH)
-        for name in sorted(const_names):
             z3_vars[name] = z3.BitVec(name, self.BIT_WIDTH)
 
         # Get rule-specific constraints (now has access to constant symbols)
         constraints = self.get_constraints(z3_vars)
 
-        # Prove equivalence using Z3Visitor
+        # Prove equivalence using pure SymbolicExpression (no .node needed!)
         is_equivalent, counterexample = prove_equivalence(
-            pattern_node,
-            replacement_node,
+            self.pattern,
+            self.replacement,
             z3_vars=z3_vars,
             constraints=constraints,
             bit_width=self.BIT_WIDTH
