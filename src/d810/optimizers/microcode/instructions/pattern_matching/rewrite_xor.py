@@ -281,10 +281,7 @@ class Xor_SpecialConstantRule_2(VerifiableRule):
     PATTERN = (x + y) + (c_minus_2 * (x & y))
     REPLACEMENT = x ^ y
 
-    CONSTRAINTS = [
-        # Check that c_minus_2 == -2 for its bit width
-        lambda ctx: ctx["c_minus_2"].value == SUB_TABLE[ctx["c_minus_2"].size] - 2
-    ]
+    CONSTRAINTS = [when.equals_minus_two("c_minus_2")]
 
     DESCRIPTION = "Simplify (x + y) + (-2 * (x & y)) to x ^ y"
     REFERENCE = "Constant validation pattern"
