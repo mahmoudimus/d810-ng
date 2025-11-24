@@ -113,7 +113,9 @@ class OllvmDispatcherInfo(GenericDispatcherInfo):
 
         return entropy
 
-    def explore(self, blk: mblock_t) -> bool:  # Detect dispatcher entry blocks
+    def explore(
+        self, blk: mblock_t, min_entropy=None, max_entropy=None
+    ) -> bool:  # Detect dispatcher entry blocks
         unflat_logger.debug(
             "mblock %s: exploring dispatcher (guessed outmost dispatcher %s)",
             blk.serial,
@@ -142,18 +144,26 @@ class OllvmDispatcherInfo(GenericDispatcherInfo):
             self._get_dispatcher_blocks_with_external_father()
         )
         # TODO: I think this can be wrong because we are too permissive in detection of dispatcher blocks
-        # if len(dispatcher_blk_with_external_father) != 0: # All internal blocks (except the entry block) should not have fathers outside the CFF loop
+        # if len(dispatcher_blk_with_external_father) != 0:
+        # All internal blocks (except the entry block) should not have fathers outside the CFF loop
         entropy = self.get_entropy(
             num_mop.size, blk.serial
         )  # additional check by entropy (only effective for O-LLVM)
+
+        # Use passed entropy thresholds or defaults
+        _min_entropy = min_entropy if min_entropy is not None else 0.3
+        _max_entropy = max_entropy if max_entropy is not None else 0.7
+
         if len(dispatcher_blk_with_external_father) != 0 or (
-            entropy < 0.3 or entropy > 0.7
+            entropy < _min_entropy or entropy > _max_entropy
         ):  # validate the comparison value's entropy
             unflat_logger.debug(
-                "mblock %s is excluded as a CFF dispatcher (%s, %f)",
+                "mblock %s is excluded as a CFF dispatcher (%s, entropy=%f not in [%f, %f])",
                 blk.serial,
                 len(dispatcher_blk_with_external_father),
                 entropy,
+                _min_entropy,
+                _max_entropy,
             )
             return False
         unflat_logger.debug(
@@ -251,6 +261,20 @@ class OllvmDispatcherCollector(GenericDispatcherCollector):
     DEFAULT_DISPATCHER_MIN_INTERNAL_BLOCK = 2
     DEFAULT_DISPATCHER_MIN_EXIT_BLOCK = 3
     DEFAULT_DISPATCHER_MIN_COMPARISON_VALUE = 2
+    DEFAULT_MIN_ENTROPY = 0.3
+    DEFAULT_MAX_ENTROPY = 0.7
+
+    def __init__(self):
+        super().__init__()
+        self.min_entropy = self.DEFAULT_MIN_ENTROPY
+        self.max_entropy = self.DEFAULT_MAX_ENTROPY
+
+    def configure(self, kwargs):
+        super().configure(kwargs)
+        if "min_entropy" in kwargs.keys():
+            self.min_entropy = kwargs["min_entropy"]
+        if "max_entropy" in kwargs.keys():
+            self.max_entropy = kwargs["max_entropy"]
 
 
 class Unflattener(GenericDispatcherUnflatteningRule):

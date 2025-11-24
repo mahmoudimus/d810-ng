@@ -13,6 +13,9 @@ from d810.hexrays.hexrays_formatters import format_minsn_t, maturity_to_string
 from d810.optimizers.microcode.handler import OptimizationRule
 from d810.registry import Registrant
 
+if typing.TYPE_CHECKING:
+    from d810.stats import OptimizationStatistics
+
 d810_logger = getLogger("D810")
 optimizer_logger = getLogger("D810.optimizer")
 
@@ -145,12 +148,15 @@ class InstructionOptimizer(Registrant, typing.Generic[T_Rule]):
     RULE_CLASSES: list[typing.Type[T_Rule]] = []
     NAME = None
 
-    def __init__(self, maturities: list[int], log_dir=None):
+    def __init__(
+        self, maturities: list[int], stats: OptimizationStatistics, log_dir=None
+    ):
         self.rules: set[T_Rule] = set()
-        self.rules_usage_info: dict[str, int] = {}
         self.maturities = maturities
         self.log_dir = log_dir
         self.cur_maturity = ida_hexrays.MMAT_PREOPTIMIZED
+        # Centralized statistics collector injected by the manager
+        self.stats = stats
 
     def add_rule(self, rule: T_Rule) -> bool:
         is_valid_rule_class = False
@@ -165,26 +171,20 @@ class InstructionOptimizer(Registrant, typing.Generic[T_Rule]):
         if len(rule.maturities) == 0:
             rule.maturities = self.maturities
         self.rules.add(rule)
-        self.rules_usage_info[rule.name] = 0
         return True
-
-    def reset_rule_usage_statistic(self):
-        self.rules_usage_info = {}
-        for rule in self.rules:
-            self.rules_usage_info[rule.name] = 0
-
-    def show_rule_usage_statistic(self):
-        for rule_name, rule_nb_match in self.rules_usage_info.items():
-            if rule_nb_match > 0:
-                d810_logger.info(
-                    "Instruction Rule '%s' has been used %d times",
-                    rule_name,
-                    rule_nb_match,
-                )
 
     def get_optimized_instruction(
         self, blk: ida_hexrays.mblock_t, ins: ida_hexrays.minsn_t
     ) -> ida_hexrays.minsn_t | None:
+        # Fast opcode gate for chain rules to avoid work on unrelated instructions
+        # Only applies to optimizers whose rules expose a "TARGET_OPCODES" set.
+        try:
+            target_opcodes = getattr(self, "_allowed_root_opcodes", None)
+            if target_opcodes:
+                if ins.opcode not in target_opcodes:
+                    return None
+        except Exception:
+            pass
         if blk is not None:
             self.cur_maturity = blk.mba.maturity
         # This was commented out in the original code,
@@ -199,7 +199,8 @@ class InstructionOptimizer(Registrant, typing.Generic[T_Rule]):
             try:
                 new_ins = rule.check_and_replace(blk, ins)
                 if new_ins is not None:
-                    self.rules_usage_info[rule.name] += 1
+                    if self.stats is not None:
+                        self.stats.record_instruction_rule_match(rule_name=rule.name)
                     optimizer_logger.info(
                         "Rule %s matched in maturity %s:",
                         rule.name,

@@ -64,9 +64,9 @@ class Z3lnotRuleGeneric(Z3Rule):
         return AstNode(m_mov, AstConstant("val_res"))
 
     def check_candidate(self, candidate):
-        val_0_mop = mop_t()
-        val_0_mop.make_number(0, candidate["x_0"].size)
         res_size = candidate["x_0"].size or 1
+        val_0_mop = mop_t()
+        val_0_mop.make_number(0, res_size)
         if z3_check_mop_equality(candidate["x_0"].mop, val_0_mop):
             candidate.add_constant_leaf("val_res", 1, res_size)
             return True
