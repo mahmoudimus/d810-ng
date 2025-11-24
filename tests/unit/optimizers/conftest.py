@@ -48,8 +48,10 @@ def load_all_rules():
     For pure Python tests, rules can be created directly.
     """
     try:
-        # Only try to scan if we're running IDA-dependent tests
-        # For pure Python tests, this will fail and that's OK
+        # NOTE: Z3 verification tests are pure Python (only need Z3, not IDA)!
+        # However, rule modules currently import from hexrays_helpers which
+        # imports ida_hexrays. After MBA separation, verification tests will
+        # be @pytest.mark.pure_python and won't need this scanner at all.
         import d810
         from d810.ida_reloadable import _Scanner
 
