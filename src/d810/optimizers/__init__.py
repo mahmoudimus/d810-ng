@@ -11,7 +11,6 @@ This module provides the foundational components for the d810 optimization syste
 """
 
 # Core infrastructure (must be imported first)
-from . import dsl
 from . import rules
 
 # Try to import IDA-dependent modules
@@ -34,7 +33,7 @@ except (ImportError, ModuleNotFoundError):
     manager = None  # type: ignore
 
 # Re-export commonly used classes for convenience
-from .dsl import Var, Const, DynamicConst, when
+from d810.mba.dsl import Var, Const, DynamicConst, when
 from .rules import VerifiableRule
 
 if IDA_AVAILABLE:
@@ -44,7 +43,6 @@ if IDA_AVAILABLE:
 
 __all__ = [
     # Modules
-    "dsl",
     "core",
     "rules",
     "instrumentation",
@@ -52,7 +50,7 @@ __all__ = [
     "profiling",
     "parallel",
     "manager",
-    # Commonly used classes
+    # Commonly used classes (re-exported for convenience)
     "Var",
     "Const",
     "DynamicConst",
