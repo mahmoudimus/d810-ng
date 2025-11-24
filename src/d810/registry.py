@@ -33,7 +33,7 @@ from typing import (
 )
 from weakref import WeakKeyDictionary
 
-from d810._compat import LiteralString, Self, TypeAliasType
+from d810.typing import LiteralString, Self, TypeAliasType
 
 T = TypeVar("T")
 _R = TypeVar("_R", bound="Registrant")

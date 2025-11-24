@@ -102,7 +102,7 @@ from typing import (
 
 if TYPE_CHECKING:
     from ctypes import _Pointer
-    from typing_extensions import Protocol, TypeAlias
+    from d810._vendor.typing_extensions import Protocol, TypeAlias
 
     StrPath: TypeAlias = TUnion[str, os.PathLike[str]]
     LibFunc: TypeAlias = TUnion[

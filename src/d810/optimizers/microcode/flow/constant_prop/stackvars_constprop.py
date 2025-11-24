@@ -13,7 +13,7 @@ function-wide and therefore safe at control-flow merge points.
 """
 import ida_hexrays
 
-from d810 import _compat
+from d810 import typing
 from d810.conf.loggers import getLogger
 from d810.hexrays.cfg_utils import (
     extract_base_and_offset,
@@ -86,12 +86,12 @@ class StackVariableConstantPropagationRule(FlowOptimizationRule):
         self.cython_enabled = True
         self._seen = weakref.WeakKeyDictionary()  # mba -> last_maturity_run
 
-    @_compat.override
+    @typing.override
     def configure(self, kwargs):
         super().configure(kwargs)
         self.cython_enabled = kwargs.get("cython_enabled", True)
 
-    @_compat.override
+    @typing.override
     def optimize(self, blk: ida_hexrays.mblock_t):
         if self.current_maturity not in self.maturities:
             if logger.debug_on:

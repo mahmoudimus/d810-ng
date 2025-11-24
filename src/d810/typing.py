@@ -122,17 +122,14 @@ if sys.version_info >= (3, 12):
 
 
 if sys.version_info.major == 3 and sys.version_info.minor in (10, 11):
-    # Multiple python version compatible import for override, Self, StrEnum, LiteralString
-    
-    from d810._vendor import typing_extensions as tx
-
+    # Multiple python version compatible import for override, TypeAliasType, Self, NotRequired, LiteralString
     if sys.version_info.minor <= 11:
-        override = tx.override  # noqa: F401
-        TypeAliasType = tx.TypeAliasType  # noqa: F401
+        from d810._vendor.typing_extensions import override  # noqa: F401
+        from d810._vendor.typing_extensions import TypeAliasType  # noqa: F401
     if sys.version_info.minor == 10:
-        Self = tx.Self  # noqa: F401
-        NotRequired = tx.NotRequired  # noqa: F401
-        LiteralString = tx.LiteralString  # noqa: F401
+        from d810._vendor.typing_extensions import Self  # noqa: F401
+        from d810._vendor.typing_extensions import NotRequired  # noqa: F401
+        from d810._vendor.typing_extensions import LiteralString  # noqa: F401
 
 
 # Please keep __all__ alphabetized within each category.

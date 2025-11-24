@@ -2,7 +2,7 @@ import typing
 
 from ida_hexrays import *
 
-from d810 import _compat
+from d810 import typing
 from d810.conf.loggers import getLogger
 from d810.errors import AstEvaluationException
 from d810.expr.ast import AstConstant, AstNode, minsn_to_ast
@@ -30,7 +30,7 @@ class Z3ConstantOptimization(Z3Rule):
     def REPLACEMENT_PATTERN(self) -> AstNode:
         return AstNode(m_mov, AstConstant("c_res"))
 
-    @_compat.override
+    @typing.override
     def configure(self, kwargs):
         super().configure(kwargs)
         if "min_nb_opcode" in kwargs.keys():
@@ -38,7 +38,7 @@ class Z3ConstantOptimization(Z3Rule):
         if "min_nb_constant" in kwargs.keys():
             self.min_nb_constant = kwargs["min_nb_constant"]
 
-    @_compat.override
+    @typing.override
     def check_and_replace(self, blk: mblock_t, instruction: minsn_t) -> minsn_t | None:
         tmp = minsn_to_ast(instruction)
         if tmp is None:
@@ -90,7 +90,7 @@ class Z3ConstantOptimization(Z3Rule):
         except AstEvaluationException as e:
             logger.error("Error while evaluating %s: %s", tmp, e, exc_info=True)
 
-    @_compat.override
+    @typing.override
     def check_candidate(self, candidate: AstNode) -> bool:
         """Return True if the candidate matches the rule, otherwise False."""
         return True
