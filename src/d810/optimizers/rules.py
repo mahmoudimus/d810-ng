@@ -57,7 +57,7 @@ class SymbolicRule(abc.ABC):
             A SymbolicExpression representing the pattern to search for.
 
         Example:
-            >>> from d810.optimizers.dsl import Var
+            >>> from d810.mba.dsl import Var
             >>> x, y = Var("x"), Var("y")
             >>> return (x | y) - (x & y)
         """
@@ -72,7 +72,7 @@ class SymbolicRule(abc.ABC):
             A SymbolicExpression representing the replacement.
 
         Example:
-            >>> from d810.optimizers.dsl import Var
+            >>> from d810.mba.dsl import Var
             >>> x, y = Var("x"), Var("y")
             >>> return x ^ y
         """
@@ -156,14 +156,14 @@ class VerifiableRule(SymbolicRule):
                        Used for constants whose values depend on matched values.
 
     Example:
-        >>> from d810.optimizers.dsl import Var, Const
+        >>> from d810.mba.dsl import Var, Const
         >>> x, y = Var("x_0"), Var("x_1")
         >>> class Xor_HackersDelight1(VerifiableRule):
         ...     PATTERN = (x | y) - (x & y)
         ...     REPLACEMENT = x ^ y
 
     Example with constraints:
-        >>> from d810.optimizers.dsl import when
+        >>> from d810.mba.dsl import when
         >>> class MyRule(VerifiableRule):
         ...     PATTERN = (x ^ Const("c_1")) + (x + Const("c_2"))
         ...     REPLACEMENT = x & y
@@ -394,7 +394,7 @@ class VerifiableRule(SymbolicRule):
             ...     val_res == c2 - ONE  # Defining constraint
             ... ]
             >>> # Legacy style:
-            >>> from d810.optimizers.dsl import when
+            >>> from d810.mba.dsl import when
             >>> CONSTRAINTS = [
             ...     when.equal_mops("c_1", "c_2"),
             ...     when.is_bnot("x_0", "bnot_x_0"),
@@ -406,7 +406,7 @@ class VerifiableRule(SymbolicRule):
         for constraint in self.CONSTRAINTS:
             try:
                 # Check if this is a ConstraintExpr (new declarative style)
-                from d810.optimizers.constraints import is_constraint_expr
+                from d810.mba.constraints import is_constraint_expr
                 if is_constraint_expr(constraint):
                     # Try to extract a variable definition
                     var_name, value = constraint.eval_and_define(match_context)
@@ -460,7 +460,7 @@ class VerifiableRule(SymbolicRule):
 
         for constraint in self.CONSTRAINTS:
             # Check if this is a ConstraintExpr (new declarative style)
-            from d810.optimizers.constraints import is_constraint_expr
+            from d810.mba.constraints import is_constraint_expr
             if is_constraint_expr(constraint):
                 # Direct conversion to Z3
                 try:

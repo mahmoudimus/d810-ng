@@ -490,7 +490,7 @@ class ConstraintPredicate:
     checks that rules need to perform on matched values.
 
     Example:
-        >>> from d810.optimizers.dsl import when
+        >>> from d810.mba.dsl import when
         >>> CONSTRAINTS = [
         ...     when.equal_mops("c_1", "c_2"),  # c_1 value == c_2 value
         ...     when.is_bnot("c_1", "c_2"),     # c_1 == ~c_2
