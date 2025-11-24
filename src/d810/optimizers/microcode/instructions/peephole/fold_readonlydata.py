@@ -74,7 +74,7 @@ import ida_hexrays
 import ida_segment
 import idaapi
 
-import d810._compat as _compat
+import d810.typing as typing
 from d810.conf.loggers import getLogger
 from d810.hexrays.hexrays_helpers import extract_literal_from_mop
 from d810.optimizers.microcode.instructions.peephole.handler import (
@@ -137,7 +137,7 @@ class FoldReadonlyDataRule(PeepholeSimplificationRule):
     # Main peephole implementation                                      #
     # ------------------------------------------------------------------ #
 
-    @_compat.override
+    @typing.override
     def check_and_replace(
         self, blk: ida_hexrays.mblock_t | None, ins: ida_hexrays.minsn_t
     ) -> ida_hexrays.minsn_t | None:

@@ -6,7 +6,7 @@ import typing
 
 import ida_hexrays
 
-from d810 import _compat
+from d810 import typing
 from d810.conf.loggers import getLogger
 from d810.expr import utils
 from d810.hexrays.hexrays_formatters import format_mop_t, opcode_to_string, sanitize_ea
@@ -48,7 +48,7 @@ class ConstantCallResultFoldRule(PeepholeSimplificationRule):
     @example(
         "opcode=call l=<mop_t type=mop_h size=-1 dstr=!__ROL8__> r=<mop_t type=mop_z size=-1 dstr=> d=<mop_t type=mop_f size=8 dstr=<fast:_QWORD #0x33637E66.8,char #4.1>.8>"
     )
-    @_compat.override
+    @typing.override
     def check_and_replace(
         self, blk: ida_hexrays.mblock_t | None, ins: ida_hexrays.minsn_t
     ) -> ida_hexrays.minsn_t | None:

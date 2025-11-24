@@ -5,7 +5,7 @@ import typing
 
 import ida_hexrays
 
-from d810 import _compat
+from d810 import typing
 from d810.cache import CacheImpl
 from d810.conf.loggers import getLogger
 from d810.expr import utils
@@ -51,7 +51,7 @@ class TransparentCallUnwrapRule(PeepholeSimplificationRule):
         # ida_hexrays.MMAT_GLBOPT1,
     ]
 
-    @_compat.override
+    @typing.override
     def check_and_replace(
         self, blk: ida_hexrays.mblock_t | None, ins: ida_hexrays.minsn_t
     ) -> ida_hexrays.minsn_t | None:  # noqa: D401
@@ -127,7 +127,7 @@ class TypedImmediateCanonicaliseRule(PeepholeSimplificationRule):
         # ida_hexrays.MMAT_GLBOPT1,
     ]
 
-    @_compat.override
+    @typing.override
     def check_and_replace(
         self, blk: ida_hexrays.mblock_t | None, ins: ida_hexrays.minsn_t
     ) -> ida_hexrays.minsn_t | None:

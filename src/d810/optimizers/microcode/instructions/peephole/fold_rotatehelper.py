@@ -6,7 +6,7 @@ import typing
 
 import ida_hexrays
 
-from d810 import _compat
+from d810 import typing
 from d810.conf.loggers import getLogger
 from d810.expr import utils
 from d810.hexrays.hexrays_formatters import format_mop_t, opcode_to_string, sanitize_ea
@@ -50,7 +50,7 @@ class RotateHelperInlineRule(PeepholeSimplificationRule):
         # Run *very* early so that the AST builder never sees the wrapper.
         self.maturities = [ida_hexrays.MMAT_LOCOPT]
 
-    @_compat.override
+    @typing.override
     def check_and_replace(
         self, blk: ida_hexrays.mblock_t | None, ins: ida_hexrays.minsn_t
     ) -> ida_hexrays.minsn_t | None:  # noqa: D401

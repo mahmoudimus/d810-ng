@@ -4,7 +4,7 @@ import logging
 
 import ida_hexrays
 
-from d810 import _compat
+from d810 import typing
 from d810.conf.loggers import getLogger
 from d810.hexrays.hexrays_formatters import format_mop_t, opcode_to_string, sanitize_ea
 from d810.optimizers.microcode.instructions.peephole.handler import (
@@ -76,7 +76,7 @@ class LocalizedConstantPropagationRule(PeepholeSimplificationRule):
         self.current_func = None
         # self.maturities = [ida_hexrays.MMAT_CALLS]
 
-    @_compat.override
+    @typing.override
     def check_and_replace(
         self, blk: ida_hexrays.mblock_t | None, ins: ida_hexrays.minsn_t
     ) -> ida_hexrays.minsn_t | None:

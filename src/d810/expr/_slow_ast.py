@@ -7,7 +7,7 @@ import typing
 import ida_hexrays
 import idaapi
 
-import d810._compat as _compat
+import d810.typing as typing
 from d810.conf.loggers import getLogger
 from d810.errors import AstEvaluationException
 from d810.expr.utils import (
@@ -150,11 +150,11 @@ class AstNode(AstBase):
         self._is_frozen = False  # All newly created nodes are mutable by default
 
     @property
-    @_compat.override
+    @typing.override
     def is_frozen(self) -> bool:
         return self._is_frozen
 
-    @_compat.override
+    @typing.override
     def freeze(self):
         """Recursively freezes this node and all its children."""
         if self._is_frozen:
@@ -705,7 +705,7 @@ class AstNode(AstBase):
         op_str = opcode_to_string(self.opcode) if self.opcode is not None else "None"
         return f"AstNode({op_str}, left={self.left}, right={self.right})"
 
-    @_compat.override
+    @typing.override
     def clone(self):
         # Use __new__ to bypass __init__ for speed
         new_node = self.__class__.__new__(self.__class__)
@@ -735,16 +735,16 @@ class AstNode(AstBase):
 
         return new_node
 
-    @_compat.override
+    @typing.override
     def is_node(self):
         return True
 
-    @_compat.override
+    @typing.override
     def is_leaf(self):
         # An AstNode is not a leaf, so returns False
         return False
 
-    @_compat.override
+    @typing.override
     def is_constant(self):
         return False
 
@@ -764,32 +764,32 @@ class AstLeaf(AstBase):
         self.sub_ast_info_by_index = {}
 
     @property
-    @_compat.override
+    @typing.override
     def is_frozen(self) -> bool:
         return self._is_frozen
 
-    @_compat.override
+    @typing.override
     def freeze(self):
         """Recursively freezes this node and all its children."""
         if self._is_frozen:
             return
         self._is_frozen = True
 
-    @_compat.override
+    @typing.override
     def is_node(self):
         return False
 
-    @_compat.override
+    @typing.override
     def is_leaf(self):
         return True
 
-    @_compat.override
+    @typing.override
     def is_constant(self):
         if self.mop is None:
             return False
         return self.mop.t == ida_hexrays.mop_n
 
-    @_compat.override
+    @typing.override
     def clone(self):
         # Use __new__ to bypass __init__ for speed
         new_leaf = self.__class__.__new__(self.__class__)
@@ -991,7 +991,7 @@ class AstConstant(AstLeaf):
         assert self.mop is not None and self.mop.t == ida_hexrays.mop_n
         return self.mop.nnn.value
 
-    @_compat.override
+    @typing.override
     def is_constant(self) -> bool:
         # An AstConstant is always constant, so return True
         return True
@@ -1032,7 +1032,7 @@ class AstConstant(AstLeaf):
         else:
             return ["N"] * (2 ** (depth - 1))
 
-    @_compat.override
+    @typing.override
     def __str__(self):
         try:
             if self.mop is not None and self.mop.t == ida_hexrays.mop_n:
@@ -1044,7 +1044,7 @@ class AstConstant(AstLeaf):
             logger.info("Error while calling __str__ on AstConstant: {0}".format(e))
             return "Error_AstConstant"
 
-    @_compat.override
+    @typing.override
     def __repr__(self):
         return f"AstConstant({str(self)})"
 
@@ -1138,67 +1138,67 @@ class AstProxy(AstBase):
         return val
 
     @property
-    @_compat.override
+    @typing.override
     def is_frozen(self) -> bool:
         return self._target.is_frozen
 
-    @_compat.override
+    @typing.override
     def clone(self) -> AstBase:
         return AstProxy(self._target.clone())
 
-    @_compat.override
+    @typing.override
     def freeze(self) -> None:
         self._target.freeze()
 
-    @_compat.override
+    @typing.override
     def is_node(self) -> bool:
         return self._target.is_node()
 
-    @_compat.override
+    @typing.override
     def is_leaf(self) -> bool:
         return self._target.is_leaf()
 
-    @_compat.override
+    @typing.override
     def is_constant(self) -> bool:
         return self._target.is_constant()
 
-    @_compat.override
+    @typing.override
     def compute_sub_ast(self) -> None:
         self._target.compute_sub_ast()
 
-    @_compat.override
+    @typing.override
     def get_leaf_list(self) -> list[AstLeaf]:
         return self._target.get_leaf_list()
 
-    @_compat.override
+    @typing.override
     def reset_mops(self) -> None:
         self._target.reset_mops()
 
-    @_compat.override
+    @typing.override
     def _copy_mops_from_ast(self, other: AstBase) -> bool:
         return self._target._copy_mops_from_ast(other)
 
-    @_compat.override
+    @typing.override
     def create_mop(self, ea: int) -> ida_hexrays.mop_t:
         return self._target.create_mop(ea)
 
-    @_compat.override
+    @typing.override
     def get_pattern(self) -> str:
         return self._target.get_pattern()
 
-    @_compat.override
+    @typing.override
     def evaluate(self, dict_index_to_value: dict[int, int]) -> int:
         return self._target.evaluate(dict_index_to_value)
 
-    @_compat.override
+    @typing.override
     def get_depth_signature(self, depth: int) -> list[str]:
         return self._target.get_depth_signature(depth)
 
-    @_compat.override
+    @typing.override
     def __str__(self):
         return f"AstProxy({self._target.__class__.__name__}({str(self._target)}))"
 
-    @_compat.override
+    @typing.override
     def __repr__(self):
         return f"AstProxy({repr(self._target)})"
 

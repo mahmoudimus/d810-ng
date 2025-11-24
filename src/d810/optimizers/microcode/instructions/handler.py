@@ -5,7 +5,7 @@ import typing
 
 import ida_hexrays
 
-from d810 import _compat
+from d810 import typing
 from d810.conf.loggers import getLogger
 from d810.errors import D810Exception
 from d810.expr.ast import AstNode, minsn_to_ast
@@ -120,7 +120,7 @@ class GenericPatternRule(InstructionOptimizationRule):
             )
         return new_ins
 
-    @_compat.override
+    @typing.override
     def check_and_replace(
         self, blk: ida_hexrays.mblock_t, instruction: ida_hexrays.minsn_t
     ) -> ida_hexrays.minsn_t | None:
