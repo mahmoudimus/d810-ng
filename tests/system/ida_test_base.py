@@ -120,7 +120,7 @@ class IDAProTestCase(CoveredIntegrationTest):
         # Discover and load all d810 modules to ensure optimizer classes are registered
         # Import d810 first to ensure it's in sys.modules, then use its __path__
         import d810
-        from d810.reloadable import _Scanner
+        from d810.ida_reloadable import _Scanner
         t_scan_start = time.perf_counter()
         _Scanner.scan(
             package_path=d810.__path__,
