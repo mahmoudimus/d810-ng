@@ -3,7 +3,6 @@ import collections
 import contextlib
 import dataclasses
 import functools
-import sys
 import threading
 import time
 import typing
@@ -16,32 +15,6 @@ logger = getLogger(__name__)
 K = typing.TypeVar("K")
 V = typing.TypeVar("V")
 Eviction = typing.Callable[["Cache"], None]
-
-
-class SurvivesReload(abc.ABCMeta):
-    """
-    SurvivesReload intercepts calls to the constructor (`__call__`) and, when `survive_reload=True`, stores or returns a shared instance on the module object keyed by `reload_key` (or `_SHARED_<ClassName>`).
-
-    `survive_reload`/`reload_key` are handled only in the metaclass.
-    """
-
-    def __call__(
-        cls,
-        *args,
-        survive_reload: bool = False,
-        reload_key: str = "",
-        **kwargs,
-    ):
-        if survive_reload:
-            module = sys.modules[cls.__module__]
-            key = reload_key or f"_SHARED_{cls.__name__}"
-            existing = getattr(module, key, None)
-            if existing is not None:
-                return existing
-            inst = super().__call__(*args, **kwargs)
-            setattr(module, key, inst)
-            return inst
-        return super().__call__(*args, **kwargs)
 
 
 class OverweightError(Exception):
@@ -139,7 +112,11 @@ def LFU(cache: "Cache") -> None:
     cache._kill(cache._root.lfu_prev)  # type: ignore
 
 
-class CacheImpl(Cache[K, V], metaclass=SurvivesReload):
+def _const_one(_: object) -> float:
+    return 1.0
+
+
+class CacheImpl(Cache[K, V]):
     SKIP = object()
 
     @dataclasses.dataclass(slots=True)
@@ -167,26 +144,21 @@ class CacheImpl(Cache[K, V], metaclass=SurvivesReload):
         max_size: int = DEFAULT_MAX_SIZE,
         max_weight: float | None = None,
         identity_keys: bool = False,
-        expire_after_access: float | None = None,
-        expire_after_write: float | None = None,
+        expire_after_access: int | None = None,
+        expire_after_write: int | None = None,
         removal_listener: (
             typing.Callable[[K | weakref.ref, V | weakref.ref], None] | None
         ) = None,
         clock: typing.Callable[[], float] | None = None,
         weak_keys: bool = False,
         weak_values: bool = False,
-        weigher: typing.Callable[[V], float] = lambda _: 1.0,
+        weigher: typing.Callable[[V], float] = _const_one,
         lock: "threading.RLock | None" = None,
         raise_overweight: bool = False,
         eviction: Eviction = LRU,
         track_frequency: bool | None = None,
-        # for SurvivesReload only (no-op in __init__)
-        survive_reload: bool = False,
-        reload_key: str = "",
     ) -> None:
         super().__init__()
-        # prevent pylint unused-argument
-        _ = (survive_reload, reload_key)  # pylint: disable=unused-variable
         if clock is None:
             if expire_after_access is not None or expire_after_write is not None:
                 clock = time.time
@@ -411,7 +383,7 @@ class CacheImpl(Cache[K, V], metaclass=SurvivesReload):
             return True
         return False
 
-    def clear(self) -> None:
+    def clear(self, reset_stats: bool = False) -> None:
         with self._lock:
             self._cache.clear()
             while True:
@@ -421,6 +393,24 @@ class CacheImpl(Cache[K, V], metaclass=SurvivesReload):
                 if link.unlinked:
                     raise TypeError
                 self._unlink(link)
+            if reset_stats:
+                self.reset_stats()
+
+    def reset_stats(self) -> None:
+        """Reset all statistics counters for this cache.
+
+        This does not mutate the cache contents. Use in tandem with
+        `clear()` if you also want to drop entries.
+
+        After calling this, `stats()` will report zeros for `hits`, `misses`,
+        `max_size_ever`, `max_weight_ever`, and `seq`.
+        """
+        with self._lock:
+            self._hits = 0
+            self._misses = 0
+            self._max_size_ever = 0
+            self._max_weight_ever = 0.0
+            self._seq = 0
 
     def __setitem__(self, key: K, value: V) -> None:
         weight = self._weigher(value)
@@ -534,7 +524,6 @@ class CacheImpl(Cache[K, V], metaclass=SurvivesReload):
                     raise ValueError
                 link = nxt
 
-    @property
     def stats(self) -> Stats:
         with self._lock:
             return Stats(
@@ -559,13 +548,13 @@ def cache(
     max_size: int = CacheImpl.DEFAULT_MAX_SIZE,
     max_weight: float | None = None,
     identity_keys: bool = False,
-    expire_after_access: float | None = None,
-    expire_after_write: float | None = None,
+    expire_after_access: int | None = None,
+    expire_after_write: int | None = None,
     removal_listener: typing.Callable | None = None,
     clock: typing.Callable[[], float] | None = None,
     weak_keys: bool = False,
     weak_values: bool = False,
-    weigher: typing.Callable[[V], float] = lambda _: 1.0,
+    weigher: typing.Callable[[V], float] = _const_one,
     lock: "threading.RLock | None" = None,
     raise_overweight: bool = False,
     eviction: Eviction = LRU,
@@ -626,12 +615,14 @@ def cache(
 def lru_cache(
     user_function: typing.Callable | None = None,
     *,
-    max_size: int = CacheImpl.DEFAULT_MAX_SIZE,
+    max_size: int | None = None,
     **kwargs,
 ) -> typing.Callable:
     """
     Like functools.lru_cache, but backed by our CacheImpl.
     """
+    if max_size is None:
+        max_size = CacheImpl.DEFAULT_MAX_SIZE
     return cache(user_function, max_size=max_size, eviction=LRU, **kwargs)
 
 

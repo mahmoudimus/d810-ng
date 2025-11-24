@@ -2,9 +2,11 @@ import collections
 import dataclasses
 import functools
 import importlib
+import sys
 from abc import ABCMeta
 from functools import cache, wraps
 from types import GenericAlias, MappingProxyType
+from collections.abc import MutableMapping
 from typing import (
     Annotated,
     Any,
@@ -69,6 +71,99 @@ TypeRef: TypeAlias = str | ForwardRef | GenericAlias | TypeAliasType | Annotated
 DeferTypeRef: TypeAlias = Defer[type] | TypeRef
 """A typelike reference which can be wrapped to be resolved later."""
 
+
+def survives_reload(cls=None, *, reload_key: str = ""):
+    """
+    Class decorator (optionally parameterized) that enables a class to survive reloads by storing a shared instance
+    on the module object, keyed by `reload_key` (or `_SHARED_<ClassName>`).
+
+    Usage:
+        @survives_reload
+        class MyClass: ...
+
+        @survives_reload()
+        class MyClass: ...
+
+        BLAH = survives_reload(MyClass, reload_key="FOO")
+    """
+    def decorator(inner_cls):
+        _reload_key = reload_key or f"_SHARED_{inner_cls.__name__}"
+        _module = sys.modules[inner_cls.__module__]
+
+        @functools.wraps(inner_cls)
+        def get_shared_instance(*args, **kwargs):
+            existing = getattr(_module, _reload_key, None)
+            if existing is not None:
+                return existing
+            inst = inner_cls.__new__(inner_cls, *args, **kwargs)
+            inner_cls.__init__(inst, *args, **kwargs)
+            setattr(_module, _reload_key, inst)
+            return inst
+
+        return get_shared_instance
+
+    # Handle all three cases:
+    # 1. @survives_reload
+    # 2. @survives_reload()
+    # 3. survives_reload(SomeClass, reload_key=...)
+    if cls is not None and callable(cls):
+        return decorator(cls)
+    return decorator
+
+
+class CombineMeta:
+    def __prepare__(
+        self,
+        name: str,
+        bases: tuple[type, ...],
+        **kwargs: Any
+    ) -> MutableMapping[str, Any]:
+        namespace: MutableMapping[str, Any] = {}
+        for metaclass in self._get_most_derived_metaclasses(bases):
+            ns = metaclass.__prepare__(name, bases, **kwargs)
+            if type(ns) in (dict, type(namespace)):
+                namespace.update(ns)
+            else:
+                if type(namespace) is not dict:
+                    raise TypeError(
+                        "metaclass conflict: " "multiple custom namespaces defined."
+                    )
+                ns.update(namespace)
+                namespace = ns
+        return namespace
+
+    def __call__(
+        self,
+        name: str,
+        bases: tuple[type, ...],
+        namespace: MutableMapping[str, Any],
+        **kwargs: Any
+    ) -> type:
+        metaclasses = self._get_most_derived_metaclasses(bases)
+        if len(metaclasses) > 1:
+            merged_name = "__".join(meta.__name__ for meta in metaclasses)
+            ns = self.__prepare__(merged_name, tuple(metaclasses))
+            metaclass = self(merged_name, tuple(metaclasses), ns, **kwargs)
+        else:
+            (metaclass,) = metaclasses or (type,)
+        return metaclass(name, bases, dict(namespace), **kwargs)
+
+    @staticmethod
+    def _get_most_derived_metaclasses(
+        bases: tuple[type, ...]
+    ) -> list[type]:
+        metaclasses: list[type] = []
+        for metaclass in map(type, bases):
+            if metaclass is not type:
+                metaclasses = [
+                    other for other in metaclasses if not issubclass(metaclass, other)
+                ]
+                if not any(issubclass(other, metaclass) for other in metaclasses):
+                    metaclasses.append(metaclass)
+        return metaclasses
+
+
+combine_meta = CombineMeta()
 
 def async_await(
     fn: Callable[..., Coroutine[Any, Any, T]],
