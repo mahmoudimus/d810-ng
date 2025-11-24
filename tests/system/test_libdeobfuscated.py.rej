@@ -1,0 +1,30 @@
+diff a/tests/system/test_libdeobfuscated.py b/tests/system/test_libdeobfuscated.py	(rejected hunks)
+@@ -60,7 +60,7 @@ class TestLibDeobfuscated(unittest.TestCase):
+             }"""
+         )
+ 
+-        deobfuscated = textwrap.dedent(
++        deobfuscated_without_constant_propagation = textwrap.dedent(
+             """\
+             __int64 __fastcall test_cst_simplification(int *a1)
+             {
+@@ -74,6 +74,19 @@ class TestLibDeobfuscated(unittest.TestCase):
+                 return (unsigned int)(v2 - 0x86D41AD);
+             }"""
+         )
++        deobfuscated_with_constant_propagation = textwrap.dedent(
++            """\
++            __int64 __fastcall test_cst_simplification(int *a1)
++            {
++                // [COLLAPSED LOCAL DECLARATIONS. PRESS NUMPAD "+" TO EXPAND]
++
++                a1[1] = 0x222E69C0;
++                a1[2] = 0xD32B5931;
++                a1[3] = 0x238FB62;
++                a1[4] = 0xA29;
++                return 0xF792C87CLL;
++            }"""
++        )
+ 
+     def test_deobfuscate_opaque_predicate(self):
+         obfuscated = textwrap.dedent(

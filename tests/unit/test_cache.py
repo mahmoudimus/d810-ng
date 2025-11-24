@@ -10,6 +10,8 @@ from .tutils import load_conf_classes
 with load_conf_classes():
     from d810.cache import LFU, CacheImpl, OverweightError, cache, lru_cache
 
+from d810.registry import survives_reload
+
 
 class FixedClock:
     def __init__(self):
@@ -32,16 +34,16 @@ class TestCacheImpl(unittest.TestCase):
 
     def test_stats_hits_misses(self):
         c = CacheImpl(max_size=10, clock=FixedClock())
-        stats = c.stats
+        stats = c.stats()
         self.assertEqual(stats.hits, 0)
         self.assertEqual(stats.misses, 0)
         with self.assertRaises(KeyError):
             _ = c["missing"]
-        stats = c.stats
+        stats = c.stats()
         self.assertEqual(stats.misses, 1)
         c["x"] = 99
         _ = c["x"]
-        stats = c.stats
+        stats = c.stats()
         self.assertEqual(stats.hits, 1)
 
     def test_lru_eviction(self):
@@ -236,7 +238,7 @@ class TestCacheDecorator(unittest.TestCase):
         self.assertEqual(f(10), 20)
         self.assertEqual(calls, [10])
         # stats via wrapper.cache
-        stats = f.cache.stats
+        stats = f.cache.stats()
         self.assertEqual(stats.misses, 1)
         self.assertEqual(stats.hits, 1)
 
@@ -278,7 +280,7 @@ class TestCPythonCacheBehavior(unittest.TestCase):
         for i in range(5):
             f(i)
         # Unlimited caching: cache grows without eviction ([stackoverflow.com](https://stackoverflow.com/questions/78875431/how-to-disable-functools-lru-cache-when-developing-locally?utm_source=chatgpt.com))
-        self.assertEqual(f.cache.stats.size, 5)
+        self.assertEqual(f.cache.stats().size, 5)
 
     def test_cache_info_and_clear(self):
         @cache
@@ -287,12 +289,12 @@ class TestCPythonCacheBehavior(unittest.TestCase):
 
         f(1)
         f(1)
-        stats = f.cache.stats
+        stats = f.cache.stats()
         self.assertEqual(stats.hits, 1)
         self.assertEqual(stats.misses, 1)
         # clear removes entries but does not reset stats ([docs.python.org](https://docs.python.org/3/library/functools.html?utm_source=chatgpt.com))
         f.cache.clear()
-        self.assertEqual(f.cache.stats.size, 0)
+        self.assertEqual(f.cache.stats().size, 0)
 
     def test_unhashable_argument(self):
         @lru_cache(max_size=10)
@@ -310,7 +312,7 @@ class TestCPythonCacheBehavior(unittest.TestCase):
 
         for i in range(3):
             f(i)
-        self.assertEqual(f.cache.stats.size, 3)
+        self.assertEqual(f.cache.stats().size, 3)
 
     def test_wrapper_attributes(self):
         @cache
@@ -321,12 +323,15 @@ class TestCPythonCacheBehavior(unittest.TestCase):
         self.assertTrue(hasattr(f, "__wrapped__"))
 
 
+SURVIVES_RELOAD_CACHE = survives_reload(CacheImpl)
+
+
 class TestSurviveReload(unittest.TestCase):
     def test_same_key_returns_singleton(self):
         from d810.cache import CacheImpl
 
-        c1 = CacheImpl(max_size=5, survive_reload=True, reload_key="FOO")
-        c2 = CacheImpl(max_size=10, survive_reload=True, reload_key="FOO")
+        c1 = survives_reload(CacheImpl, reload_key="FOO")(max_size=5)
+        c2 = survives_reload(CacheImpl, reload_key="FOO")(max_size=10)
         self.assertIs(c1, c2)
         # initial config sticks:
         self.assertEqual(c1._max_size, 5)
@@ -334,18 +339,18 @@ class TestSurviveReload(unittest.TestCase):
     def test_different_keys_are_distinct(self):
         from d810.cache import CacheImpl
 
-        c1 = CacheImpl(max_size=5, survive_reload=True, reload_key="A")
-        c2 = CacheImpl(max_size=5, survive_reload=True, reload_key="B")
+        c1 = survives_reload(CacheImpl, reload_key="A")(max_size=5)
+        c2 = survives_reload(CacheImpl, reload_key="B")(max_size=5)
         self.assertIsNot(c1, c2)
 
     def test_default_shared_key(self):
         from d810.cache import CacheImpl
 
-        c1 = CacheImpl(max_size=3, survive_reload=True)
-        c2 = CacheImpl(max_size=4, survive_reload=True)
+        c1 = survives_reload(CacheImpl)(max_size=3)
+        c2 = survives_reload(CacheImpl)(max_size=4)
         self.assertIs(c1, c2)
         # And a non-surviving instance is new:
-        c3 = CacheImpl(max_size=3, survive_reload=False)
+        c3 = CacheImpl(max_size=3)
         self.assertIsNot(c1, c3)
 
     def test_no_survive_reload_creates_new_each_time(self):
@@ -357,13 +362,13 @@ class TestSurviveReload(unittest.TestCase):
 
     def test_survive_reload_meta(self):
         # load twice to simulate a reload()
-        mod = importlib.reload(sys.modules["d810.cache"])
-        c1 = mod.CacheImpl(max_size=3, survive_reload=True, reload_key="X")
+        mod = importlib.reload(sys.modules[__name__])
+        c1 = mod.SURVIVES_RELOAD_CACHE(max_size=3)
         # simulate reload by reimporting
-        importlib.reload(sys.modules["d810.cache"])
-        c2 = mod.CacheImpl(max_size=99, survive_reload=True, reload_key="X")
+        importlib.reload(sys.modules[__name__])
+        c2 = mod.SURVIVES_RELOAD_CACHE(max_size=99)
         self.assertIs(c1, c2)
-        self.assertEqual(c1._max_size, 3)  # original config sticks
+        self.assertEqual(c2._max_size, 3)  # original config sticks
 
     def test_no_survive_different(self):
         from d810.cache import CacheImpl
