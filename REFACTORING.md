@@ -785,5 +785,184 @@ See the comprehensive guide in `README.md`, but in summary:
 5. Run `pytest tests/unit/optimizers/test_verifiable_rules.py::TestVerifiableRules::test_rule_is_correct[YourRule]`
 6. If verification passes, you're done! The rule is proven correct.
 
-**The refactoring is complete. The codebase is now maintainable, testable, and mathematically verified.**
+**The declarative DSL refactoring is complete. The codebase rules are now maintainable, testable, and mathematically verified.**
+
+---
+
+## Composition over Inheritance Refactoring Status (2025)
+
+The infrastructure for composition-based refactoring has been created but is not yet complete.
+
+### ✅ What's Already Done
+
+#### 1. **Core Abstractions Defined** ✓
+- **File**: `src/d810/optimizers/core.py` (144 LOC)
+- **Created**:
+  - `OptimizationContext` - Immutable context dataclass (eliminates mutable state in rules)
+  - `OptimizationRule` - Protocol-based interface (decouples rules from execution engine)
+  - `PatternMatchingRule` - ABC for pattern-based rules
+
+#### 2. **Service Layer Created** ✓
+- **File**: `src/d810/optimizers/microcode/flow/flattening/services.py` (271 LOC)
+- **Created**:
+  - `Dispatcher` - Immutable dataclass replacing `GenericDispatcherInfo`
+  - `DispatcherFinder` - Protocol for finding dispatchers
+  - `PathEmulator` - Service for resolving state variables (SKELETON ONLY)
+  - `CFGPatcher` - Service for modifying control flow graph (SKELETON ONLY)
+
+#### 3. **Refactored Coordinator** ✓
+- **File**: `src/d810/optimizers/microcode/flow/flattening/unflattener_refactored.py` (284 LOC)
+- **Created**:
+  - `UnflattenerRule` - Clean coordinator using composition (vs 775 LOC God object)
+  - `OLLVMDispatcherFinder` - Concrete implementation (SKELETON ONLY)
+- **Comparison**:
+  - Original `GenericDispatcherUnflatteningRule`: 775 LOC, 21 methods, 10+ state variables
+  - Refactored `UnflattenerRule`: 284 LOC, 3 methods, 3 dependencies (injected)
+
+### ⚠️ What's Not Done (TODOs)
+
+#### 1. **Implement Service Methods**
+
+**PathEmulator.resolve_target()** (lines 110-151 in services.py):
+```python
+# TODO: Implement using existing MopTracker and MicroCodeInterpreter
+# from d810.hexrays.tracker import MopTracker
+# from d810.expr.emulator import MicroCodeInterpreter
+```
+
+**CFGPatcher.redirect_edge()** (lines 166-199):
+```python
+# TODO: Implement using existing cfg_utils
+# from d810.hexrays.cfg_utils import change_1way_block_successor
+```
+
+**CFGPatcher.insert_intermediate_block()** (lines 201-238):
+```python
+# TODO: Implement using existing cfg_utils.create_block
+```
+
+**CFGPatcher.ensure_unconditional_predecessor()** (lines 240-270):
+```python
+# TODO: Implement using existing cfg_utils
+# from d810.hexrays.cfg_utils import ensure_child_has_an_unconditional_father
+```
+
+#### 2. **Implement DispatcherFinder**
+
+**OLLVMDispatcherFinder.find()** (lines 208-231 in unflattener_refactored.py):
+```python
+# TODO: Extract the actual dispatcher finding logic from the monolithic
+# GenericDispatcherCollector and GenericDispatcherInfo classes
+```
+
+**Current state**: Returns empty list (placeholder)
+**Needed**: Port logic from `generic.py::GenericDispatcherCollector` (83 LOC) and `GenericDispatcherInfo` (165 LOC)
+
+#### 3. **Integration and Testing**
+
+- ❌ No unit tests for new services
+- ❌ Refactored unflattener not integrated into main optimizer loop
+- ❌ Original `GenericDispatcherUnflatteningRule` still in use (not replaced)
+- ❌ No migration path documented
+
+### 📋 Remaining Work Plan
+
+#### Phase 1: Implement Core Services (High Priority)
+
+1. **Implement CFGPatcher methods** (Easiest - simple wrappers)
+   - `redirect_edge()` → wrap `change_1way_block_successor()`
+   - `insert_intermediate_block()` → wrap `create_block()`
+   - `ensure_unconditional_predecessor()` → wrap `ensure_child_has_an_unconditional_father()`
+   - **Estimated**: 50-100 LOC, 2-3 hours
+   - **Dependencies**: `d810.hexrays.cfg_utils`
+
+2. **Implement PathEmulator.resolve_target()** (Medium complexity)
+   - Extract emulation logic from `GenericDispatcherUnflatteningRule.emulate_dispatcher_with_father_history()`
+   - Use existing `MopTracker` and `MicroCodeInterpreter`
+   - **Estimated**: 100-150 LOC, 4-6 hours
+   - **Dependencies**: `d810.hexrays.tracker`, `d810.expr.emulator`
+
+3. **Implement OLLVMDispatcherFinder.find()** (Highest complexity)
+   - Extract dispatcher detection from `GenericDispatcherCollector` (83 LOC)
+   - Extract dispatcher info from `GenericDispatcherInfo` (165 LOC)
+   - Convert to immutable `Dispatcher` dataclass
+   - **Estimated**: 150-250 LOC, 6-8 hours
+   - **Dependencies**: `generic.py::GenericDispatcherCollector`, `GenericDispatcherInfo`, `GenericDispatcherBlockInfo`
+
+#### Phase 2: Testing and Validation
+
+4. **Write Unit Tests**
+   - Test `CFGPatcher` methods with mock blocks
+   - Test `PathEmulator` with known state variable scenarios
+   - Test `OLLVMDispatcherFinder` with sample obfuscated code
+   - Test `UnflattenerRule` with mocked dependencies
+   - **Estimated**: 200-300 LOC tests, 4-6 hours
+
+5. **Integration Testing**
+   - Run refactored unflattener on real obfuscated binaries
+   - Compare results with original `GenericDispatcherUnflatteningRule`
+   - Measure performance (should be similar or better)
+   - **Estimated**: 2-4 hours
+
+#### Phase 3: Migration and Cleanup
+
+6. **Integrate into Main Optimizer Loop**
+   - Update `OptimizerManager` to use `UnflattenerRule`
+   - Add configuration support for new services
+   - Maintain backward compatibility (optional)
+   - **Estimated**: 100-150 LOC, 2-3 hours
+
+7. **Deprecate Old Code** (Optional but recommended)
+   - Mark `GenericDispatcherUnflatteningRule` as deprecated
+   - Add migration guide for custom unflatteners
+   - Eventually remove old implementation
+   - **Estimated**: Documentation + 1-2 hours
+
+### 📊 Progress Summary
+
+| Component | Status | LOC | Completion |
+|-----------|--------|-----|------------|
+| Core Abstractions | ✅ Complete | 144 | 100% |
+| Service Protocols | ✅ Complete | 271 | 100% |
+| Refactored Coordinator | ✅ Skeleton | 284 | 40% |
+| CFGPatcher Implementation | ❌ TODO | 0/100 | 0% |
+| PathEmulator Implementation | ❌ TODO | 0/150 | 0% |
+| OLLVMDispatcherFinder | ❌ TODO | 0/250 | 0% |
+| Unit Tests | ❌ TODO | 0/300 | 0% |
+| Integration | ❌ TODO | 0/150 | 0% |
+| **TOTAL** | **In Progress** | **699/1649** | **42%** |
+
+### 🎯 Next Steps
+
+**Recommended order**:
+
+1. **Start with CFGPatcher** (low risk, high value)
+   - Simple wrappers around existing functions
+   - Immediate testability improvement
+   - No complex logic
+
+2. **Then PathEmulator** (medium risk, high value)
+   - Core functionality needed for unflattening
+   - Reuses existing emulation logic
+   - Enables end-to-end testing
+
+3. **Finally OLLVMDispatcherFinder** (high complexity, necessary)
+   - Most complex extraction work
+   - Requires understanding existing detection heuristics
+   - Unlocks full refactored unflattener
+
+4. **Write tests continuously** (not at the end)
+   - Test each service as it's implemented
+   - Catch bugs early
+   - Build confidence in refactoring
+
+### 📝 Key Benefits (When Complete)
+
+- **Testability**: Each service testable in isolation with mocks
+- **Clarity**: Clean separation of concerns (find/emulate/patch)
+- **Maintainability**: Changes to one service don't affect others
+- **Reusability**: Services can be used by different unflattening strategies
+- **Debugging**: Easy to log/inspect at service boundaries
+
+**Current Status**: Foundation is solid, implementation is 42% complete. With focused effort, remaining work is ~20-30 hours.
 
