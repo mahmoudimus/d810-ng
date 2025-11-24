@@ -35,12 +35,12 @@
             "/Users/mahmoud/.idapro/extras/91/idasdk91/lib",
             "/Users/mahmoud/.idapro/extras/91/idasdk91/lib/arm64_mac_clang_64"
         ],
-        "name": "d810.speedups.expr.ast_evaluate",
+        "name": "d810.speedups.expr.c_ast_evaluate",
         "sources": [
-            "src/d810/speedups/expr/ast_evaluate.pyx"
+            "src/d810/speedups/expr/c_ast_evaluate.pyx"
         ]
     },
-    "module_name": "d810.speedups.expr.ast_evaluate"
+    "module_name": "d810.speedups.expr.c_ast_evaluate"
 }
 END: Cython Metadata */
 
@@ -1179,8 +1179,8 @@ static CYTHON_INLINE float __PYX_NAN() {
     #define __PYX_EXTERN_C extern "C++"
 #endif
 
-#define __PYX_HAVE__d810__speedups__expr__ast_evaluate
-#define __PYX_HAVE_API__d810__speedups__expr__ast_evaluate
+#define __PYX_HAVE__d810__speedups__expr__c_ast_evaluate
+#define __PYX_HAVE_API__d810__speedups__expr__c_ast_evaluate
 /* Early includes */
 #ifdef _OPENMP
 #include <omp.h>
@@ -1390,7 +1390,7 @@ static const char *__pyx_filename;
 /* #### Code section: filename_table ### */
 
 static const char* const __pyx_f[] = {
-  "src/d810/speedups/expr/ast_evaluate.pyx",
+  "src/d810/speedups/expr/c_ast_evaluate.pyx",
   "<stringsource>",
 };
 /* #### Code section: utility_code_proto_before_types ### */
@@ -1558,31 +1558,31 @@ static const char* const __pyx_f[] = {
 /* #### Code section: type_declarations ### */
 
 /*--- Type declarations ---*/
-struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator;
+struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator;
 
-/* "d810/speedups/expr/ast_evaluate.pyx":57
+/* "d810/speedups/expr/c_ast_evaluate.pyx":57
  * 
  * 
  * cdef class AstEvaluator:             # <<<<<<<<<<<<<<
  *     """
  *     Pure-Python evaluator for AST nodes. Extracted from AstNode/AstLeaf methods
 */
-struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator {
+struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator {
   PyObject_HEAD
-  struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *__pyx_vtab;
+  struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *__pyx_vtab;
 };
 
 
 
-struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator {
-  PyObject *(*evaluate_with_leaf_info)(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *, PyObject *, PyObject *, PyObject *, int __pyx_skip_dispatch);
-  PyObject *(*evaluate)(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *, PyObject *, PyObject *, int __pyx_skip_dispatch);
-  PyObject *(*_eval_leaf)(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *, PyObject *, PyObject *);
-  PyObject *(*_eval_node)(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *, PyObject *, PyObject *);
+struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator {
+  PyObject *(*evaluate_with_leaf_info)(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *, PyObject *, PyObject *, PyObject *, int __pyx_skip_dispatch);
+  PyObject *(*evaluate)(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *, PyObject *, PyObject *, int __pyx_skip_dispatch);
+  PyObject *(*_eval_leaf)(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *, PyObject *, PyObject *);
+  PyObject *(*_eval_node)(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *, PyObject *, PyObject *);
 };
-static struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *__pyx_vtabptr_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator;
-static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator__eval_leaf(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *, PyObject *, PyObject *);
-static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator__eval_node(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *, PyObject *, PyObject *);
+static struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *__pyx_vtabptr_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator;
+static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator__eval_leaf(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *, PyObject *, PyObject *);
+static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator__eval_node(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *, PyObject *, PyObject *);
 /* #### Code section: utility_code_proto ### */
 
 /* --- Runtime support code (head) --- */
@@ -2458,21 +2458,21 @@ static int __Pyx_State_RemoveModule(void*);
 #define __PYX_ABI_MODULE_NAME "_cython_" CYTHON_ABI
 #define __PYX_TYPE_MODULE_PREFIX __PYX_ABI_MODULE_NAME "."
 
-static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_evaluate_with_leaf_info(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_node, PyObject *__pyx_v_leafs_info, PyObject *__pyx_v_leafs_value, int __pyx_skip_dispatch); /* proto*/
-static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_evaluate(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_node, PyObject *__pyx_v_dict_index_to_value, int __pyx_skip_dispatch); /* proto*/
-static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator__eval_leaf(CYTHON_UNUSED struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_leaf, PyObject *__pyx_v_dict_index_to_value); /* proto*/
-static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator__eval_node(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_node, PyObject *__pyx_v_dict_index_to_value); /* proto*/
+static PyObject *__pyx_f_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_evaluate_with_leaf_info(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_node, PyObject *__pyx_v_leafs_info, PyObject *__pyx_v_leafs_value, int __pyx_skip_dispatch); /* proto*/
+static PyObject *__pyx_f_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_evaluate(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_node, PyObject *__pyx_v_dict_index_to_value, int __pyx_skip_dispatch); /* proto*/
+static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator__eval_leaf(CYTHON_UNUSED struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_leaf, PyObject *__pyx_v_dict_index_to_value); /* proto*/
+static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator__eval_node(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_node, PyObject *__pyx_v_dict_index_to_value); /* proto*/
 
-/* Module declarations from "d810.speedups.expr.ast_evaluate" */
-static PyObject *__pyx_v_4d810_8speedups_4expr_12ast_evaluate__BINARY_OPCODES = 0;
-static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate___pyx_unpickle_AstEvaluator__set_state(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *, PyObject *); /*proto*/
+/* Module declarations from "d810.speedups.expr.c_ast_evaluate" */
+static PyObject *__pyx_v_4d810_8speedups_4expr_14c_ast_evaluate__BINARY_OPCODES = 0;
+static PyObject *__pyx_f_4d810_8speedups_4expr_14c_ast_evaluate___pyx_unpickle_AstEvaluator__set_state(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *, PyObject *); /*proto*/
 /* #### Code section: typeinfo ### */
 /* #### Code section: before_global_var ### */
-#define __Pyx_MODULE_NAME "d810.speedups.expr.ast_evaluate"
-extern int __pyx_module_is_main_d810__speedups__expr__ast_evaluate;
-int __pyx_module_is_main_d810__speedups__expr__ast_evaluate = 0;
+#define __Pyx_MODULE_NAME "d810.speedups.expr.c_ast_evaluate"
+extern int __pyx_module_is_main_d810__speedups__expr__c_ast_evaluate;
+int __pyx_module_is_main_d810__speedups__expr__c_ast_evaluate = 0;
 
-/* Implementation of "d810.speedups.expr.ast_evaluate" */
+/* Implementation of "d810.speedups.expr.c_ast_evaluate" */
 /* #### Code section: global_var ### */
 static PyObject *__pyx_builtin_zip;
 static PyObject *__pyx_builtin_AssertionError;
@@ -2620,20 +2620,20 @@ static const char __pyx_k_d810_hexrays_hexrays_helpers[] = "d810.hexrays.hexrays
 static const char __pyx_k_AstEvaluator___setstate_cython[] = "AstEvaluator.__setstate_cython__";
 static const char __pyx_k_A_QfA_4_6_QfA_4_6_QfA_4y_Zq_A_T[] = "\200A\330\010\013\210:\220Q\220f\230A\330\014\023\2204\220{\240!\2406\250\021\330\010\013\210:\220Q\220f\230A\330\014\023\2204\220{\240!\2406\250\021\330\010\013\210:\220Q\220f\230A\330\014\023\2204\220y\240\001\240\024\240Z\250q\330\010\016\320\016$\240A\330\014\016\320\016-\250T\260\021\260%\260q";
 static const char __pyx_k_AstEvaluator_evaluate_with_leaf[] = "AstEvaluator.evaluate_with_leaf_info";
-static const char __pyx_k_d810_speedups_expr_ast_evaluate[] = "d810.speedups.expr.ast_evaluate";
 static const char __pyx_k_right_is_None_for_binary_opcode[] = "right is None for binary opcode: {0}";
 static const char __pyx_k_Incompatible_checksums_0x_x_vs_0[] = "Incompatible checksums (0x%x vs (0xe3b0c44, 0xda39a3e, 0xd41d8cd) = ())";
 static const char __pyx_k_Note_that_Cython_is_deliberately[] = "Note that Cython is deliberately stricter than PEP-484 and rejects subclasses of builtin types. If you need to pass subclasses then set the 'annotation_typing' directive to False.";
+static const char __pyx_k_d810_speedups_expr_c_ast_evaluat[] = "d810.speedups.expr.c_ast_evaluate";
 static const char __pyx_k_evaluate_m_call_ast_index_s_dest[] = "evaluate m_call: ast_index=%s, dest_size=%s, callee=%s, args=%s";
 static const char __pyx_k_left_dest_size_is_None_for_m_hig[] = "left.dest_size is None for m_high";
-static const char __pyx_k_src_d810_speedups_expr_ast_evalu[] = "src/d810/speedups/expr/ast_evaluate.pyx";
+static const char __pyx_k_src_d810_speedups_expr_c_ast_eva[] = "src/d810/speedups/expr/c_ast_evaluate.pyx";
 /* #### Code section: decls ### */
-static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_evaluate_with_leaf_info(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_node, PyObject *__pyx_v_leafs_info, PyObject *__pyx_v_leafs_value); /* proto */
-static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_2evaluate(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_node, PyObject *__pyx_v_dict_index_to_value); /* proto */
-static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_4__reduce_cython__(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *__pyx_v_self); /* proto */
-static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_6__setstate_cython__(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v___pyx_state); /* proto */
-static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate___pyx_unpickle_AstEvaluator(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v___pyx_type, long __pyx_v___pyx_checksum, PyObject *__pyx_v___pyx_state); /* proto */
-static PyObject *__pyx_tp_new_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
+static PyObject *__pyx_pf_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_evaluate_with_leaf_info(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_node, PyObject *__pyx_v_leafs_info, PyObject *__pyx_v_leafs_value); /* proto */
+static PyObject *__pyx_pf_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_2evaluate(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_node, PyObject *__pyx_v_dict_index_to_value); /* proto */
+static PyObject *__pyx_pf_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_4__reduce_cython__(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_6__setstate_cython__(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v___pyx_state); /* proto */
+static PyObject *__pyx_pf_4d810_8speedups_4expr_14c_ast_evaluate___pyx_unpickle_AstEvaluator(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v___pyx_type, long __pyx_v___pyx_checksum, PyObject *__pyx_v___pyx_state); /* proto */
+static PyObject *__pyx_tp_new_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 /* #### Code section: late_includes ### */
 /* #### Code section: module_state ### */
 /* SmallCodeConfig */
@@ -2672,8 +2672,8 @@ typedef struct {
   #ifdef __Pyx_Coroutine_USED
   PyTypeObject *__pyx_CoroutineType;
   #endif
-  PyObject *__pyx_type_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator;
-  PyTypeObject *__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator;
+  PyObject *__pyx_type_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator;
+  PyTypeObject *__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator;
   __Pyx_CachedCFunction __pyx_umethod_PyDict_Type_get;
   __Pyx_CachedCFunction __pyx_umethod_PyDict_Type_pop;
   PyObject *__pyx_tuple[1];
@@ -2753,7 +2753,7 @@ static __pyx_mstatetype * const __pyx_mstate_global = &__pyx_mstate_global_stati
 #define __pyx_n_u_d810_expr__ast __pyx_string_tab[28]
 #define __pyx_n_u_d810_expr_utils __pyx_string_tab[29]
 #define __pyx_n_u_d810_hexrays_hexrays_helpers __pyx_string_tab[30]
-#define __pyx_n_u_d810_speedups_expr_ast_evaluate __pyx_string_tab[31]
+#define __pyx_n_u_d810_speedups_expr_c_ast_evaluat __pyx_string_tab[31]
 #define __pyx_n_u_debug __pyx_string_tab[32]
 #define __pyx_n_u_debug_on __pyx_string_tab[33]
 #define __pyx_n_u_dest_size __pyx_string_tab[34]
@@ -2855,7 +2855,7 @@ static __pyx_mstatetype * const __pyx_mstate_global = &__pyx_mstate_global_stati
 #define __pyx_n_u_setstate_cython __pyx_string_tab[130]
 #define __pyx_n_u_signed_to_unsigned __pyx_string_tab[131]
 #define __pyx_n_u_spec __pyx_string_tab[132]
-#define __pyx_kp_u_src_d810_speedups_expr_ast_evalu __pyx_string_tab[133]
+#define __pyx_kp_u_src_d810_speedups_expr_c_ast_eva __pyx_string_tab[133]
 #define __pyx_n_u_state __pyx_string_tab[134]
 #define __pyx_kp_u_stringsource __pyx_string_tab[135]
 #define __pyx_n_u_t __pyx_string_tab[136]
@@ -2886,8 +2886,8 @@ static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
   #if CYTHON_PEP489_MULTI_PHASE_INIT
   __Pyx_State_RemoveModule(NULL);
   #endif
-  Py_CLEAR(clear_module_state->__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator);
-  Py_CLEAR(clear_module_state->__pyx_type_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator);
+  Py_CLEAR(clear_module_state->__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator);
+  Py_CLEAR(clear_module_state->__pyx_type_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator);
   for (int i=0; i<1; ++i) { Py_CLEAR(clear_module_state->__pyx_tuple[i]); }
   for (int i=0; i<5; ++i) { Py_CLEAR(clear_module_state->__pyx_codeobj_tab[i]); }
   for (int i=0; i<144; ++i) { Py_CLEAR(clear_module_state->__pyx_string_tab[i]); }
@@ -2917,8 +2917,8 @@ static CYTHON_SMALL_CODE int __pyx_m_traverse(PyObject *m, visitproc visit, void
   #ifdef __Pyx_FusedFunction_USED
   Py_VISIT(traverse_module_state->__pyx_FusedFunctionType);
   #endif
-  Py_VISIT(traverse_module_state->__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator);
-  Py_VISIT(traverse_module_state->__pyx_type_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator);
+  Py_VISIT(traverse_module_state->__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator);
+  Py_VISIT(traverse_module_state->__pyx_type_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator);
   for (int i=0; i<1; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_tuple[i]); }
   for (int i=0; i<5; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_codeobj_tab[i]); }
   for (int i=0; i<144; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_string_tab[i]); }
@@ -2933,7 +2933,7 @@ static CYTHON_SMALL_CODE int __pyx_m_traverse(PyObject *m, visitproc visit, void
 #endif
 /* #### Code section: module_code ### */
 
-/* "d810/speedups/expr/ast_evaluate.pyx":63
+/* "d810/speedups/expr/c_ast_evaluate.pyx":63
  *     """
  * 
  *     cpdef object evaluate_with_leaf_info(self, object node, object leafs_info, object leafs_value):             # <<<<<<<<<<<<<<
@@ -2941,14 +2941,14 @@ static CYTHON_SMALL_CODE int __pyx_m_traverse(PyObject *m, visitproc visit, void
  *         for leaf_info, leaf_value in zip(leafs_info, leafs_value):
 */
 
-static PyObject *__pyx_pw_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_1evaluate_with_leaf_info(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_1evaluate_with_leaf_info(PyObject *__pyx_v_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_evaluate_with_leaf_info(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_node, PyObject *__pyx_v_leafs_info, PyObject *__pyx_v_leafs_value, int __pyx_skip_dispatch) {
+static PyObject *__pyx_f_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_evaluate_with_leaf_info(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_node, PyObject *__pyx_v_leafs_info, PyObject *__pyx_v_leafs_value, int __pyx_skip_dispatch) {
   PyObject *__pyx_v_dict_index_to_value = NULL;
   PyObject *__pyx_v_leaf_info = NULL;
   PyObject *__pyx_v_leaf_value = NULL;
@@ -2973,7 +2973,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
   /* Check if overridden in Python */
   else if (
   #if !CYTHON_USE_TYPE_SLOTS
-  unlikely(Py_TYPE(((PyObject *)__pyx_v_self)) != __pyx_mstate_global->__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator &&
+  unlikely(Py_TYPE(((PyObject *)__pyx_v_self)) != __pyx_mstate_global->__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator &&
   __Pyx_PyType_HasFeature(Py_TYPE(((PyObject *)__pyx_v_self)), Py_TPFLAGS_HAVE_GC))
   #else
   unlikely(Py_TYPE(((PyObject *)__pyx_v_self))->tp_dictoffset != 0 || __Pyx_PyType_HasFeature(Py_TYPE(((PyObject *)__pyx_v_self)), (Py_TPFLAGS_IS_ABSTRACT | Py_TPFLAGS_HEAPTYPE)))
@@ -2986,7 +2986,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
       #endif
       __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_mstate_global->__pyx_n_u_evaluate_with_leaf_info); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 63, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
-      if (!__Pyx_IsSameCFunction(__pyx_t_1, (void(*)(void)) __pyx_pw_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_1evaluate_with_leaf_info)) {
+      if (!__Pyx_IsSameCFunction(__pyx_t_1, (void(*)(void)) __pyx_pw_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_1evaluate_with_leaf_info)) {
         __Pyx_XDECREF(__pyx_r);
         __pyx_t_3 = NULL;
         __Pyx_INCREF(__pyx_t_1);
@@ -3029,7 +3029,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
     #endif
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":64
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":64
  * 
  *     cpdef object evaluate_with_leaf_info(self, object node, object leafs_info, object leafs_value):
  *         dict_index_to_value = {}             # <<<<<<<<<<<<<<
@@ -3041,7 +3041,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
   __pyx_v_dict_index_to_value = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":65
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":65
  *     cpdef object evaluate_with_leaf_info(self, object node, object leafs_info, object leafs_value):
  *         dict_index_to_value = {}
  *         for leaf_info, leaf_value in zip(leafs_info, leafs_value):             # <<<<<<<<<<<<<<
@@ -3165,7 +3165,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
     __Pyx_XDECREF_SET(__pyx_v_leaf_value, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":66
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":66
  *         dict_index_to_value = {}
  *         for leaf_info, leaf_value in zip(leafs_info, leafs_value):
  *             if leaf_info.ast.ast_index is not None:             # <<<<<<<<<<<<<<
@@ -3181,7 +3181,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     if (__pyx_t_10) {
 
-      /* "d810/speedups/expr/ast_evaluate.pyx":67
+      /* "d810/speedups/expr/c_ast_evaluate.pyx":67
  *         for leaf_info, leaf_value in zip(leafs_info, leafs_value):
  *             if leaf_info.ast.ast_index is not None:
  *                 dict_index_to_value[leaf_info.ast.ast_index] = leaf_value             # <<<<<<<<<<<<<<
@@ -3196,7 +3196,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
       if (unlikely((PyDict_SetItem(__pyx_v_dict_index_to_value, __pyx_t_1, __pyx_v_leaf_value) < 0))) __PYX_ERR(0, 67, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-      /* "d810/speedups/expr/ast_evaluate.pyx":66
+      /* "d810/speedups/expr/c_ast_evaluate.pyx":66
  *         dict_index_to_value = {}
  *         for leaf_info, leaf_value in zip(leafs_info, leafs_value):
  *             if leaf_info.ast.ast_index is not None:             # <<<<<<<<<<<<<<
@@ -3205,7 +3205,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
 */
     }
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":65
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":65
  *     cpdef object evaluate_with_leaf_info(self, object node, object leafs_info, object leafs_value):
  *         dict_index_to_value = {}
  *         for leaf_info, leaf_value in zip(leafs_info, leafs_value):             # <<<<<<<<<<<<<<
@@ -3215,7 +3215,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
   }
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":68
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":68
  *             if leaf_info.ast.ast_index is not None:
  *                 dict_index_to_value[leaf_info.ast.ast_index] = leaf_value
  *         return self.evaluate(node, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -3223,13 +3223,13 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
  *     cpdef object evaluate(self, object node, dict dict_index_to_value):
 */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_4 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_v_node, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 68, __pyx_L1_error)
+  __pyx_t_4 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_v_node, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 68, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __pyx_r = __pyx_t_4;
   __pyx_t_4 = 0;
   goto __pyx_L0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":63
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":63
  *     """
  * 
  *     cpdef object evaluate_with_leaf_info(self, object node, object leafs_info, object leafs_value):             # <<<<<<<<<<<<<<
@@ -3244,7 +3244,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
   __Pyx_XDECREF(__pyx_t_3);
   __Pyx_XDECREF(__pyx_t_4);
   __Pyx_XDECREF(__pyx_t_8);
-  __Pyx_AddTraceback("d810.speedups.expr.ast_evaluate.AstEvaluator.evaluate_with_leaf_info", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("d810.speedups.expr.c_ast_evaluate.AstEvaluator.evaluate_with_leaf_info", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = 0;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_dict_index_to_value);
@@ -3256,16 +3256,16 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
 }
 
 /* Python wrapper */
-static PyObject *__pyx_pw_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_1evaluate_with_leaf_info(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_1evaluate_with_leaf_info(PyObject *__pyx_v_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-PyDoc_STRVAR(__pyx_doc_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_evaluate_with_leaf_info, "AstEvaluator.evaluate_with_leaf_info(self, node, leafs_info, leafs_value)");
-static PyMethodDef __pyx_mdef_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_1evaluate_with_leaf_info = {"evaluate_with_leaf_info", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_1evaluate_with_leaf_info, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_evaluate_with_leaf_info};
-static PyObject *__pyx_pw_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_1evaluate_with_leaf_info(PyObject *__pyx_v_self, 
+PyDoc_STRVAR(__pyx_doc_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_evaluate_with_leaf_info, "AstEvaluator.evaluate_with_leaf_info(self, node, leafs_info, leafs_value)");
+static PyMethodDef __pyx_mdef_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_1evaluate_with_leaf_info = {"evaluate_with_leaf_info", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_1evaluate_with_leaf_info, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_evaluate_with_leaf_info};
+static PyObject *__pyx_pw_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_1evaluate_with_leaf_info(PyObject *__pyx_v_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -3343,11 +3343,11 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
     Py_XDECREF(values[__pyx_temp]);
   }
-  __Pyx_AddTraceback("d810.speedups.expr.ast_evaluate.AstEvaluator.evaluate_with_leaf_info", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("d810.speedups.expr.c_ast_evaluate.AstEvaluator.evaluate_with_leaf_info", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  __pyx_r = __pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_evaluate_with_leaf_info(((struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self), __pyx_v_node, __pyx_v_leafs_info, __pyx_v_leafs_value);
+  __pyx_r = __pyx_pf_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_evaluate_with_leaf_info(((struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self), __pyx_v_node, __pyx_v_leafs_info, __pyx_v_leafs_value);
 
   /* function exit code */
   for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
@@ -3357,7 +3357,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_evaluate_with_leaf_info(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_node, PyObject *__pyx_v_leafs_info, PyObject *__pyx_v_leafs_value) {
+static PyObject *__pyx_pf_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_evaluate_with_leaf_info(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_node, PyObject *__pyx_v_leafs_info, PyObject *__pyx_v_leafs_value) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -3366,7 +3366,7 @@ static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_ev
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("evaluate_with_leaf_info", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_evaluate_with_leaf_info(__pyx_v_self, __pyx_v_node, __pyx_v_leafs_info, __pyx_v_leafs_value, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 63, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_evaluate_with_leaf_info(__pyx_v_self, __pyx_v_node, __pyx_v_leafs_info, __pyx_v_leafs_value, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 63, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -3375,7 +3375,7 @@ static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_ev
   /* function exit code */
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_1);
-  __Pyx_AddTraceback("d810.speedups.expr.ast_evaluate.AstEvaluator.evaluate_with_leaf_info", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("d810.speedups.expr.c_ast_evaluate.AstEvaluator.evaluate_with_leaf_info", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XGIVEREF(__pyx_r);
@@ -3383,7 +3383,7 @@ static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_ev
   return __pyx_r;
 }
 
-/* "d810/speedups/expr/ast_evaluate.pyx":70
+/* "d810/speedups/expr/c_ast_evaluate.pyx":70
  *         return self.evaluate(node, dict_index_to_value)
  * 
  *     cpdef object evaluate(self, object node, dict dict_index_to_value):             # <<<<<<<<<<<<<<
@@ -3391,14 +3391,14 @@ static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_ev
  *             return self._eval_node(node, dict_index_to_value)
 */
 
-static PyObject *__pyx_pw_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_3evaluate(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_3evaluate(PyObject *__pyx_v_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_evaluate(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_node, PyObject *__pyx_v_dict_index_to_value, int __pyx_skip_dispatch) {
+static PyObject *__pyx_f_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_evaluate(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_node, PyObject *__pyx_v_dict_index_to_value, int __pyx_skip_dispatch) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -3417,7 +3417,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
   /* Check if overridden in Python */
   else if (
   #if !CYTHON_USE_TYPE_SLOTS
-  unlikely(Py_TYPE(((PyObject *)__pyx_v_self)) != __pyx_mstate_global->__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator &&
+  unlikely(Py_TYPE(((PyObject *)__pyx_v_self)) != __pyx_mstate_global->__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator &&
   __Pyx_PyType_HasFeature(Py_TYPE(((PyObject *)__pyx_v_self)), Py_TPFLAGS_HAVE_GC))
   #else
   unlikely(Py_TYPE(((PyObject *)__pyx_v_self))->tp_dictoffset != 0 || __Pyx_PyType_HasFeature(Py_TYPE(((PyObject *)__pyx_v_self)), (Py_TPFLAGS_IS_ABSTRACT | Py_TPFLAGS_HEAPTYPE)))
@@ -3430,7 +3430,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
       #endif
       __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_mstate_global->__pyx_n_u_evaluate); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 70, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
-      if (!__Pyx_IsSameCFunction(__pyx_t_1, (void(*)(void)) __pyx_pw_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_3evaluate)) {
+      if (!__Pyx_IsSameCFunction(__pyx_t_1, (void(*)(void)) __pyx_pw_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_3evaluate)) {
         __Pyx_XDECREF(__pyx_r);
         __pyx_t_3 = NULL;
         __Pyx_INCREF(__pyx_t_1);
@@ -3473,7 +3473,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
     #endif
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":71
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":71
  * 
  *     cpdef object evaluate(self, object node, dict dict_index_to_value):
  *         if isinstance(node, AstNode):             # <<<<<<<<<<<<<<
@@ -3486,7 +3486,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   if (__pyx_t_6) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":72
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":72
  *     cpdef object evaluate(self, object node, dict dict_index_to_value):
  *         if isinstance(node, AstNode):
  *             return self._eval_node(node, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -3494,13 +3494,13 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
  *             return self._eval_leaf(node, dict_index_to_value)
 */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_1 = __pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator__eval_node(__pyx_v_self, __pyx_v_node, __pyx_v_dict_index_to_value); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 72, __pyx_L1_error)
+    __pyx_t_1 = __pyx_f_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator__eval_node(__pyx_v_self, __pyx_v_node, __pyx_v_dict_index_to_value); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 72, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __pyx_r = __pyx_t_1;
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":71
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":71
  * 
  *     cpdef object evaluate(self, object node, dict dict_index_to_value):
  *         if isinstance(node, AstNode):             # <<<<<<<<<<<<<<
@@ -3509,7 +3509,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":73
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":73
  *         if isinstance(node, AstNode):
  *             return self._eval_node(node, dict_index_to_value)
  *         if isinstance(node, AstLeaf):             # <<<<<<<<<<<<<<
@@ -3522,7 +3522,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   if (__pyx_t_6) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":74
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":74
  *             return self._eval_node(node, dict_index_to_value)
  *         if isinstance(node, AstLeaf):
  *             return self._eval_leaf(node, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -3530,13 +3530,13 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
  *             return self.evaluate(node._target, dict_index_to_value)
 */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_1 = __pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator__eval_leaf(__pyx_v_self, __pyx_v_node, __pyx_v_dict_index_to_value); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 74, __pyx_L1_error)
+    __pyx_t_1 = __pyx_f_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator__eval_leaf(__pyx_v_self, __pyx_v_node, __pyx_v_dict_index_to_value); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 74, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __pyx_r = __pyx_t_1;
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":73
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":73
  *         if isinstance(node, AstNode):
  *             return self._eval_node(node, dict_index_to_value)
  *         if isinstance(node, AstLeaf):             # <<<<<<<<<<<<<<
@@ -3545,7 +3545,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":75
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":75
  *         if isinstance(node, AstLeaf):
  *             return self._eval_leaf(node, dict_index_to_value)
  *         if isinstance(node, AstProxy):             # <<<<<<<<<<<<<<
@@ -3558,7 +3558,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   if (__pyx_t_6) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":76
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":76
  *             return self._eval_leaf(node, dict_index_to_value)
  *         if isinstance(node, AstProxy):
  *             return self.evaluate(node._target, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -3568,14 +3568,14 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
     __Pyx_XDECREF(__pyx_r);
     __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_target); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 76, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_2 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_1, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 76, __pyx_L1_error)
+    __pyx_t_2 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_1, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 76, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __pyx_r = __pyx_t_2;
     __pyx_t_2 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":75
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":75
  *         if isinstance(node, AstLeaf):
  *             return self._eval_leaf(node, dict_index_to_value)
  *         if isinstance(node, AstProxy):             # <<<<<<<<<<<<<<
@@ -3584,7 +3584,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":77
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":77
  *         if isinstance(node, AstProxy):
  *             return self.evaluate(node._target, dict_index_to_value)
  *         raise AstEvaluationException(             # <<<<<<<<<<<<<<
@@ -3595,7 +3595,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
   __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_AstEvaluationException); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":78
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":78
  *             return self.evaluate(node._target, dict_index_to_value)
  *         raise AstEvaluationException(
  *             f"Unsupported AST node type: {type(node).__name__}"             # <<<<<<<<<<<<<<
@@ -3635,7 +3635,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __PYX_ERR(0, 77, __pyx_L1_error)
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":70
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":70
  *         return self.evaluate(node, dict_index_to_value)
  * 
  *     cpdef object evaluate(self, object node, dict dict_index_to_value):             # <<<<<<<<<<<<<<
@@ -3650,7 +3650,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
   __Pyx_XDECREF(__pyx_t_3);
   __Pyx_XDECREF(__pyx_t_4);
   __Pyx_XDECREF(__pyx_t_7);
-  __Pyx_AddTraceback("d810.speedups.expr.ast_evaluate.AstEvaluator.evaluate", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("d810.speedups.expr.c_ast_evaluate.AstEvaluator.evaluate", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = 0;
   __pyx_L0:;
   __Pyx_XGIVEREF(__pyx_r);
@@ -3659,16 +3659,16 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_eva
 }
 
 /* Python wrapper */
-static PyObject *__pyx_pw_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_3evaluate(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_3evaluate(PyObject *__pyx_v_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-PyDoc_STRVAR(__pyx_doc_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_2evaluate, "AstEvaluator.evaluate(self, node, dict dict_index_to_value)");
-static PyMethodDef __pyx_mdef_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_3evaluate = {"evaluate", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_3evaluate, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_2evaluate};
-static PyObject *__pyx_pw_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_3evaluate(PyObject *__pyx_v_self, 
+PyDoc_STRVAR(__pyx_doc_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_2evaluate, "AstEvaluator.evaluate(self, node, dict dict_index_to_value)");
+static PyMethodDef __pyx_mdef_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_3evaluate = {"evaluate", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_3evaluate, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_2evaluate};
+static PyObject *__pyx_pw_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_3evaluate(PyObject *__pyx_v_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -3738,12 +3738,12 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
     Py_XDECREF(values[__pyx_temp]);
   }
-  __Pyx_AddTraceback("d810.speedups.expr.ast_evaluate.AstEvaluator.evaluate", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("d810.speedups.expr.c_ast_evaluate.AstEvaluator.evaluate", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_dict_index_to_value), (&PyDict_Type), 1, "dict_index_to_value", 1))) __PYX_ERR(0, 70, __pyx_L1_error)
-  __pyx_r = __pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_2evaluate(((struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self), __pyx_v_node, __pyx_v_dict_index_to_value);
+  __pyx_r = __pyx_pf_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_2evaluate(((struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self), __pyx_v_node, __pyx_v_dict_index_to_value);
 
   /* function exit code */
   goto __pyx_L0;
@@ -3762,7 +3762,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_2evaluate(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_node, PyObject *__pyx_v_dict_index_to_value) {
+static PyObject *__pyx_pf_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_2evaluate(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_node, PyObject *__pyx_v_dict_index_to_value) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -3771,7 +3771,7 @@ static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_2e
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("evaluate", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_evaluate(__pyx_v_self, __pyx_v_node, __pyx_v_dict_index_to_value, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 70, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_evaluate(__pyx_v_self, __pyx_v_node, __pyx_v_dict_index_to_value, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 70, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -3780,7 +3780,7 @@ static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_2e
   /* function exit code */
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_1);
-  __Pyx_AddTraceback("d810.speedups.expr.ast_evaluate.AstEvaluator.evaluate", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("d810.speedups.expr.c_ast_evaluate.AstEvaluator.evaluate", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XGIVEREF(__pyx_r);
@@ -3788,7 +3788,7 @@ static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_2e
   return __pyx_r;
 }
 
-/* "d810/speedups/expr/ast_evaluate.pyx":81
+/* "d810/speedups/expr/c_ast_evaluate.pyx":81
  *         )
  * 
  *     cdef inline object _eval_leaf(self, object leaf, dict dict_index_to_value):             # <<<<<<<<<<<<<<
@@ -3796,7 +3796,7 @@ static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_2e
  *         if isinstance(leaf, AstConstant):
 */
 
-static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator__eval_leaf(CYTHON_UNUSED struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_leaf, PyObject *__pyx_v_dict_index_to_value) {
+static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator__eval_leaf(CYTHON_UNUSED struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_leaf, PyObject *__pyx_v_dict_index_to_value) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -3810,7 +3810,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("_eval_leaf", 0);
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":83
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":83
  *     cdef inline object _eval_leaf(self, object leaf, dict dict_index_to_value):
  *         # AstConstant: prefer concrete mop value, otherwise fall back to expected_value
  *         if isinstance(leaf, AstConstant):             # <<<<<<<<<<<<<<
@@ -3823,7 +3823,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":84
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":84
  *         # AstConstant: prefer concrete mop value, otherwise fall back to expected_value
  *         if isinstance(leaf, AstConstant):
  *             if leaf.mop is not None and leaf.mop.t == ida_hexrays.mop_n:             # <<<<<<<<<<<<<<
@@ -3858,7 +3858,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_L5_bool_binop_done:;
     if (__pyx_t_2) {
 
-      /* "d810/speedups/expr/ast_evaluate.pyx":85
+      /* "d810/speedups/expr/c_ast_evaluate.pyx":85
  *         if isinstance(leaf, AstConstant):
  *             if leaf.mop is not None and leaf.mop.t == ida_hexrays.mop_n:
  *                 return leaf.mop.nnn.value             # <<<<<<<<<<<<<<
@@ -3878,7 +3878,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
       __pyx_t_1 = 0;
       goto __pyx_L0;
 
-      /* "d810/speedups/expr/ast_evaluate.pyx":84
+      /* "d810/speedups/expr/c_ast_evaluate.pyx":84
  *         # AstConstant: prefer concrete mop value, otherwise fall back to expected_value
  *         if isinstance(leaf, AstConstant):
  *             if leaf.mop is not None and leaf.mop.t == ida_hexrays.mop_n:             # <<<<<<<<<<<<<<
@@ -3887,7 +3887,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     }
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":86
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":86
  *             if leaf.mop is not None and leaf.mop.t == ida_hexrays.mop_n:
  *                 return leaf.mop.nnn.value
  *             return leaf.expected_value             # <<<<<<<<<<<<<<
@@ -3901,7 +3901,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":83
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":83
  *     cdef inline object _eval_leaf(self, object leaf, dict dict_index_to_value):
  *         # AstConstant: prefer concrete mop value, otherwise fall back to expected_value
  *         if isinstance(leaf, AstConstant):             # <<<<<<<<<<<<<<
@@ -3910,7 +3910,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":88
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":88
  *             return leaf.expected_value
  * 
  *         if leaf.is_constant() and leaf.mop is not None:             # <<<<<<<<<<<<<<
@@ -3942,7 +3942,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L8_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":89
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":89
  * 
  *         if leaf.is_constant() and leaf.mop is not None:
  *             return leaf.mop.nnn.value             # <<<<<<<<<<<<<<
@@ -3962,7 +3962,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":88
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":88
  *             return leaf.expected_value
  * 
  *         if leaf.is_constant() and leaf.mop is not None:             # <<<<<<<<<<<<<<
@@ -3971,7 +3971,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":90
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":90
  *         if leaf.is_constant() and leaf.mop is not None:
  *             return leaf.mop.nnn.value
  *         assert leaf.ast_index is not None             # <<<<<<<<<<<<<<
@@ -3993,7 +3993,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   if ((1)); else __PYX_ERR(0, 90, __pyx_L1_error)
   #endif
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":91
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":91
  *             return leaf.mop.nnn.value
  *         assert leaf.ast_index is not None
  *         return dict_index_to_value.get(leaf.ast_index)             # <<<<<<<<<<<<<<
@@ -4014,7 +4014,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_t_5 = 0;
   goto __pyx_L0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":81
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":81
  *         )
  * 
  *     cdef inline object _eval_leaf(self, object leaf, dict dict_index_to_value):             # <<<<<<<<<<<<<<
@@ -4027,7 +4027,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __Pyx_XDECREF(__pyx_t_1);
   __Pyx_XDECREF(__pyx_t_4);
   __Pyx_XDECREF(__pyx_t_5);
-  __Pyx_AddTraceback("d810.speedups.expr.ast_evaluate.AstEvaluator._eval_leaf", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("d810.speedups.expr.c_ast_evaluate.AstEvaluator._eval_leaf", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = 0;
   __pyx_L0:;
   __Pyx_XGIVEREF(__pyx_r);
@@ -4035,7 +4035,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   return __pyx_r;
 }
 
-/* "d810/speedups/expr/ast_evaluate.pyx":93
+/* "d810/speedups/expr/c_ast_evaluate.pyx":93
  *         return dict_index_to_value.get(leaf.ast_index)
  * 
  *     cdef inline object _eval_node(self, object node, dict dict_index_to_value):             # <<<<<<<<<<<<<<
@@ -4043,7 +4043,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
  *             return dict_index_to_value[node.ast_index]
 */
 
-static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator__eval_node(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_node, PyObject *__pyx_v_dict_index_to_value) {
+static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator__eval_node(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v_node, PyObject *__pyx_v_dict_index_to_value) {
   PyObject *__pyx_v_res_mask = NULL;
   PyObject *__pyx_v_left_value_signed = NULL;
   PyObject *__pyx_v_shift_bits = NULL;
@@ -4069,7 +4069,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("_eval_node", 0);
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":94
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":94
  * 
  *     cdef inline object _eval_node(self, object node, dict dict_index_to_value):
  *         if node.ast_index in dict_index_to_value:             # <<<<<<<<<<<<<<
@@ -4086,7 +4086,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":95
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":95
  *     cdef inline object _eval_node(self, object node, dict dict_index_to_value):
  *         if node.ast_index in dict_index_to_value:
  *             return dict_index_to_value[node.ast_index]             # <<<<<<<<<<<<<<
@@ -4107,7 +4107,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_3 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":94
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":94
  * 
  *     cdef inline object _eval_node(self, object node, dict dict_index_to_value):
  *         if node.ast_index in dict_index_to_value:             # <<<<<<<<<<<<<<
@@ -4116,7 +4116,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":96
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":96
  *         if node.ast_index in dict_index_to_value:
  *             return dict_index_to_value[node.ast_index]
  *         if node.dest_size is None:             # <<<<<<<<<<<<<<
@@ -4129,7 +4129,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   if (unlikely(__pyx_t_2)) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":97
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":97
  *             return dict_index_to_value[node.ast_index]
  *         if node.dest_size is None:
  *             raise ValueError("dest_size is None")             # <<<<<<<<<<<<<<
@@ -4152,7 +4152,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __PYX_ERR(0, 97, __pyx_L1_error)
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":96
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":96
  *         if node.ast_index in dict_index_to_value:
  *             return dict_index_to_value[node.ast_index]
  *         if node.dest_size is None:             # <<<<<<<<<<<<<<
@@ -4161,7 +4161,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":99
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":99
  *             raise ValueError("dest_size is None")
  * 
  *         res_mask = AND_TABLE[node.dest_size]             # <<<<<<<<<<<<<<
@@ -4179,7 +4179,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_v_res_mask = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":101
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":101
  *         res_mask = AND_TABLE[node.dest_size]
  * 
  *         if node.left is None:             # <<<<<<<<<<<<<<
@@ -4192,7 +4192,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   if (unlikely(__pyx_t_2)) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":102
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":102
  * 
  *         if node.left is None:
  *             raise ValueError(f"left is None for opcode: {node.opcode}")             # <<<<<<<<<<<<<<
@@ -4224,7 +4224,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __PYX_ERR(0, 102, __pyx_L1_error)
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":101
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":101
  *         res_mask = AND_TABLE[node.dest_size]
  * 
  *         if node.left is None:             # <<<<<<<<<<<<<<
@@ -4233,7 +4233,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":104
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":104
  *             raise ValueError(f"left is None for opcode: {node.opcode}")
  * 
  *         if node.opcode in _BINARY_OPCODES and node.right is None:             # <<<<<<<<<<<<<<
@@ -4242,7 +4242,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_opcode); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 104, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_8 = (__Pyx_PySequence_ContainsTF(__pyx_t_1, __pyx_v_4d810_8speedups_4expr_12ast_evaluate__BINARY_OPCODES, Py_EQ)); if (unlikely((__pyx_t_8 < 0))) __PYX_ERR(0, 104, __pyx_L1_error)
+  __pyx_t_8 = (__Pyx_PySequence_ContainsTF(__pyx_t_1, __pyx_v_4d810_8speedups_4expr_14c_ast_evaluate__BINARY_OPCODES, Py_EQ)); if (unlikely((__pyx_t_8 < 0))) __PYX_ERR(0, 104, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   if (__pyx_t_8) {
   } else {
@@ -4257,7 +4257,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L7_bool_binop_done:;
   if (unlikely(__pyx_t_2)) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":105
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":105
  * 
  *         if node.opcode in _BINARY_OPCODES and node.right is None:
  *             raise ValueError("right is None for binary opcode: {0}".format(node.opcode))             # <<<<<<<<<<<<<<
@@ -4294,7 +4294,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __PYX_ERR(0, 105, __pyx_L1_error)
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":104
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":104
  *             raise ValueError(f"left is None for opcode: {node.opcode}")
  * 
  *         if node.opcode in _BINARY_OPCODES and node.right is None:             # <<<<<<<<<<<<<<
@@ -4303,7 +4303,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":107
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":107
  *             raise ValueError("right is None for binary opcode: {0}".format(node.opcode))
  * 
  *         if node.opcode == ida_hexrays.m_mov:             # <<<<<<<<<<<<<<
@@ -4324,7 +4324,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":108
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":108
  * 
  *         if node.opcode == ida_hexrays.m_mov:
  *             return (self.evaluate(node.left, dict_index_to_value)) & res_mask             # <<<<<<<<<<<<<<
@@ -4334,7 +4334,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_XDECREF(__pyx_r);
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 108, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_4 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 108, __pyx_L1_error)
+    __pyx_t_4 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 108, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_6 = PyNumber_And(__pyx_t_4, __pyx_v_res_mask); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 108, __pyx_L1_error)
@@ -4344,7 +4344,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_6 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":107
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":107
  *             raise ValueError("right is None for binary opcode: {0}".format(node.opcode))
  * 
  *         if node.opcode == ida_hexrays.m_mov:             # <<<<<<<<<<<<<<
@@ -4353,7 +4353,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":109
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":109
  *         if node.opcode == ida_hexrays.m_mov:
  *             return (self.evaluate(node.left, dict_index_to_value)) & res_mask
  *         elif node.opcode == ida_hexrays.m_neg:             # <<<<<<<<<<<<<<
@@ -4374,7 +4374,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":110
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":110
  *             return (self.evaluate(node.left, dict_index_to_value)) & res_mask
  *         elif node.opcode == ida_hexrays.m_neg:
  *             return (-self.evaluate(node.left, dict_index_to_value)) & res_mask             # <<<<<<<<<<<<<<
@@ -4384,7 +4384,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_XDECREF(__pyx_r);
     __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 110, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
-    __pyx_t_1 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_4, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 110, __pyx_L1_error)
+    __pyx_t_1 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_4, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 110, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __pyx_t_4 = PyNumber_Negative(__pyx_t_1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 110, __pyx_L1_error)
@@ -4397,7 +4397,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":109
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":109
  *         if node.opcode == ida_hexrays.m_mov:
  *             return (self.evaluate(node.left, dict_index_to_value)) & res_mask
  *         elif node.opcode == ida_hexrays.m_neg:             # <<<<<<<<<<<<<<
@@ -4406,7 +4406,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":111
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":111
  *         elif node.opcode == ida_hexrays.m_neg:
  *             return (-self.evaluate(node.left, dict_index_to_value)) & res_mask
  *         elif node.opcode == ida_hexrays.m_lnot:             # <<<<<<<<<<<<<<
@@ -4427,7 +4427,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":112
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":112
  *             return (-self.evaluate(node.left, dict_index_to_value)) & res_mask
  *         elif node.opcode == ida_hexrays.m_lnot:
  *             return self.evaluate(node.left, dict_index_to_value) != 0             # <<<<<<<<<<<<<<
@@ -4437,7 +4437,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_XDECREF(__pyx_r);
     __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 112, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
-    __pyx_t_6 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_4, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 112, __pyx_L1_error)
+    __pyx_t_6 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_4, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 112, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __pyx_t_4 = __Pyx_PyLong_NeObjC(__pyx_t_6, __pyx_mstate_global->__pyx_int_0, 0, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 112, __pyx_L1_error)
@@ -4447,7 +4447,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_4 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":111
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":111
  *         elif node.opcode == ida_hexrays.m_neg:
  *             return (-self.evaluate(node.left, dict_index_to_value)) & res_mask
  *         elif node.opcode == ida_hexrays.m_lnot:             # <<<<<<<<<<<<<<
@@ -4456,7 +4456,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":113
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":113
  *         elif node.opcode == ida_hexrays.m_lnot:
  *             return self.evaluate(node.left, dict_index_to_value) != 0
  *         elif node.opcode == ida_hexrays.m_bnot:             # <<<<<<<<<<<<<<
@@ -4477,7 +4477,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":114
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":114
  *             return self.evaluate(node.left, dict_index_to_value) != 0
  *         elif node.opcode == ida_hexrays.m_bnot:
  *             return (self.evaluate(node.left, dict_index_to_value) ^ res_mask) & res_mask             # <<<<<<<<<<<<<<
@@ -4487,7 +4487,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_XDECREF(__pyx_r);
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 114, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_1 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 114, __pyx_L1_error)
+    __pyx_t_1 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 114, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_6 = PyNumber_Xor(__pyx_t_1, __pyx_v_res_mask); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 114, __pyx_L1_error)
@@ -4500,7 +4500,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":113
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":113
  *         elif node.opcode == ida_hexrays.m_lnot:
  *             return self.evaluate(node.left, dict_index_to_value) != 0
  *         elif node.opcode == ida_hexrays.m_bnot:             # <<<<<<<<<<<<<<
@@ -4509,7 +4509,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":115
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":115
  *         elif node.opcode == ida_hexrays.m_bnot:
  *             return (self.evaluate(node.left, dict_index_to_value) ^ res_mask) & res_mask
  *         elif node.opcode == ida_hexrays.m_xds:             # <<<<<<<<<<<<<<
@@ -4530,7 +4530,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":116
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":116
  *             return (self.evaluate(node.left, dict_index_to_value) ^ res_mask) & res_mask
  *         elif node.opcode == ida_hexrays.m_xds:
  *             left_value_signed = unsigned_to_signed(             # <<<<<<<<<<<<<<
@@ -4541,7 +4541,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_GetModuleGlobalName(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_unsigned_to_signed); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 116, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":117
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":117
  *         elif node.opcode == ida_hexrays.m_xds:
  *             left_value_signed = unsigned_to_signed(
  *                 self.evaluate(node.left, dict_index_to_value), node.left.dest_size             # <<<<<<<<<<<<<<
@@ -4550,7 +4550,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 117, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_3, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 117, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_3, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 117, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 117, __pyx_L1_error)
@@ -4583,7 +4583,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_left_value_signed = __pyx_t_6;
     __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":119
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":119
  *                 self.evaluate(node.left, dict_index_to_value), node.left.dest_size
  *             )
  *             return signed_to_unsigned(left_value_signed, node.dest_size) & res_mask             # <<<<<<<<<<<<<<
@@ -4624,7 +4624,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_7 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":115
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":115
  *         elif node.opcode == ida_hexrays.m_bnot:
  *             return (self.evaluate(node.left, dict_index_to_value) ^ res_mask) & res_mask
  *         elif node.opcode == ida_hexrays.m_xds:             # <<<<<<<<<<<<<<
@@ -4633,7 +4633,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":120
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":120
  *             )
  *             return signed_to_unsigned(left_value_signed, node.dest_size) & res_mask
  *         elif node.opcode == ida_hexrays.m_xdu:             # <<<<<<<<<<<<<<
@@ -4654,7 +4654,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":121
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":121
  *             return signed_to_unsigned(left_value_signed, node.dest_size) & res_mask
  *         elif node.opcode == ida_hexrays.m_xdu:
  *             return (self.evaluate(node.left, dict_index_to_value)) & res_mask             # <<<<<<<<<<<<<<
@@ -4664,7 +4664,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_XDECREF(__pyx_r);
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 121, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 121, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 121, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_6 = PyNumber_And(__pyx_t_9, __pyx_v_res_mask); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 121, __pyx_L1_error)
@@ -4674,7 +4674,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_6 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":120
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":120
  *             )
  *             return signed_to_unsigned(left_value_signed, node.dest_size) & res_mask
  *         elif node.opcode == ida_hexrays.m_xdu:             # <<<<<<<<<<<<<<
@@ -4683,7 +4683,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":122
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":122
  *         elif node.opcode == ida_hexrays.m_xdu:
  *             return (self.evaluate(node.left, dict_index_to_value)) & res_mask
  *         elif node.opcode == ida_hexrays.m_low:             # <<<<<<<<<<<<<<
@@ -4704,7 +4704,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":123
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":123
  *             return (self.evaluate(node.left, dict_index_to_value)) & res_mask
  *         elif node.opcode == ida_hexrays.m_low:
  *             return (self.evaluate(node.left, dict_index_to_value)) & res_mask             # <<<<<<<<<<<<<<
@@ -4714,7 +4714,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_XDECREF(__pyx_r);
     __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 123, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
-    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_9, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 123, __pyx_L1_error)
+    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_9, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 123, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __pyx_t_9 = PyNumber_And(__pyx_t_7, __pyx_v_res_mask); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 123, __pyx_L1_error)
@@ -4724,7 +4724,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_9 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":122
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":122
  *         elif node.opcode == ida_hexrays.m_xdu:
  *             return (self.evaluate(node.left, dict_index_to_value)) & res_mask
  *         elif node.opcode == ida_hexrays.m_low:             # <<<<<<<<<<<<<<
@@ -4733,7 +4733,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":124
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":124
  *         elif node.opcode == ida_hexrays.m_low:
  *             return (self.evaluate(node.left, dict_index_to_value)) & res_mask
  *         elif node.opcode == ida_hexrays.m_high:             # <<<<<<<<<<<<<<
@@ -4754,7 +4754,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":125
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":125
  *             return (self.evaluate(node.left, dict_index_to_value)) & res_mask
  *         elif node.opcode == ida_hexrays.m_high:
  *             if node.left.dest_size is None:             # <<<<<<<<<<<<<<
@@ -4770,7 +4770,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     if (unlikely(__pyx_t_2)) {
 
-      /* "d810/speedups/expr/ast_evaluate.pyx":126
+      /* "d810/speedups/expr/c_ast_evaluate.pyx":126
  *         elif node.opcode == ida_hexrays.m_high:
  *             if node.left.dest_size is None:
  *                 raise ValueError("left.dest_size is None for m_high")             # <<<<<<<<<<<<<<
@@ -4793,7 +4793,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       __PYX_ERR(0, 126, __pyx_L1_error)
 
-      /* "d810/speedups/expr/ast_evaluate.pyx":125
+      /* "d810/speedups/expr/c_ast_evaluate.pyx":125
  *             return (self.evaluate(node.left, dict_index_to_value)) & res_mask
  *         elif node.opcode == ida_hexrays.m_high:
  *             if node.left.dest_size is None:             # <<<<<<<<<<<<<<
@@ -4802,7 +4802,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     }
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":127
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":127
  *             if node.left.dest_size is None:
  *                 raise ValueError("left.dest_size is None for m_high")
  *             shift_bits = node.dest_size * 8 if node.dest_size is not None else 0             # <<<<<<<<<<<<<<
@@ -4828,7 +4828,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_shift_bits = __pyx_t_6;
     __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":128
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":128
  *                 raise ValueError("left.dest_size is None for m_high")
  *             shift_bits = node.dest_size * 8 if node.dest_size is not None else 0
  *             return (             # <<<<<<<<<<<<<<
@@ -4837,7 +4837,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __Pyx_XDECREF(__pyx_r);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":129
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":129
  *             shift_bits = node.dest_size * 8 if node.dest_size is not None else 0
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value) >> shift_bits             # <<<<<<<<<<<<<<
@@ -4846,14 +4846,14 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 129, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 129, __pyx_L1_error)
+    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 129, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_6 = PyNumber_Rshift(__pyx_t_7, __pyx_v_shift_bits); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 129, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":130
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":130
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value) >> shift_bits
  *             ) & res_mask             # <<<<<<<<<<<<<<
@@ -4867,7 +4867,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_7 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":124
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":124
  *         elif node.opcode == ida_hexrays.m_low:
  *             return (self.evaluate(node.left, dict_index_to_value)) & res_mask
  *         elif node.opcode == ida_hexrays.m_high:             # <<<<<<<<<<<<<<
@@ -4876,7 +4876,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":131
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":131
  *                 self.evaluate(node.left, dict_index_to_value) >> shift_bits
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_add and node.right is not None:             # <<<<<<<<<<<<<<
@@ -4908,7 +4908,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L11_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":132
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":132
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_add and node.right is not None:
  *             return (             # <<<<<<<<<<<<<<
@@ -4917,7 +4917,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __Pyx_XDECREF(__pyx_r);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":133
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":133
  *         elif node.opcode == ida_hexrays.m_add and node.right is not None:
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -4926,11 +4926,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 133, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 133, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 133, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":134
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":134
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 + self.evaluate(node.right, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -4939,7 +4939,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 134, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 134, __pyx_L1_error)
+    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 134, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_6 = PyNumber_Add(__pyx_t_9, __pyx_t_7); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 134, __pyx_L1_error)
@@ -4947,7 +4947,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":135
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":135
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 + self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask             # <<<<<<<<<<<<<<
@@ -4961,7 +4961,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_7 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":131
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":131
  *                 self.evaluate(node.left, dict_index_to_value) >> shift_bits
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_add and node.right is not None:             # <<<<<<<<<<<<<<
@@ -4970,7 +4970,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":136
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":136
  *                 + self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_sub and node.right is not None:             # <<<<<<<<<<<<<<
@@ -5002,7 +5002,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L13_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":137
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":137
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_sub and node.right is not None:
  *             return (             # <<<<<<<<<<<<<<
@@ -5011,7 +5011,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __Pyx_XDECREF(__pyx_r);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":138
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":138
  *         elif node.opcode == ida_hexrays.m_sub and node.right is not None:
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5020,11 +5020,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 138, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 138, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 138, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":139
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":139
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 - self.evaluate(node.right, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5033,7 +5033,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 139, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 139, __pyx_L1_error)
+    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 139, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_6 = PyNumber_Subtract(__pyx_t_9, __pyx_t_7); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 139, __pyx_L1_error)
@@ -5041,7 +5041,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":140
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":140
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 - self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask             # <<<<<<<<<<<<<<
@@ -5055,7 +5055,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_7 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":136
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":136
  *                 + self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_sub and node.right is not None:             # <<<<<<<<<<<<<<
@@ -5064,7 +5064,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":141
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":141
  *                 - self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_mul and node.right is not None:             # <<<<<<<<<<<<<<
@@ -5096,7 +5096,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L15_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":142
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":142
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_mul and node.right is not None:
  *             return (             # <<<<<<<<<<<<<<
@@ -5105,7 +5105,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __Pyx_XDECREF(__pyx_r);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":143
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":143
  *         elif node.opcode == ida_hexrays.m_mul and node.right is not None:
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5114,11 +5114,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 143, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 143, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 143, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":144
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":144
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 * self.evaluate(node.right, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5127,7 +5127,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 144, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 144, __pyx_L1_error)
+    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 144, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_6 = PyNumber_Multiply(__pyx_t_9, __pyx_t_7); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 144, __pyx_L1_error)
@@ -5135,7 +5135,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":145
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":145
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 * self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask             # <<<<<<<<<<<<<<
@@ -5149,7 +5149,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_7 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":141
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":141
  *                 - self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_mul and node.right is not None:             # <<<<<<<<<<<<<<
@@ -5158,7 +5158,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":146
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":146
  *                 * self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_udiv and node.right is not None:             # <<<<<<<<<<<<<<
@@ -5190,7 +5190,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L17_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":147
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":147
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_udiv and node.right is not None:
  *             return (             # <<<<<<<<<<<<<<
@@ -5199,7 +5199,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __Pyx_XDECREF(__pyx_r);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":148
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":148
  *         elif node.opcode == ida_hexrays.m_udiv and node.right is not None:
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5208,11 +5208,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 148, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 148, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 148, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":149
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":149
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 // self.evaluate(node.right, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5221,7 +5221,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 149, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 149, __pyx_L1_error)
+    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 149, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_6 = PyNumber_FloorDivide(__pyx_t_9, __pyx_t_7); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 149, __pyx_L1_error)
@@ -5229,7 +5229,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":150
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":150
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 // self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask             # <<<<<<<<<<<<<<
@@ -5243,7 +5243,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_7 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":146
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":146
  *                 * self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_udiv and node.right is not None:             # <<<<<<<<<<<<<<
@@ -5252,7 +5252,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":151
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":151
  *                 // self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_sdiv and node.right is not None:             # <<<<<<<<<<<<<<
@@ -5284,7 +5284,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L19_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":152
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":152
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_sdiv and node.right is not None:
  *             return (             # <<<<<<<<<<<<<<
@@ -5293,7 +5293,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __Pyx_XDECREF(__pyx_r);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":153
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":153
  *         elif node.opcode == ida_hexrays.m_sdiv and node.right is not None:
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5302,11 +5302,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 153, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 153, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 153, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":154
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":154
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 // self.evaluate(node.right, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5315,7 +5315,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 154, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 154, __pyx_L1_error)
+    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 154, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_6 = PyNumber_FloorDivide(__pyx_t_9, __pyx_t_7); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 154, __pyx_L1_error)
@@ -5323,7 +5323,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":155
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":155
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 // self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask             # <<<<<<<<<<<<<<
@@ -5337,7 +5337,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_7 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":151
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":151
  *                 // self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_sdiv and node.right is not None:             # <<<<<<<<<<<<<<
@@ -5346,7 +5346,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":156
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":156
  *                 // self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_umod and node.right is not None:             # <<<<<<<<<<<<<<
@@ -5378,7 +5378,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L21_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":157
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":157
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_umod and node.right is not None:
  *             return (             # <<<<<<<<<<<<<<
@@ -5387,7 +5387,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __Pyx_XDECREF(__pyx_r);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":158
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":158
  *         elif node.opcode == ida_hexrays.m_umod and node.right is not None:
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5396,11 +5396,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 158, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 158, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 158, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":159
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":159
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 % self.evaluate(node.right, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5409,7 +5409,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 159, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 159, __pyx_L1_error)
+    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 159, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_6 = PyNumber_Remainder(__pyx_t_9, __pyx_t_7); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 159, __pyx_L1_error)
@@ -5417,7 +5417,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":160
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":160
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 % self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask             # <<<<<<<<<<<<<<
@@ -5431,7 +5431,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_7 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":156
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":156
  *                 // self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_umod and node.right is not None:             # <<<<<<<<<<<<<<
@@ -5440,7 +5440,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":161
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":161
  *                 % self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_smod and node.right is not None:             # <<<<<<<<<<<<<<
@@ -5472,7 +5472,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L23_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":162
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":162
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_smod and node.right is not None:
  *             return (             # <<<<<<<<<<<<<<
@@ -5481,7 +5481,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __Pyx_XDECREF(__pyx_r);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":163
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":163
  *         elif node.opcode == ida_hexrays.m_smod and node.right is not None:
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5490,11 +5490,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 163, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 163, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 163, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":164
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":164
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 % self.evaluate(node.right, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5503,7 +5503,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 164, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 164, __pyx_L1_error)
+    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 164, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_6 = PyNumber_Remainder(__pyx_t_9, __pyx_t_7); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 164, __pyx_L1_error)
@@ -5511,7 +5511,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":165
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":165
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 % self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask             # <<<<<<<<<<<<<<
@@ -5525,7 +5525,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_7 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":161
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":161
  *                 % self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_smod and node.right is not None:             # <<<<<<<<<<<<<<
@@ -5534,7 +5534,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":166
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":166
  *                 % self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_or and node.right is not None:             # <<<<<<<<<<<<<<
@@ -5566,7 +5566,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L25_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":167
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":167
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_or and node.right is not None:
  *             return (             # <<<<<<<<<<<<<<
@@ -5575,7 +5575,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __Pyx_XDECREF(__pyx_r);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":168
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":168
  *         elif node.opcode == ida_hexrays.m_or and node.right is not None:
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5584,11 +5584,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 168, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 168, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 168, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":169
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":169
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 | self.evaluate(node.right, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5597,7 +5597,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 169, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 169, __pyx_L1_error)
+    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 169, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_6 = PyNumber_Or(__pyx_t_9, __pyx_t_7); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 169, __pyx_L1_error)
@@ -5605,7 +5605,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":170
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":170
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 | self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask             # <<<<<<<<<<<<<<
@@ -5619,7 +5619,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_7 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":166
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":166
  *                 % self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_or and node.right is not None:             # <<<<<<<<<<<<<<
@@ -5628,7 +5628,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":171
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":171
  *                 | self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_and and node.right is not None:             # <<<<<<<<<<<<<<
@@ -5660,7 +5660,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L27_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":172
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":172
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_and and node.right is not None:
  *             return (             # <<<<<<<<<<<<<<
@@ -5669,7 +5669,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __Pyx_XDECREF(__pyx_r);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":173
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":173
  *         elif node.opcode == ida_hexrays.m_and and node.right is not None:
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5678,11 +5678,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 173, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 173, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 173, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":174
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":174
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 & self.evaluate(node.right, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5691,7 +5691,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 174, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 174, __pyx_L1_error)
+    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 174, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_6 = PyNumber_And(__pyx_t_9, __pyx_t_7); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 174, __pyx_L1_error)
@@ -5699,7 +5699,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":175
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":175
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 & self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask             # <<<<<<<<<<<<<<
@@ -5713,7 +5713,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_7 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":171
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":171
  *                 | self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_and and node.right is not None:             # <<<<<<<<<<<<<<
@@ -5722,7 +5722,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":176
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":176
  *                 & self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_xor and node.right is not None:             # <<<<<<<<<<<<<<
@@ -5754,7 +5754,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L29_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":177
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":177
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_xor and node.right is not None:
  *             return (             # <<<<<<<<<<<<<<
@@ -5763,7 +5763,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __Pyx_XDECREF(__pyx_r);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":178
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":178
  *         elif node.opcode == ida_hexrays.m_xor and node.right is not None:
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5772,11 +5772,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 178, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 178, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 178, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":179
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":179
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 ^ self.evaluate(node.right, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5785,7 +5785,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 179, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 179, __pyx_L1_error)
+    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 179, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_6 = PyNumber_Xor(__pyx_t_9, __pyx_t_7); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 179, __pyx_L1_error)
@@ -5793,7 +5793,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":180
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":180
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 ^ self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask             # <<<<<<<<<<<<<<
@@ -5807,7 +5807,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_7 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":176
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":176
  *                 & self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_xor and node.right is not None:             # <<<<<<<<<<<<<<
@@ -5816,7 +5816,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":181
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":181
  *                 ^ self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_shl and node.right is not None:             # <<<<<<<<<<<<<<
@@ -5848,7 +5848,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L31_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":182
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":182
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_shl and node.right is not None:
  *             return (             # <<<<<<<<<<<<<<
@@ -5857,7 +5857,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __Pyx_XDECREF(__pyx_r);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":183
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":183
  *         elif node.opcode == ida_hexrays.m_shl and node.right is not None:
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5866,11 +5866,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 183, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 183, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 183, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":184
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":184
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 << self.evaluate(node.right, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5879,7 +5879,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 184, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 184, __pyx_L1_error)
+    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 184, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_6 = PyNumber_Lshift(__pyx_t_9, __pyx_t_7); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 184, __pyx_L1_error)
@@ -5887,7 +5887,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":185
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":185
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 << self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask             # <<<<<<<<<<<<<<
@@ -5901,7 +5901,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_7 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":181
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":181
  *                 ^ self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_shl and node.right is not None:             # <<<<<<<<<<<<<<
@@ -5910,7 +5910,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":186
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":186
  *                 << self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_shr and node.right is not None:             # <<<<<<<<<<<<<<
@@ -5942,7 +5942,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L33_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":187
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":187
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_shr and node.right is not None:
  *             return (             # <<<<<<<<<<<<<<
@@ -5951,7 +5951,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __Pyx_XDECREF(__pyx_r);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":188
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":188
  *         elif node.opcode == ida_hexrays.m_shr and node.right is not None:
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5960,11 +5960,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 188, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 188, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 188, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":189
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":189
  *             return (
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 >> self.evaluate(node.right, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -5973,7 +5973,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 189, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 189, __pyx_L1_error)
+    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 189, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_6 = PyNumber_Rshift(__pyx_t_9, __pyx_t_7); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 189, __pyx_L1_error)
@@ -5981,7 +5981,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":190
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":190
  *                 self.evaluate(node.left, dict_index_to_value)
  *                 >> self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask             # <<<<<<<<<<<<<<
@@ -5995,7 +5995,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_7 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":186
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":186
  *                 << self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_shr and node.right is not None:             # <<<<<<<<<<<<<<
@@ -6004,7 +6004,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":191
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":191
  *                 >> self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_sar and node.right is not None:             # <<<<<<<<<<<<<<
@@ -6036,7 +6036,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L35_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":192
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":192
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_sar and node.right is not None:
  *             left_value_signed = unsigned_to_signed(             # <<<<<<<<<<<<<<
@@ -6047,7 +6047,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_GetModuleGlobalName(__pyx_t_7, __pyx_mstate_global->__pyx_n_u_unsigned_to_signed); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 192, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":193
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":193
  *         elif node.opcode == ida_hexrays.m_sar and node.right is not None:
  *             left_value_signed = unsigned_to_signed(
  *                 self.evaluate(node.left, dict_index_to_value), node.left.dest_size             # <<<<<<<<<<<<<<
@@ -6056,7 +6056,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 193, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_4 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_1, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 193, __pyx_L1_error)
+    __pyx_t_4 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_1, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 193, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 193, __pyx_L1_error)
@@ -6089,7 +6089,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_left_value_signed = __pyx_t_6;
     __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":196
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":196
  *             )
  *             res_signed = left_value_signed >> self.evaluate(
  *                 node.right, dict_index_to_value             # <<<<<<<<<<<<<<
@@ -6099,14 +6099,14 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 196, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":195
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":195
  *                 self.evaluate(node.left, dict_index_to_value), node.left.dest_size
  *             )
  *             res_signed = left_value_signed >> self.evaluate(             # <<<<<<<<<<<<<<
  *                 node.right, dict_index_to_value
  *             )
 */
-    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 195, __pyx_L1_error)
+    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 195, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_6 = PyNumber_Rshift(__pyx_v_left_value_signed, __pyx_t_7); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 195, __pyx_L1_error)
@@ -6115,7 +6115,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_res_signed = __pyx_t_6;
     __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":198
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":198
  *                 node.right, dict_index_to_value
  *             )
  *             return signed_to_unsigned(res_signed, node.dest_size) & res_mask             # <<<<<<<<<<<<<<
@@ -6156,7 +6156,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_3 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":191
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":191
  *                 >> self.evaluate(node.right, dict_index_to_value)
  *             ) & res_mask
  *         elif node.opcode == ida_hexrays.m_sar and node.right is not None:             # <<<<<<<<<<<<<<
@@ -6165,7 +6165,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":199
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":199
  *             )
  *             return signed_to_unsigned(res_signed, node.dest_size) & res_mask
  *         elif node.opcode == ida_hexrays.m_cfadd and node.right is not None:             # <<<<<<<<<<<<<<
@@ -6197,7 +6197,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L37_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":200
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":200
  *             return signed_to_unsigned(res_signed, node.dest_size) & res_mask
  *         elif node.opcode == ida_hexrays.m_cfadd and node.right is not None:
  *             tmp = get_add_cf(             # <<<<<<<<<<<<<<
@@ -6208,7 +6208,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_get_add_cf); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 200, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":201
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":201
  *         elif node.opcode == ida_hexrays.m_cfadd and node.right is not None:
  *             tmp = get_add_cf(
  *                 self.evaluate(node.left, dict_index_to_value),             # <<<<<<<<<<<<<<
@@ -6217,11 +6217,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 201, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_7, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 201, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_7, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 201, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":202
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":202
  *             tmp = get_add_cf(
  *                 self.evaluate(node.left, dict_index_to_value),
  *                 self.evaluate(node.right, dict_index_to_value),             # <<<<<<<<<<<<<<
@@ -6230,11 +6230,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 202, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
-    __pyx_t_1 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_7, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 202, __pyx_L1_error)
+    __pyx_t_1 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_7, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 202, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":203
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":203
  *                 self.evaluate(node.left, dict_index_to_value),
  *                 self.evaluate(node.right, dict_index_to_value),
  *                 node.left.dest_size,             # <<<<<<<<<<<<<<
@@ -6272,7 +6272,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_tmp = __pyx_t_6;
     __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":205
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":205
  *                 node.left.dest_size,
  *             )
  *             return tmp & res_mask             # <<<<<<<<<<<<<<
@@ -6286,7 +6286,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_6 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":199
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":199
  *             )
  *             return signed_to_unsigned(res_signed, node.dest_size) & res_mask
  *         elif node.opcode == ida_hexrays.m_cfadd and node.right is not None:             # <<<<<<<<<<<<<<
@@ -6295,7 +6295,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":206
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":206
  *             )
  *             return tmp & res_mask
  *         elif node.opcode == ida_hexrays.m_ofadd and node.right is not None:             # <<<<<<<<<<<<<<
@@ -6327,7 +6327,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L39_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":207
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":207
  *             return tmp & res_mask
  *         elif node.opcode == ida_hexrays.m_ofadd and node.right is not None:
  *             tmp = get_add_of(             # <<<<<<<<<<<<<<
@@ -6338,7 +6338,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_get_add_of); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 207, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":208
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":208
  *         elif node.opcode == ida_hexrays.m_ofadd and node.right is not None:
  *             tmp = get_add_of(
  *                 self.evaluate(node.left, dict_index_to_value),             # <<<<<<<<<<<<<<
@@ -6347,11 +6347,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 208, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_1, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 208, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_1, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 208, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":209
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":209
  *             tmp = get_add_of(
  *                 self.evaluate(node.left, dict_index_to_value),
  *                 self.evaluate(node.right, dict_index_to_value),             # <<<<<<<<<<<<<<
@@ -6360,11 +6360,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 209, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_4 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_1, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 209, __pyx_L1_error)
+    __pyx_t_4 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_1, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 209, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":210
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":210
  *                 self.evaluate(node.left, dict_index_to_value),
  *                 self.evaluate(node.right, dict_index_to_value),
  *                 node.left.dest_size,             # <<<<<<<<<<<<<<
@@ -6402,7 +6402,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_tmp = __pyx_t_3;
     __pyx_t_3 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":212
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":212
  *                 node.left.dest_size,
  *             )
  *             return tmp & res_mask             # <<<<<<<<<<<<<<
@@ -6416,7 +6416,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_3 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":206
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":206
  *             )
  *             return tmp & res_mask
  *         elif node.opcode == ida_hexrays.m_ofadd and node.right is not None:             # <<<<<<<<<<<<<<
@@ -6425,7 +6425,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":213
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":213
  *             )
  *             return tmp & res_mask
  *         elif node.opcode == ida_hexrays.m_sets:             # <<<<<<<<<<<<<<
@@ -6446,7 +6446,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":214
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":214
  *             return tmp & res_mask
  *         elif node.opcode == ida_hexrays.m_sets:
  *             left_value_signed = unsigned_to_signed(             # <<<<<<<<<<<<<<
@@ -6457,7 +6457,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_unsigned_to_signed); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 214, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":215
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":215
  *         elif node.opcode == ida_hexrays.m_sets:
  *             left_value_signed = unsigned_to_signed(
  *                 self.evaluate(node.left, dict_index_to_value), node.left.dest_size             # <<<<<<<<<<<<<<
@@ -6466,7 +6466,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 215, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_4, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 215, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_4, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 215, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 215, __pyx_L1_error)
@@ -6499,7 +6499,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_left_value_signed = __pyx_t_6;
     __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":217
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":217
  *                 self.evaluate(node.left, dict_index_to_value), node.left.dest_size
  *             )
  *             res = 1 if left_value_signed < 0 else 0             # <<<<<<<<<<<<<<
@@ -6519,7 +6519,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_res = __pyx_t_6;
     __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":218
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":218
  *             )
  *             res = 1 if left_value_signed < 0 else 0
  *             return res & res_mask             # <<<<<<<<<<<<<<
@@ -6533,7 +6533,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_6 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":213
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":213
  *             )
  *             return tmp & res_mask
  *         elif node.opcode == ida_hexrays.m_sets:             # <<<<<<<<<<<<<<
@@ -6542,7 +6542,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":219
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":219
  *             res = 1 if left_value_signed < 0 else 0
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_seto and node.right is not None:             # <<<<<<<<<<<<<<
@@ -6574,7 +6574,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L41_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":220
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":220
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_seto and node.right is not None:
  *             left_value_signed = unsigned_to_signed(             # <<<<<<<<<<<<<<
@@ -6585,7 +6585,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_unsigned_to_signed); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 220, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":221
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":221
  *         elif node.opcode == ida_hexrays.m_seto and node.right is not None:
  *             left_value_signed = unsigned_to_signed(
  *                 self.evaluate(node.left, dict_index_to_value), node.left.dest_size             # <<<<<<<<<<<<<<
@@ -6594,7 +6594,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 221, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
-    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_9, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 221, __pyx_L1_error)
+    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_9, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 221, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 221, __pyx_L1_error)
@@ -6627,7 +6627,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_left_value_signed = __pyx_t_3;
     __pyx_t_3 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":223
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":223
  *                 self.evaluate(node.left, dict_index_to_value), node.left.dest_size
  *             )
  *             right_value_signed = unsigned_to_signed(             # <<<<<<<<<<<<<<
@@ -6638,7 +6638,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_unsigned_to_signed); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 223, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":224
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":224
  *             )
  *             right_value_signed = unsigned_to_signed(
  *                 self.evaluate(node.right, dict_index_to_value), node.right.dest_size             # <<<<<<<<<<<<<<
@@ -6647,7 +6647,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 224, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
-    __pyx_t_10 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_7, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 224, __pyx_L1_error)
+    __pyx_t_10 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_7, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 224, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_10);
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 224, __pyx_L1_error)
@@ -6680,7 +6680,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_right_value_signed = __pyx_t_3;
     __pyx_t_3 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":226
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":226
  *                 self.evaluate(node.right, dict_index_to_value), node.right.dest_size
  *             )
  *             sub_overflow = get_sub_of(             # <<<<<<<<<<<<<<
@@ -6691,7 +6691,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_GetModuleGlobalName(__pyx_t_9, __pyx_mstate_global->__pyx_n_u_get_sub_of); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 226, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":227
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":227
  *             )
  *             sub_overflow = get_sub_of(
  *                 left_value_signed, right_value_signed, node.left.dest_size             # <<<<<<<<<<<<<<
@@ -6727,7 +6727,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_sub_overflow = __pyx_t_3;
     __pyx_t_3 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":229
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":229
  *                 left_value_signed, right_value_signed, node.left.dest_size
  *             )
  *             return sub_overflow & res_mask             # <<<<<<<<<<<<<<
@@ -6741,7 +6741,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_3 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":219
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":219
  *             res = 1 if left_value_signed < 0 else 0
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_seto and node.right is not None:             # <<<<<<<<<<<<<<
@@ -6750,7 +6750,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":230
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":230
  *             )
  *             return sub_overflow & res_mask
  *         elif node.opcode == ida_hexrays.m_setnz and node.right is not None:             # <<<<<<<<<<<<<<
@@ -6782,7 +6782,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L43_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":233
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":233
  *             res = (
  *                 1
  *                 if self.evaluate(node.left, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -6791,11 +6791,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 233, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_3 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 233, __pyx_L1_error)
+    __pyx_t_3 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 233, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":234
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":234
  *                 1
  *                 if self.evaluate(node.left, dict_index_to_value)
  *                 != self.evaluate(node.right, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -6804,7 +6804,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 234, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_4 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 234, __pyx_L1_error)
+    __pyx_t_4 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 234, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_6 = PyObject_RichCompare(__pyx_t_3, __pyx_t_4, Py_NE); __Pyx_XGOTREF(__pyx_t_6); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 234, __pyx_L1_error)
@@ -6822,7 +6822,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_res = __pyx_t_9;
     __pyx_t_9 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":237
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":237
  *                 else 0
  *             )
  *             return res & res_mask             # <<<<<<<<<<<<<<
@@ -6836,7 +6836,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_9 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":230
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":230
  *             )
  *             return sub_overflow & res_mask
  *         elif node.opcode == ida_hexrays.m_setnz and node.right is not None:             # <<<<<<<<<<<<<<
@@ -6845,7 +6845,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":238
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":238
  *             )
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setz and node.right is not None:             # <<<<<<<<<<<<<<
@@ -6877,7 +6877,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L45_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":241
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":241
  *             res = (
  *                 1
  *                 if self.evaluate(node.left, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -6886,11 +6886,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 241, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_4, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 241, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_4, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 241, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":242
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":242
  *                 1
  *                 if self.evaluate(node.left, dict_index_to_value)
  *                 == self.evaluate(node.right, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -6899,7 +6899,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 242, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
-    __pyx_t_3 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_4, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 242, __pyx_L1_error)
+    __pyx_t_3 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_4, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 242, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __pyx_t_4 = PyObject_RichCompare(__pyx_t_9, __pyx_t_3, Py_EQ); __Pyx_XGOTREF(__pyx_t_4); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 242, __pyx_L1_error)
@@ -6917,7 +6917,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_res = __pyx_t_6;
     __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":245
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":245
  *                 else 0
  *             )
  *             return res & res_mask             # <<<<<<<<<<<<<<
@@ -6931,7 +6931,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_6 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":238
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":238
  *             )
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setz and node.right is not None:             # <<<<<<<<<<<<<<
@@ -6940,7 +6940,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":246
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":246
  *             )
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setae and node.right is not None:             # <<<<<<<<<<<<<<
@@ -6972,7 +6972,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L47_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":249
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":249
  *             res = (
  *                 1
  *                 if self.evaluate(node.left, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -6981,11 +6981,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 249, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_6 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_3, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 249, __pyx_L1_error)
+    __pyx_t_6 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_3, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 249, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":250
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":250
  *                 1
  *                 if self.evaluate(node.left, dict_index_to_value)
  *                 >= self.evaluate(node.right, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -6994,7 +6994,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 250, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_3, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 250, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_3, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 250, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __pyx_t_3 = PyObject_RichCompare(__pyx_t_6, __pyx_t_9, Py_GE); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 250, __pyx_L1_error)
@@ -7012,7 +7012,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_res = __pyx_t_4;
     __pyx_t_4 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":253
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":253
  *                 else 0
  *             )
  *             return res & res_mask             # <<<<<<<<<<<<<<
@@ -7026,7 +7026,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_4 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":246
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":246
  *             )
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setae and node.right is not None:             # <<<<<<<<<<<<<<
@@ -7035,7 +7035,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":254
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":254
  *             )
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setb and node.right is not None:             # <<<<<<<<<<<<<<
@@ -7067,7 +7067,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L49_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":257
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":257
  *             res = (
  *                 1
  *                 if self.evaluate(node.left, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -7076,11 +7076,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 257, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
-    __pyx_t_4 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_9, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 257, __pyx_L1_error)
+    __pyx_t_4 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_9, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 257, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":258
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":258
  *                 1
  *                 if self.evaluate(node.left, dict_index_to_value)
  *                 < self.evaluate(node.right, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -7089,7 +7089,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 258, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
-    __pyx_t_6 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_9, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 258, __pyx_L1_error)
+    __pyx_t_6 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_9, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 258, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __pyx_t_9 = PyObject_RichCompare(__pyx_t_4, __pyx_t_6, Py_LT); __Pyx_XGOTREF(__pyx_t_9); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 258, __pyx_L1_error)
@@ -7107,7 +7107,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_res = __pyx_t_3;
     __pyx_t_3 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":261
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":261
  *                 else 0
  *             )
  *             return res & res_mask             # <<<<<<<<<<<<<<
@@ -7121,7 +7121,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_3 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":254
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":254
  *             )
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setb and node.right is not None:             # <<<<<<<<<<<<<<
@@ -7130,7 +7130,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":262
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":262
  *             )
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_seta and node.right is not None:             # <<<<<<<<<<<<<<
@@ -7162,7 +7162,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L51_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":265
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":265
  *             res = (
  *                 1
  *                 if self.evaluate(node.left, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -7171,11 +7171,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 265, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_3 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 265, __pyx_L1_error)
+    __pyx_t_3 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 265, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":266
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":266
  *                 1
  *                 if self.evaluate(node.left, dict_index_to_value)
  *                 > self.evaluate(node.right, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -7184,7 +7184,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 266, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_4 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 266, __pyx_L1_error)
+    __pyx_t_4 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 266, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_6 = PyObject_RichCompare(__pyx_t_3, __pyx_t_4, Py_GT); __Pyx_XGOTREF(__pyx_t_6); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 266, __pyx_L1_error)
@@ -7202,7 +7202,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_res = __pyx_t_9;
     __pyx_t_9 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":269
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":269
  *                 else 0
  *             )
  *             return res & res_mask             # <<<<<<<<<<<<<<
@@ -7216,7 +7216,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_9 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":262
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":262
  *             )
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_seta and node.right is not None:             # <<<<<<<<<<<<<<
@@ -7225,7 +7225,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":270
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":270
  *             )
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setbe and node.right is not None:             # <<<<<<<<<<<<<<
@@ -7257,7 +7257,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L53_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":273
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":273
  *             res = (
  *                 1
  *                 if self.evaluate(node.left, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -7266,11 +7266,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 273, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_4, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 273, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_4, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 273, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":274
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":274
  *                 1
  *                 if self.evaluate(node.left, dict_index_to_value)
  *                 <= self.evaluate(node.right, dict_index_to_value)             # <<<<<<<<<<<<<<
@@ -7279,7 +7279,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 274, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
-    __pyx_t_3 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_4, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 274, __pyx_L1_error)
+    __pyx_t_3 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_4, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 274, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __pyx_t_4 = PyObject_RichCompare(__pyx_t_9, __pyx_t_3, Py_LE); __Pyx_XGOTREF(__pyx_t_4); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 274, __pyx_L1_error)
@@ -7297,7 +7297,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_res = __pyx_t_6;
     __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":277
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":277
  *                 else 0
  *             )
  *             return res & res_mask             # <<<<<<<<<<<<<<
@@ -7311,7 +7311,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_6 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":270
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":270
  *             )
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setbe and node.right is not None:             # <<<<<<<<<<<<<<
@@ -7320,7 +7320,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":278
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":278
  *             )
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setg and node.right is not None:             # <<<<<<<<<<<<<<
@@ -7352,7 +7352,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L55_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":279
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":279
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setg and node.right is not None:
  *             left_value_signed = unsigned_to_signed(             # <<<<<<<<<<<<<<
@@ -7363,7 +7363,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_unsigned_to_signed); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 279, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":280
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":280
  *         elif node.opcode == ida_hexrays.m_setg and node.right is not None:
  *             left_value_signed = unsigned_to_signed(
  *                 self.evaluate(node.left, dict_index_to_value), node.left.dest_size             # <<<<<<<<<<<<<<
@@ -7372,7 +7372,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 280, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
-    __pyx_t_10 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_9, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 280, __pyx_L1_error)
+    __pyx_t_10 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_9, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 280, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_10);
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 280, __pyx_L1_error)
@@ -7405,7 +7405,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_left_value_signed = __pyx_t_4;
     __pyx_t_4 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":282
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":282
  *                 self.evaluate(node.left, dict_index_to_value), node.left.dest_size
  *             )
  *             right_value_signed = unsigned_to_signed(             # <<<<<<<<<<<<<<
@@ -7416,7 +7416,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_GetModuleGlobalName(__pyx_t_7, __pyx_mstate_global->__pyx_n_u_unsigned_to_signed); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 282, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":283
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":283
  *             )
  *             right_value_signed = unsigned_to_signed(
  *                 self.evaluate(node.right, dict_index_to_value), node.right.dest_size             # <<<<<<<<<<<<<<
@@ -7425,7 +7425,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_10 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 283, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_10);
-    __pyx_t_3 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_10, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 283, __pyx_L1_error)
+    __pyx_t_3 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_10, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 283, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
     __pyx_t_10 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 283, __pyx_L1_error)
@@ -7458,7 +7458,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_right_value_signed = __pyx_t_4;
     __pyx_t_4 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":285
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":285
  *                 self.evaluate(node.right, dict_index_to_value), node.right.dest_size
  *             )
  *             res = 1 if left_value_signed > right_value_signed else 0             # <<<<<<<<<<<<<<
@@ -7478,7 +7478,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_res = __pyx_t_4;
     __pyx_t_4 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":286
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":286
  *             )
  *             res = 1 if left_value_signed > right_value_signed else 0
  *             return res & res_mask             # <<<<<<<<<<<<<<
@@ -7492,7 +7492,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_4 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":278
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":278
  *             )
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setg and node.right is not None:             # <<<<<<<<<<<<<<
@@ -7501,7 +7501,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":287
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":287
  *             res = 1 if left_value_signed > right_value_signed else 0
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setge and node.right is not None:             # <<<<<<<<<<<<<<
@@ -7533,7 +7533,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L57_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":288
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":288
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setge and node.right is not None:
  *             left_value_signed = unsigned_to_signed(             # <<<<<<<<<<<<<<
@@ -7544,7 +7544,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_unsigned_to_signed); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 288, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":289
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":289
  *         elif node.opcode == ida_hexrays.m_setge and node.right is not None:
  *             left_value_signed = unsigned_to_signed(
  *                 self.evaluate(node.left, dict_index_to_value), node.left.dest_size             # <<<<<<<<<<<<<<
@@ -7553,7 +7553,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 289, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_6 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_3, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 289, __pyx_L1_error)
+    __pyx_t_6 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_3, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 289, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 289, __pyx_L1_error)
@@ -7586,7 +7586,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_left_value_signed = __pyx_t_7;
     __pyx_t_7 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":291
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":291
  *                 self.evaluate(node.left, dict_index_to_value), node.left.dest_size
  *             )
  *             right_value_signed = unsigned_to_signed(             # <<<<<<<<<<<<<<
@@ -7597,7 +7597,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_GetModuleGlobalName(__pyx_t_10, __pyx_mstate_global->__pyx_n_u_unsigned_to_signed); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 291, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_10);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":292
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":292
  *             )
  *             right_value_signed = unsigned_to_signed(
  *                 self.evaluate(node.right, dict_index_to_value), node.right.dest_size             # <<<<<<<<<<<<<<
@@ -7606,7 +7606,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 292, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 292, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_6, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 292, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 292, __pyx_L1_error)
@@ -7639,7 +7639,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_right_value_signed = __pyx_t_7;
     __pyx_t_7 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":294
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":294
  *                 self.evaluate(node.right, dict_index_to_value), node.right.dest_size
  *             )
  *             res = 1 if left_value_signed >= right_value_signed else 0             # <<<<<<<<<<<<<<
@@ -7659,7 +7659,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_res = __pyx_t_7;
     __pyx_t_7 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":295
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":295
  *             )
  *             res = 1 if left_value_signed >= right_value_signed else 0
  *             return res & res_mask             # <<<<<<<<<<<<<<
@@ -7673,7 +7673,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_7 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":287
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":287
  *             res = 1 if left_value_signed > right_value_signed else 0
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setge and node.right is not None:             # <<<<<<<<<<<<<<
@@ -7682,7 +7682,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":296
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":296
  *             res = 1 if left_value_signed >= right_value_signed else 0
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setl and node.right is not None:             # <<<<<<<<<<<<<<
@@ -7714,7 +7714,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L59_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":297
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":297
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setl and node.right is not None:
  *             left_value_signed = unsigned_to_signed(             # <<<<<<<<<<<<<<
@@ -7725,7 +7725,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_GetModuleGlobalName(__pyx_t_7, __pyx_mstate_global->__pyx_n_u_unsigned_to_signed); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 297, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":298
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":298
  *         elif node.opcode == ida_hexrays.m_setl and node.right is not None:
  *             left_value_signed = unsigned_to_signed(
  *                 self.evaluate(node.left, dict_index_to_value), node.left.dest_size             # <<<<<<<<<<<<<<
@@ -7734,7 +7734,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 298, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
-    __pyx_t_4 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_9, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 298, __pyx_L1_error)
+    __pyx_t_4 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_9, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 298, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 298, __pyx_L1_error)
@@ -7767,7 +7767,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_left_value_signed = __pyx_t_10;
     __pyx_t_10 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":300
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":300
  *                 self.evaluate(node.left, dict_index_to_value), node.left.dest_size
  *             )
  *             right_value_signed = unsigned_to_signed(             # <<<<<<<<<<<<<<
@@ -7778,7 +7778,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_unsigned_to_signed); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 300, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":301
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":301
  *             )
  *             right_value_signed = unsigned_to_signed(
  *                 self.evaluate(node.right, dict_index_to_value), node.right.dest_size             # <<<<<<<<<<<<<<
@@ -7787,7 +7787,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 301, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
-    __pyx_t_3 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_4, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 301, __pyx_L1_error)
+    __pyx_t_3 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_4, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 301, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 301, __pyx_L1_error)
@@ -7820,7 +7820,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_right_value_signed = __pyx_t_10;
     __pyx_t_10 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":303
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":303
  *                 self.evaluate(node.right, dict_index_to_value), node.right.dest_size
  *             )
  *             res = 1 if left_value_signed < right_value_signed else 0             # <<<<<<<<<<<<<<
@@ -7840,7 +7840,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_res = __pyx_t_10;
     __pyx_t_10 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":304
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":304
  *             )
  *             res = 1 if left_value_signed < right_value_signed else 0
  *             return res & res_mask             # <<<<<<<<<<<<<<
@@ -7854,7 +7854,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_10 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":296
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":296
  *             res = 1 if left_value_signed >= right_value_signed else 0
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setl and node.right is not None:             # <<<<<<<<<<<<<<
@@ -7863,7 +7863,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":305
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":305
  *             res = 1 if left_value_signed < right_value_signed else 0
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setle and node.right is not None:             # <<<<<<<<<<<<<<
@@ -7895,7 +7895,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L61_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":306
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":306
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setle and node.right is not None:
  *             left_value_signed = unsigned_to_signed(             # <<<<<<<<<<<<<<
@@ -7906,7 +7906,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_GetModuleGlobalName(__pyx_t_10, __pyx_mstate_global->__pyx_n_u_unsigned_to_signed); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 306, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_10);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":307
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":307
  *         elif node.opcode == ida_hexrays.m_setle and node.right is not None:
  *             left_value_signed = unsigned_to_signed(
  *                 self.evaluate(node.left, dict_index_to_value), node.left.dest_size             # <<<<<<<<<<<<<<
@@ -7915,7 +7915,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 307, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_3, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 307, __pyx_L1_error)
+    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_3, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 307, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 307, __pyx_L1_error)
@@ -7948,7 +7948,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_left_value_signed = __pyx_t_6;
     __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":309
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":309
  *                 self.evaluate(node.left, dict_index_to_value), node.left.dest_size
  *             )
  *             right_value_signed = unsigned_to_signed(             # <<<<<<<<<<<<<<
@@ -7959,7 +7959,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_unsigned_to_signed); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 309, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":310
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":310
  *             )
  *             right_value_signed = unsigned_to_signed(
  *                 self.evaluate(node.right, dict_index_to_value), node.right.dest_size             # <<<<<<<<<<<<<<
@@ -7968,7 +7968,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 310, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
-    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_7, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 310, __pyx_L1_error)
+    __pyx_t_9 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_7, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 310, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 310, __pyx_L1_error)
@@ -8001,7 +8001,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_right_value_signed = __pyx_t_6;
     __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":312
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":312
  *                 self.evaluate(node.right, dict_index_to_value), node.right.dest_size
  *             )
  *             res = 1 if left_value_signed <= right_value_signed else 0             # <<<<<<<<<<<<<<
@@ -8021,7 +8021,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_res = __pyx_t_6;
     __pyx_t_6 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":313
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":313
  *             )
  *             res = 1 if left_value_signed <= right_value_signed else 0
  *             return res & res_mask             # <<<<<<<<<<<<<<
@@ -8035,7 +8035,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_6 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":305
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":305
  *             res = 1 if left_value_signed < right_value_signed else 0
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setle and node.right is not None:             # <<<<<<<<<<<<<<
@@ -8044,7 +8044,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":314
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":314
  *             res = 1 if left_value_signed <= right_value_signed else 0
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setp and node.right is not None:             # <<<<<<<<<<<<<<
@@ -8076,7 +8076,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __pyx_L63_bool_binop_done:;
   if (__pyx_t_2) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":315
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":315
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setp and node.right is not None:
  *             res = get_parity_flag(             # <<<<<<<<<<<<<<
@@ -8087,7 +8087,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_get_parity_flag); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 315, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":316
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":316
  *         elif node.opcode == ida_hexrays.m_setp and node.right is not None:
  *             res = get_parity_flag(
  *                 self.evaluate(node.left, dict_index_to_value),             # <<<<<<<<<<<<<<
@@ -8096,11 +8096,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 316, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
-    __pyx_t_10 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_9, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 316, __pyx_L1_error)
+    __pyx_t_10 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_9, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 316, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_10);
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":317
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":317
  *             res = get_parity_flag(
  *                 self.evaluate(node.left, dict_index_to_value),
  *                 self.evaluate(node.right, dict_index_to_value),             # <<<<<<<<<<<<<<
@@ -8109,11 +8109,11 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_right); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 317, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
-    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_9, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 317, __pyx_L1_error)
+    __pyx_t_7 = ((struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self->__pyx_vtab)->evaluate(__pyx_v_self, __pyx_t_9, __pyx_v_dict_index_to_value, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 317, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":318
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":318
  *                 self.evaluate(node.left, dict_index_to_value),
  *                 self.evaluate(node.right, dict_index_to_value),
  *                 node.left.dest_size,             # <<<<<<<<<<<<<<
@@ -8151,7 +8151,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_v_res = __pyx_t_4;
     __pyx_t_4 = 0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":320
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":320
  *                 node.left.dest_size,
  *             )
  *             return res & res_mask             # <<<<<<<<<<<<<<
@@ -8165,7 +8165,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_4 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":314
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":314
  *             res = 1 if left_value_signed <= right_value_signed else 0
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_setp and node.right is not None:             # <<<<<<<<<<<<<<
@@ -8174,7 +8174,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":321
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":321
  *             )
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_call:             # <<<<<<<<<<<<<<
@@ -8195,7 +8195,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   if (likely(__pyx_t_2)) {
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":322
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":322
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_call:
  *             if logger.debug_on:             # <<<<<<<<<<<<<<
@@ -8211,7 +8211,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     if (__pyx_t_2) {
 
-      /* "d810/speedups/expr/ast_evaluate.pyx":323
+      /* "d810/speedups/expr/c_ast_evaluate.pyx":323
  *         elif node.opcode == ida_hexrays.m_call:
  *             if logger.debug_on:
  *                 logger.debug(             # <<<<<<<<<<<<<<
@@ -8225,7 +8225,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
       __Pyx_GOTREF(__pyx_t_7);
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-      /* "d810/speedups/expr/ast_evaluate.pyx":325
+      /* "d810/speedups/expr/c_ast_evaluate.pyx":325
  *                 logger.debug(
  *                     "evaluate m_call: ast_index=%s, dest_size=%s, callee=%s, args=%s",
  *                     node.ast_index,             # <<<<<<<<<<<<<<
@@ -8235,7 +8235,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
       __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_ast_index); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 325, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
 
-      /* "d810/speedups/expr/ast_evaluate.pyx":326
+      /* "d810/speedups/expr/c_ast_evaluate.pyx":326
  *                     "evaluate m_call: ast_index=%s, dest_size=%s, callee=%s, args=%s",
  *                     node.ast_index,
  *                     node.dest_size,             # <<<<<<<<<<<<<<
@@ -8245,7 +8245,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
       __pyx_t_10 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_dest_size); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 326, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_10);
 
-      /* "d810/speedups/expr/ast_evaluate.pyx":327
+      /* "d810/speedups/expr/c_ast_evaluate.pyx":327
  *                     node.ast_index,
  *                     node.dest_size,
  *                     node.left,             # <<<<<<<<<<<<<<
@@ -8255,7 +8255,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
       __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_node, __pyx_mstate_global->__pyx_n_u_left); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 327, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
 
-      /* "d810/speedups/expr/ast_evaluate.pyx":328
+      /* "d810/speedups/expr/c_ast_evaluate.pyx":328
  *                     node.dest_size,
  *                     node.left,
  *                     node.right,             # <<<<<<<<<<<<<<
@@ -8290,7 +8290,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
       }
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-      /* "d810/speedups/expr/ast_evaluate.pyx":322
+      /* "d810/speedups/expr/c_ast_evaluate.pyx":322
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_call:
  *             if logger.debug_on:             # <<<<<<<<<<<<<<
@@ -8299,7 +8299,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
     }
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":330
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":330
  *                     node.right,
  *                 )
  *             return 0 & res_mask             # <<<<<<<<<<<<<<
@@ -8313,7 +8313,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":321
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":321
  *             )
  *             return res & res_mask
  *         elif node.opcode == ida_hexrays.m_call:             # <<<<<<<<<<<<<<
@@ -8322,7 +8322,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":332
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":332
  *             return 0 & res_mask
  *         else:
  *             raise AstEvaluationException(             # <<<<<<<<<<<<<<
@@ -8334,7 +8334,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __Pyx_GetModuleGlobalName(__pyx_t_9, __pyx_mstate_global->__pyx_n_u_AstEvaluationException); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 332, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
 
-    /* "d810/speedups/expr/ast_evaluate.pyx":333
+    /* "d810/speedups/expr/c_ast_evaluate.pyx":333
  *         else:
  *             raise AstEvaluationException(
  *                 "Can't evaluate opcode: {0}".format(node.opcode)             # <<<<<<<<<<<<<<
@@ -8379,7 +8379,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
     __PYX_ERR(0, 332, __pyx_L1_error)
   }
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":93
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":93
  *         return dict_index_to_value.get(leaf.ast_index)
  * 
  *     cdef inline object _eval_node(self, object node, dict dict_index_to_value):             # <<<<<<<<<<<<<<
@@ -8396,7 +8396,7 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
   __Pyx_XDECREF(__pyx_t_7);
   __Pyx_XDECREF(__pyx_t_9);
   __Pyx_XDECREF(__pyx_t_10);
-  __Pyx_AddTraceback("d810.speedups.expr.ast_evaluate.AstEvaluator._eval_node", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("d810.speedups.expr.c_ast_evaluate.AstEvaluator._eval_node", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = 0;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_res_mask);
@@ -8419,16 +8419,16 @@ static CYTHON_INLINE PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12As
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_5__reduce_cython__(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_5__reduce_cython__(PyObject *__pyx_v_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-PyDoc_STRVAR(__pyx_doc_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_4__reduce_cython__, "AstEvaluator.__reduce_cython__(self)");
-static PyMethodDef __pyx_mdef_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_5__reduce_cython__ = {"__reduce_cython__", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_5__reduce_cython__, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_4__reduce_cython__};
-static PyObject *__pyx_pw_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_5__reduce_cython__(PyObject *__pyx_v_self, 
+PyDoc_STRVAR(__pyx_doc_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_4__reduce_cython__, "AstEvaluator.__reduce_cython__(self)");
+static PyMethodDef __pyx_mdef_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_5__reduce_cython__ = {"__reduce_cython__", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_5__reduce_cython__, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_4__reduce_cython__};
+static PyObject *__pyx_pw_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_5__reduce_cython__(PyObject *__pyx_v_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -8454,14 +8454,14 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   const Py_ssize_t __pyx_kwds_len = unlikely(__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
   if (unlikely(__pyx_kwds_len < 0)) return NULL;
   if (unlikely(__pyx_kwds_len > 0)) {__Pyx_RejectKeywords("__reduce_cython__", __pyx_kwds); return NULL;}
-  __pyx_r = __pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_4__reduce_cython__(((struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self));
+  __pyx_r = __pyx_pf_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_4__reduce_cython__(((struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self));
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_4__reduce_cython__(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *__pyx_v_self) {
+static PyObject *__pyx_pf_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_4__reduce_cython__(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *__pyx_v_self) {
   PyObject *__pyx_v_state = 0;
   PyObject *__pyx_v__dict = 0;
   int __pyx_v_use_setstate;
@@ -8657,7 +8657,7 @@ static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_4_
   __Pyx_XDECREF(__pyx_t_1);
   __Pyx_XDECREF(__pyx_t_3);
   __Pyx_XDECREF(__pyx_t_4);
-  __Pyx_AddTraceback("d810.speedups.expr.ast_evaluate.AstEvaluator.__reduce_cython__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("d810.speedups.expr.c_ast_evaluate.AstEvaluator.__reduce_cython__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_state);
@@ -8675,16 +8675,16 @@ static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_4_
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_7__setstate_cython__(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_7__setstate_cython__(PyObject *__pyx_v_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-PyDoc_STRVAR(__pyx_doc_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_6__setstate_cython__, "AstEvaluator.__setstate_cython__(self, __pyx_state)");
-static PyMethodDef __pyx_mdef_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_7__setstate_cython__ = {"__setstate_cython__", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_7__setstate_cython__, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_6__setstate_cython__};
-static PyObject *__pyx_pw_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_7__setstate_cython__(PyObject *__pyx_v_self, 
+PyDoc_STRVAR(__pyx_doc_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_6__setstate_cython__, "AstEvaluator.__setstate_cython__(self, __pyx_state)");
+static PyMethodDef __pyx_mdef_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_7__setstate_cython__ = {"__setstate_cython__", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_7__setstate_cython__, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_6__setstate_cython__};
+static PyObject *__pyx_pw_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_7__setstate_cython__(PyObject *__pyx_v_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -8746,11 +8746,11 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
     Py_XDECREF(values[__pyx_temp]);
   }
-  __Pyx_AddTraceback("d810.speedups.expr.ast_evaluate.AstEvaluator.__setstate_cython__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("d810.speedups.expr.c_ast_evaluate.AstEvaluator.__setstate_cython__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  __pyx_r = __pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_6__setstate_cython__(((struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v_self), __pyx_v___pyx_state);
+  __pyx_r = __pyx_pf_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_6__setstate_cython__(((struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v_self), __pyx_v___pyx_state);
 
   /* function exit code */
   for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
@@ -8760,7 +8760,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_6__setstate_cython__(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v___pyx_state) {
+static PyObject *__pyx_pf_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_6__setstate_cython__(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *__pyx_v_self, PyObject *__pyx_v___pyx_state) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -8775,7 +8775,7 @@ static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_6_
  *     __pyx_unpickle_AstEvaluator__set_state(self, __pyx_state)             # <<<<<<<<<<<<<<
 */
   if (!(likely(PyTuple_CheckExact(__pyx_v___pyx_state))||((__pyx_v___pyx_state) == Py_None) || __Pyx_RaiseUnexpectedTypeError("tuple", __pyx_v___pyx_state))) __PYX_ERR(1, 17, __pyx_L1_error)
-  __pyx_t_1 = __pyx_f_4d810_8speedups_4expr_12ast_evaluate___pyx_unpickle_AstEvaluator__set_state(__pyx_v_self, ((PyObject*)__pyx_v___pyx_state)); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 17, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_4d810_8speedups_4expr_14c_ast_evaluate___pyx_unpickle_AstEvaluator__set_state(__pyx_v_self, ((PyObject*)__pyx_v___pyx_state)); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 17, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
@@ -8791,7 +8791,7 @@ static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_6_
   goto __pyx_L0;
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_1);
-  __Pyx_AddTraceback("d810.speedups.expr.ast_evaluate.AstEvaluator.__setstate_cython__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("d810.speedups.expr.c_ast_evaluate.AstEvaluator.__setstate_cython__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XGIVEREF(__pyx_r);
@@ -8806,16 +8806,16 @@ static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_6_
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_4d810_8speedups_4expr_12ast_evaluate_1__pyx_unpickle_AstEvaluator(PyObject *__pyx_self, 
+static PyObject *__pyx_pw_4d810_8speedups_4expr_14c_ast_evaluate_1__pyx_unpickle_AstEvaluator(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-PyDoc_STRVAR(__pyx_doc_4d810_8speedups_4expr_12ast_evaluate___pyx_unpickle_AstEvaluator, "__pyx_unpickle_AstEvaluator(__pyx_type, long __pyx_checksum, __pyx_state)");
-static PyMethodDef __pyx_mdef_4d810_8speedups_4expr_12ast_evaluate_1__pyx_unpickle_AstEvaluator = {"__pyx_unpickle_AstEvaluator", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_4d810_8speedups_4expr_12ast_evaluate_1__pyx_unpickle_AstEvaluator, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_4d810_8speedups_4expr_12ast_evaluate___pyx_unpickle_AstEvaluator};
-static PyObject *__pyx_pw_4d810_8speedups_4expr_12ast_evaluate_1__pyx_unpickle_AstEvaluator(PyObject *__pyx_self, 
+PyDoc_STRVAR(__pyx_doc_4d810_8speedups_4expr_14c_ast_evaluate___pyx_unpickle_AstEvaluator, "__pyx_unpickle_AstEvaluator(__pyx_type, long __pyx_checksum, __pyx_state)");
+static PyMethodDef __pyx_mdef_4d810_8speedups_4expr_14c_ast_evaluate_1__pyx_unpickle_AstEvaluator = {"__pyx_unpickle_AstEvaluator", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_4d810_8speedups_4expr_14c_ast_evaluate_1__pyx_unpickle_AstEvaluator, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_4d810_8speedups_4expr_14c_ast_evaluate___pyx_unpickle_AstEvaluator};
+static PyObject *__pyx_pw_4d810_8speedups_4expr_14c_ast_evaluate_1__pyx_unpickle_AstEvaluator(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -8893,11 +8893,11 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
     Py_XDECREF(values[__pyx_temp]);
   }
-  __Pyx_AddTraceback("d810.speedups.expr.ast_evaluate.__pyx_unpickle_AstEvaluator", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("d810.speedups.expr.c_ast_evaluate.__pyx_unpickle_AstEvaluator", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  __pyx_r = __pyx_pf_4d810_8speedups_4expr_12ast_evaluate___pyx_unpickle_AstEvaluator(__pyx_self, __pyx_v___pyx_type, __pyx_v___pyx_checksum, __pyx_v___pyx_state);
+  __pyx_r = __pyx_pf_4d810_8speedups_4expr_14c_ast_evaluate___pyx_unpickle_AstEvaluator(__pyx_self, __pyx_v___pyx_type, __pyx_v___pyx_checksum, __pyx_v___pyx_state);
 
   /* function exit code */
   for (Py_ssize_t __pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
@@ -8907,7 +8907,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate___pyx_unpickle_AstEvaluator(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v___pyx_type, long __pyx_v___pyx_checksum, PyObject *__pyx_v___pyx_state) {
+static PyObject *__pyx_pf_4d810_8speedups_4expr_14c_ast_evaluate___pyx_unpickle_AstEvaluator(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v___pyx_type, long __pyx_v___pyx_checksum, PyObject *__pyx_v___pyx_state) {
   PyObject *__pyx_v___pyx_PickleError = 0;
   PyObject *__pyx_v___pyx_result = 0;
   PyObject *__pyx_r = NULL;
@@ -8988,7 +8988,7 @@ static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate___pyx_unpickle_As
  *     if __pyx_state is not None:
  *         __pyx_unpickle_AstEvaluator__set_state(<AstEvaluator> __pyx_result, __pyx_state)
 */
-  __pyx_t_3 = ((PyObject *)__pyx_mstate_global->__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator);
+  __pyx_t_3 = ((PyObject *)__pyx_mstate_global->__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator);
   __Pyx_INCREF(__pyx_t_3);
   __pyx_t_4 = 0;
   {
@@ -9019,7 +9019,7 @@ static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate___pyx_unpickle_As
  * cdef __pyx_unpickle_AstEvaluator__set_state(AstEvaluator __pyx_result, tuple __pyx_state):
 */
     if (!(likely(PyTuple_CheckExact(__pyx_v___pyx_state))||((__pyx_v___pyx_state) == Py_None) || __Pyx_RaiseUnexpectedTypeError("tuple", __pyx_v___pyx_state))) __PYX_ERR(1, 9, __pyx_L1_error)
-    __pyx_t_1 = __pyx_f_4d810_8speedups_4expr_12ast_evaluate___pyx_unpickle_AstEvaluator__set_state(((struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)__pyx_v___pyx_result), ((PyObject*)__pyx_v___pyx_state)); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 9, __pyx_L1_error)
+    __pyx_t_1 = __pyx_f_4d810_8speedups_4expr_14c_ast_evaluate___pyx_unpickle_AstEvaluator__set_state(((struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)__pyx_v___pyx_result), ((PyObject*)__pyx_v___pyx_state)); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 9, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
@@ -9054,7 +9054,7 @@ static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate___pyx_unpickle_As
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_1);
   __Pyx_XDECREF(__pyx_t_3);
-  __Pyx_AddTraceback("d810.speedups.expr.ast_evaluate.__pyx_unpickle_AstEvaluator", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("d810.speedups.expr.c_ast_evaluate.__pyx_unpickle_AstEvaluator", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v___pyx_PickleError);
@@ -9072,7 +9072,7 @@ static PyObject *__pyx_pf_4d810_8speedups_4expr_12ast_evaluate___pyx_unpickle_As
  *         __pyx_result.__dict__.update(__pyx_state[0])
 */
 
-static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate___pyx_unpickle_AstEvaluator__set_state(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *__pyx_v___pyx_result, PyObject *__pyx_v___pyx_state) {
+static PyObject *__pyx_f_4d810_8speedups_4expr_14c_ast_evaluate___pyx_unpickle_AstEvaluator__set_state(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *__pyx_v___pyx_result, PyObject *__pyx_v___pyx_state) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   int __pyx_t_1;
@@ -9156,7 +9156,7 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate___pyx_unpickle_Ast
   __Pyx_XDECREF(__pyx_t_4);
   __Pyx_XDECREF(__pyx_t_5);
   __Pyx_XDECREF(__pyx_t_6);
-  __Pyx_AddTraceback("d810.speedups.expr.ast_evaluate.__pyx_unpickle_AstEvaluator__set_state", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("d810.speedups.expr.c_ast_evaluate.__pyx_unpickle_AstEvaluator__set_state", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = 0;
   __pyx_L0:;
   __Pyx_XGIVEREF(__pyx_r);
@@ -9164,10 +9164,10 @@ static PyObject *__pyx_f_4d810_8speedups_4expr_12ast_evaluate___pyx_unpickle_Ast
   return __pyx_r;
 }
 /* #### Code section: module_exttypes ### */
-static struct __pyx_vtabstruct_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator __pyx_vtable_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator;
+static struct __pyx_vtabstruct_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator __pyx_vtable_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator;
 
-static PyObject *__pyx_tp_new_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator(PyTypeObject *t, CYTHON_UNUSED PyObject *a, CYTHON_UNUSED PyObject *k) {
-  struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *p;
+static PyObject *__pyx_tp_new_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator(PyTypeObject *t, CYTHON_UNUSED PyObject *a, CYTHON_UNUSED PyObject *k) {
+  struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *p;
   PyObject *o;
   #if CYTHON_COMPILING_IN_LIMITED_API
   allocfunc alloc_func = (allocfunc)PyType_GetSlot(t, Py_tp_alloc);
@@ -9180,15 +9180,15 @@ static PyObject *__pyx_tp_new_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator(
   }
   if (unlikely(!o)) return 0;
   #endif
-  p = ((struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *)o);
-  p->__pyx_vtab = __pyx_vtabptr_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator;
+  p = ((struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *)o);
+  p->__pyx_vtab = __pyx_vtabptr_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator;
   return o;
 }
 
-static void __pyx_tp_dealloc_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator(PyObject *o) {
+static void __pyx_tp_dealloc_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator(PyObject *o) {
   #if CYTHON_USE_TP_FINALIZE
   if (unlikely((PY_VERSION_HEX >= 0x03080000 || __Pyx_PyType_HasFeature(Py_TYPE(o), Py_TPFLAGS_HAVE_FINALIZE)) && __Pyx_PyObject_GetSlot(o, tp_finalize, destructor)) && (!PyType_IS_GC(Py_TYPE(o)) || !__Pyx_PyObject_GC_IsFinalized(o))) {
-    if (__Pyx_PyObject_GetSlot(o, tp_dealloc, destructor) == __pyx_tp_dealloc_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator) {
+    if (__Pyx_PyObject_GetSlot(o, tp_dealloc, destructor) == __pyx_tp_dealloc_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator) {
       if (PyObject_CallFinalizerFromDealloc(o)) return;
     }
   }
@@ -9203,34 +9203,34 @@ static void __pyx_tp_dealloc_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator(P
   #endif
 }
 
-static PyMethodDef __pyx_methods_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator[] = {
-  {"__reduce_cython__", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_5__reduce_cython__, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_4__reduce_cython__},
-  {"__setstate_cython__", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_7__setstate_cython__, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_6__setstate_cython__},
+static PyMethodDef __pyx_methods_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator[] = {
+  {"__reduce_cython__", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_5__reduce_cython__, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_4__reduce_cython__},
+  {"__setstate_cython__", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_7__setstate_cython__, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_6__setstate_cython__},
   {0, 0, 0, 0}
 };
 #if CYTHON_USE_TYPE_SPECS
-static PyType_Slot __pyx_type_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator_slots[] = {
-  {Py_tp_dealloc, (void *)__pyx_tp_dealloc_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator},
+static PyType_Slot __pyx_type_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator_slots[] = {
+  {Py_tp_dealloc, (void *)__pyx_tp_dealloc_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator},
   {Py_tp_doc, (void *)PyDoc_STR("\n    Pure-Python evaluator for AST nodes. Extracted from AstNode/AstLeaf methods\n    to centralize evaluation logic.\n    ")},
-  {Py_tp_methods, (void *)__pyx_methods_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator},
-  {Py_tp_new, (void *)__pyx_tp_new_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator},
+  {Py_tp_methods, (void *)__pyx_methods_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator},
+  {Py_tp_new, (void *)__pyx_tp_new_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator},
   {0, 0},
 };
-static PyType_Spec __pyx_type_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator_spec = {
-  "d810.speedups.expr.ast_evaluate.AstEvaluator",
-  sizeof(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator),
+static PyType_Spec __pyx_type_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator_spec = {
+  "d810.speedups.expr.c_ast_evaluate.AstEvaluator",
+  sizeof(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator),
   0,
   Py_TPFLAGS_DEFAULT|Py_TPFLAGS_HAVE_VERSION_TAG|Py_TPFLAGS_CHECKTYPES|Py_TPFLAGS_HAVE_NEWBUFFER|Py_TPFLAGS_BASETYPE,
-  __pyx_type_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator_slots,
+  __pyx_type_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator_slots,
 };
 #else
 
-static PyTypeObject __pyx_type_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator = {
+static PyTypeObject __pyx_type_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator = {
   PyVarObject_HEAD_INIT(0, 0)
-  "d810.speedups.expr.ast_evaluate.""AstEvaluator", /*tp_name*/
-  sizeof(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator), /*tp_basicsize*/
+  "d810.speedups.expr.c_ast_evaluate.""AstEvaluator", /*tp_name*/
+  sizeof(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator), /*tp_basicsize*/
   0, /*tp_itemsize*/
-  __pyx_tp_dealloc_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator, /*tp_dealloc*/
+  __pyx_tp_dealloc_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator, /*tp_dealloc*/
   #if PY_VERSION_HEX < 0x030800b4
   0, /*tp_print*/
   #endif
@@ -9258,7 +9258,7 @@ static PyTypeObject __pyx_type_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator
   0, /*tp_weaklistoffset*/
   0, /*tp_iter*/
   0, /*tp_iternext*/
-  __pyx_methods_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator, /*tp_methods*/
+  __pyx_methods_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator, /*tp_methods*/
   0, /*tp_members*/
   0, /*tp_getset*/
   0, /*tp_base*/
@@ -9270,7 +9270,7 @@ static PyTypeObject __pyx_type_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator
   #endif
   0, /*tp_init*/
   0, /*tp_alloc*/
-  __pyx_tp_new_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator, /*tp_new*/
+  __pyx_tp_new_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator, /*tp_new*/
   0, /*tp_free*/
   0, /*tp_is_gc*/
   0, /*tp_bases*/
@@ -9326,7 +9326,7 @@ static int __Pyx_modinit_global_init_code(__pyx_mstatetype *__pyx_mstate) {
   CYTHON_UNUSED_VAR(__pyx_mstate);
   __Pyx_RefNannySetupContext("__Pyx_modinit_global_init_code", 0);
   /*--- Global init code ---*/
-  __pyx_v_4d810_8speedups_4expr_12ast_evaluate__BINARY_OPCODES = Py_None; Py_INCREF(Py_None);
+  __pyx_v_4d810_8speedups_4expr_14c_ast_evaluate__BINARY_OPCODES = Py_None; Py_INCREF(Py_None);
   __Pyx_RefNannyFinishContext();
   return 0;
 }
@@ -9357,31 +9357,31 @@ static int __Pyx_modinit_type_init_code(__pyx_mstatetype *__pyx_mstate) {
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__Pyx_modinit_type_init_code", 0);
   /*--- Type init code ---*/
-  __pyx_vtabptr_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator = &__pyx_vtable_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator;
-  __pyx_vtable_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator.evaluate_with_leaf_info = (PyObject *(*)(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *, PyObject *, PyObject *, PyObject *, int __pyx_skip_dispatch))__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_evaluate_with_leaf_info;
-  __pyx_vtable_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator.evaluate = (PyObject *(*)(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *, PyObject *, PyObject *, int __pyx_skip_dispatch))__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_evaluate;
-  __pyx_vtable_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator._eval_leaf = (PyObject *(*)(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *, PyObject *, PyObject *))__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator__eval_leaf;
-  __pyx_vtable_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator._eval_node = (PyObject *(*)(struct __pyx_obj_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator *, PyObject *, PyObject *))__pyx_f_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator__eval_node;
+  __pyx_vtabptr_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator = &__pyx_vtable_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator;
+  __pyx_vtable_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator.evaluate_with_leaf_info = (PyObject *(*)(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *, PyObject *, PyObject *, PyObject *, int __pyx_skip_dispatch))__pyx_f_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_evaluate_with_leaf_info;
+  __pyx_vtable_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator.evaluate = (PyObject *(*)(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *, PyObject *, PyObject *, int __pyx_skip_dispatch))__pyx_f_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_evaluate;
+  __pyx_vtable_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator._eval_leaf = (PyObject *(*)(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *, PyObject *, PyObject *))__pyx_f_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator__eval_leaf;
+  __pyx_vtable_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator._eval_node = (PyObject *(*)(struct __pyx_obj_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator *, PyObject *, PyObject *))__pyx_f_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator__eval_node;
   #if CYTHON_USE_TYPE_SPECS
-  __pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator = (PyTypeObject *) __Pyx_PyType_FromModuleAndSpec(__pyx_m, &__pyx_type_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator_spec, NULL); if (unlikely(!__pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator)) __PYX_ERR(0, 57, __pyx_L1_error)
-  if (__Pyx_fix_up_extension_type_from_spec(&__pyx_type_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator_spec, __pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator) < (0)) __PYX_ERR(0, 57, __pyx_L1_error)
+  __pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator = (PyTypeObject *) __Pyx_PyType_FromModuleAndSpec(__pyx_m, &__pyx_type_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator_spec, NULL); if (unlikely(!__pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator)) __PYX_ERR(0, 57, __pyx_L1_error)
+  if (__Pyx_fix_up_extension_type_from_spec(&__pyx_type_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator_spec, __pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator) < (0)) __PYX_ERR(0, 57, __pyx_L1_error)
   #else
-  __pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator = &__pyx_type_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator;
+  __pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator = &__pyx_type_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator;
   #endif
   #if !CYTHON_COMPILING_IN_LIMITED_API
   #endif
   #if !CYTHON_USE_TYPE_SPECS
-  if (__Pyx_PyType_Ready(__pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator) < (0)) __PYX_ERR(0, 57, __pyx_L1_error)
+  if (__Pyx_PyType_Ready(__pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator) < (0)) __PYX_ERR(0, 57, __pyx_L1_error)
   #endif
   #if !CYTHON_COMPILING_IN_LIMITED_API
-  if ((CYTHON_USE_TYPE_SLOTS && CYTHON_USE_PYTYPE_LOOKUP) && likely(!__pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator->tp_dictoffset && __pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator->tp_getattro == PyObject_GenericGetAttr)) {
-    __pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator->tp_getattro = PyObject_GenericGetAttr;
+  if ((CYTHON_USE_TYPE_SLOTS && CYTHON_USE_PYTYPE_LOOKUP) && likely(!__pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator->tp_dictoffset && __pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator->tp_getattro == PyObject_GenericGetAttr)) {
+    __pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator->tp_getattro = PyObject_GenericGetAttr;
   }
   #endif
-  if (__Pyx_SetVtable(__pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator, __pyx_vtabptr_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator) < (0)) __PYX_ERR(0, 57, __pyx_L1_error)
-  if (__Pyx_MergeVtables(__pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator) < (0)) __PYX_ERR(0, 57, __pyx_L1_error)
-  if (PyObject_SetAttr(__pyx_m, __pyx_mstate_global->__pyx_n_u_AstEvaluator, (PyObject *) __pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator) < (0)) __PYX_ERR(0, 57, __pyx_L1_error)
-  if (__Pyx_setup_reduce((PyObject *) __pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator) < (0)) __PYX_ERR(0, 57, __pyx_L1_error)
+  if (__Pyx_SetVtable(__pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator, __pyx_vtabptr_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator) < (0)) __PYX_ERR(0, 57, __pyx_L1_error)
+  if (__Pyx_MergeVtables(__pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator) < (0)) __PYX_ERR(0, 57, __pyx_L1_error)
+  if (PyObject_SetAttr(__pyx_m, __pyx_mstate_global->__pyx_n_u_AstEvaluator, (PyObject *) __pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator) < (0)) __PYX_ERR(0, 57, __pyx_L1_error)
+  if (__Pyx_setup_reduce((PyObject *) __pyx_mstate->__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator) < (0)) __PYX_ERR(0, 57, __pyx_L1_error)
   __Pyx_RefNannyFinishContext();
   return 0;
   __pyx_L1_error:;
@@ -9418,10 +9418,10 @@ static int __Pyx_modinit_function_import_code(__pyx_mstatetype *__pyx_mstate) {
 
 #if CYTHON_PEP489_MULTI_PHASE_INIT
 static PyObject* __pyx_pymod_create(PyObject *spec, PyModuleDef *def); /*proto*/
-static int __pyx_pymod_exec_ast_evaluate(PyObject* module); /*proto*/
+static int __pyx_pymod_exec_c_ast_evaluate(PyObject* module); /*proto*/
 static PyModuleDef_Slot __pyx_moduledef_slots[] = {
   {Py_mod_create, (void*)__pyx_pymod_create},
-  {Py_mod_exec, (void*)__pyx_pymod_exec_ast_evaluate},
+  {Py_mod_exec, (void*)__pyx_pymod_exec_c_ast_evaluate},
   #if CYTHON_COMPILING_IN_CPYTHON_FREETHREADING
   {Py_mod_gil, Py_MOD_GIL_USED},
   #endif
@@ -9440,7 +9440,7 @@ namespace {
   #endif
   {
       PyModuleDef_HEAD_INIT,
-      "ast_evaluate",
+      "c_ast_evaluate",
       0, /* m_doc */
     #if CYTHON_USE_MODULE_STATE
       sizeof(__pyx_mstatetype), /* m_size */
@@ -9478,8 +9478,8 @@ namespace {
   #endif
 #endif
 
-__Pyx_PyMODINIT_FUNC PyInit_ast_evaluate(void) CYTHON_SMALL_CODE; /*proto*/
-__Pyx_PyMODINIT_FUNC PyInit_ast_evaluate(void)
+__Pyx_PyMODINIT_FUNC PyInit_c_ast_evaluate(void) CYTHON_SMALL_CODE; /*proto*/
+__Pyx_PyMODINIT_FUNC PyInit_c_ast_evaluate(void)
 #if CYTHON_PEP489_MULTI_PHASE_INIT
 {
   return PyModuleDef_Init(&__pyx_moduledef);
@@ -9582,7 +9582,7 @@ bad:
 }
 
 
-static CYTHON_SMALL_CODE int __pyx_pymod_exec_ast_evaluate(PyObject *__pyx_pyinit_module)
+static CYTHON_SMALL_CODE int __pyx_pymod_exec_c_ast_evaluate(PyObject *__pyx_pyinit_module)
 #endif
 {
   int stringtab_initialized = 0;
@@ -9627,7 +9627,7 @@ static CYTHON_SMALL_CODE int __pyx_pymod_exec_ast_evaluate(PyObject *__pyx_pyini
   #if CYTHON_PEP489_MULTI_PHASE_INIT
   if (__pyx_m) {
     if (__pyx_m == __pyx_pyinit_module) return 0;
-    PyErr_SetString(PyExc_RuntimeError, "Module 'ast_evaluate' has already been imported. Re-initialisation is not supported.");
+    PyErr_SetString(PyExc_RuntimeError, "Module 'c_ast_evaluate' has already been imported. Re-initialisation is not supported.");
     return -1;
   }
   #else
@@ -9643,7 +9643,7 @@ static CYTHON_SMALL_CODE int __pyx_pymod_exec_ast_evaluate(PyObject *__pyx_pyini
   #if CYTHON_USE_MODULE_STATE
   {
     int add_module_result = __Pyx_State_AddModule(__pyx_t_1, &__pyx_moduledef);
-    __pyx_t_1 = 0; /* transfer ownership from __pyx_t_1 to "ast_evaluate" pseudovariable */
+    __pyx_t_1 = 0; /* transfer ownership from __pyx_t_1 to "c_ast_evaluate" pseudovariable */
     if (unlikely((add_module_result < 0))) __PYX_ERR(0, 1, __pyx_L1_error)
     pystate_addmodule_run = 1;
   }
@@ -9671,7 +9671,7 @@ if (!__Pyx_RefNanny) {
 }
 #endif
 
-__Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
+__Pyx_RefNannySetupContext("PyInit_c_ast_evaluate", 0);
   if (__Pyx_check_binary_version(__PYX_LIMITED_VERSION_HEX, __Pyx_get_runtime_version(), CYTHON_COMPILING_IN_LIMITED_API) < (0)) __PYX_ERR(0, 1, __pyx_L1_error)
   #ifdef __Pxy_PyFrame_Initialize_Offsets
   __Pxy_PyFrame_Initialize_Offsets();
@@ -9702,13 +9702,13 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   if (__pyx_AsyncGen_init(__pyx_m) < (0)) __PYX_ERR(0, 1, __pyx_L1_error)
   #endif
   /*--- Library function declarations ---*/
-  if (__pyx_module_is_main_d810__speedups__expr__ast_evaluate) {
+  if (__pyx_module_is_main_d810__speedups__expr__c_ast_evaluate) {
     if (PyObject_SetAttr(__pyx_m, __pyx_mstate_global->__pyx_n_u_name, __pyx_mstate_global->__pyx_n_u_main) < (0)) __PYX_ERR(0, 1, __pyx_L1_error)
   }
   {
     PyObject *modules = PyImport_GetModuleDict(); if (unlikely(!modules)) __PYX_ERR(0, 1, __pyx_L1_error)
-    if (!PyDict_GetItemString(modules, "d810.speedups.expr.ast_evaluate")) {
-      if (unlikely((PyDict_SetItemString(modules, "d810.speedups.expr.ast_evaluate", __pyx_m) < 0))) __PYX_ERR(0, 1, __pyx_L1_error)
+    if (!PyDict_GetItemString(modules, "d810.speedups.expr.c_ast_evaluate")) {
+      if (unlikely((PyDict_SetItemString(modules, "d810.speedups.expr.c_ast_evaluate", __pyx_m) < 0))) __PYX_ERR(0, 1, __pyx_L1_error)
     }
   }
   /*--- Builtin init code ---*/
@@ -9726,7 +9726,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   (void)__Pyx_modinit_function_import_code(__pyx_mstate);
   /*--- Execution code ---*/
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":7
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":7
  * from __future__ import annotations
  * 
  * import ida_hexrays             # <<<<<<<<<<<<<<
@@ -9738,7 +9738,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_ida_hexrays, __pyx_t_2) < (0)) __PYX_ERR(0, 7, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":9
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":9
  * import ida_hexrays
  * 
  * from d810.conf.loggers import getLogger             # <<<<<<<<<<<<<<
@@ -9756,7 +9756,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":10
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":10
  * 
  * from d810.conf.loggers import getLogger
  * from d810.errors import AstEvaluationException             # <<<<<<<<<<<<<<
@@ -9774,7 +9774,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":12
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":12
  * from d810.errors import AstEvaluationException
  * from d810.expr.utils import (
  *     get_add_cf,             # <<<<<<<<<<<<<<
@@ -9784,7 +9784,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __pyx_t_2 = __Pyx_PyList_Pack(6, __pyx_mstate_global->__pyx_n_u_get_add_cf, __pyx_mstate_global->__pyx_n_u_get_add_of, __pyx_mstate_global->__pyx_n_u_get_parity_flag, __pyx_mstate_global->__pyx_n_u_get_sub_of, __pyx_mstate_global->__pyx_n_u_signed_to_unsigned, __pyx_mstate_global->__pyx_n_u_unsigned_to_signed); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 12, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":11
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":11
  * from d810.conf.loggers import getLogger
  * from d810.errors import AstEvaluationException
  * from d810.expr.utils import (             # <<<<<<<<<<<<<<
@@ -9820,7 +9820,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":19
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":19
  *     unsigned_to_signed,
  * )
  * from d810.hexrays.hexrays_helpers import AND_TABLE             # <<<<<<<<<<<<<<
@@ -9838,7 +9838,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":21
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":21
  * from d810.hexrays.hexrays_helpers import AND_TABLE
  * 
  * logger = getLogger(__name__)             # <<<<<<<<<<<<<<
@@ -9863,7 +9863,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_logger, __pyx_t_2) < (0)) __PYX_ERR(0, 21, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":23
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":23
  * logger = getLogger(__name__)
  * 
  * from d810.expr._ast import AstConstant, AstLeaf, AstNode, AstProxy             # <<<<<<<<<<<<<<
@@ -9893,7 +9893,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":27
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":27
  * 
  * cdef object _BINARY_OPCODES = frozenset((
  *     ida_hexrays.m_add,             # <<<<<<<<<<<<<<
@@ -9906,7 +9906,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":28
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":28
  * cdef object _BINARY_OPCODES = frozenset((
  *     ida_hexrays.m_add,
  *     ida_hexrays.m_sub,             # <<<<<<<<<<<<<<
@@ -9919,7 +9919,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":29
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":29
  *     ida_hexrays.m_add,
  *     ida_hexrays.m_sub,
  *     ida_hexrays.m_mul,             # <<<<<<<<<<<<<<
@@ -9932,7 +9932,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":30
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":30
  *     ida_hexrays.m_sub,
  *     ida_hexrays.m_mul,
  *     ida_hexrays.m_udiv,             # <<<<<<<<<<<<<<
@@ -9945,7 +9945,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_7);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":31
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":31
  *     ida_hexrays.m_mul,
  *     ida_hexrays.m_udiv,
  *     ida_hexrays.m_sdiv,             # <<<<<<<<<<<<<<
@@ -9958,7 +9958,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_8);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":32
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":32
  *     ida_hexrays.m_udiv,
  *     ida_hexrays.m_sdiv,
  *     ida_hexrays.m_umod,             # <<<<<<<<<<<<<<
@@ -9971,7 +9971,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_9);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":33
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":33
  *     ida_hexrays.m_sdiv,
  *     ida_hexrays.m_umod,
  *     ida_hexrays.m_smod,             # <<<<<<<<<<<<<<
@@ -9984,7 +9984,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_10);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":34
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":34
  *     ida_hexrays.m_umod,
  *     ida_hexrays.m_smod,
  *     ida_hexrays.m_or,             # <<<<<<<<<<<<<<
@@ -9997,7 +9997,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_11);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":35
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":35
  *     ida_hexrays.m_smod,
  *     ida_hexrays.m_or,
  *     ida_hexrays.m_and,             # <<<<<<<<<<<<<<
@@ -10010,7 +10010,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_12);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":36
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":36
  *     ida_hexrays.m_or,
  *     ida_hexrays.m_and,
  *     ida_hexrays.m_xor,             # <<<<<<<<<<<<<<
@@ -10023,7 +10023,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_13);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":37
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":37
  *     ida_hexrays.m_and,
  *     ida_hexrays.m_xor,
  *     ida_hexrays.m_shl,             # <<<<<<<<<<<<<<
@@ -10036,7 +10036,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_14);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":38
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":38
  *     ida_hexrays.m_xor,
  *     ida_hexrays.m_shl,
  *     ida_hexrays.m_shr,             # <<<<<<<<<<<<<<
@@ -10049,7 +10049,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_15);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":39
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":39
  *     ida_hexrays.m_shl,
  *     ida_hexrays.m_shr,
  *     ida_hexrays.m_sar,             # <<<<<<<<<<<<<<
@@ -10062,7 +10062,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_16);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":40
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":40
  *     ida_hexrays.m_shr,
  *     ida_hexrays.m_sar,
  *     ida_hexrays.m_cfadd,             # <<<<<<<<<<<<<<
@@ -10075,7 +10075,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_17);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":41
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":41
  *     ida_hexrays.m_sar,
  *     ida_hexrays.m_cfadd,
  *     ida_hexrays.m_ofadd,             # <<<<<<<<<<<<<<
@@ -10088,7 +10088,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_18);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":42
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":42
  *     ida_hexrays.m_cfadd,
  *     ida_hexrays.m_ofadd,
  *     ida_hexrays.m_seto,             # <<<<<<<<<<<<<<
@@ -10101,7 +10101,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_19);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":43
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":43
  *     ida_hexrays.m_ofadd,
  *     ida_hexrays.m_seto,
  *     ida_hexrays.m_setnz,             # <<<<<<<<<<<<<<
@@ -10114,7 +10114,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_20);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":44
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":44
  *     ida_hexrays.m_seto,
  *     ida_hexrays.m_setnz,
  *     ida_hexrays.m_setz,             # <<<<<<<<<<<<<<
@@ -10127,7 +10127,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_21);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":45
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":45
  *     ida_hexrays.m_setnz,
  *     ida_hexrays.m_setz,
  *     ida_hexrays.m_setae,             # <<<<<<<<<<<<<<
@@ -10140,7 +10140,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_22);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":46
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":46
  *     ida_hexrays.m_setz,
  *     ida_hexrays.m_setae,
  *     ida_hexrays.m_setb,             # <<<<<<<<<<<<<<
@@ -10153,7 +10153,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_23);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":47
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":47
  *     ida_hexrays.m_setae,
  *     ida_hexrays.m_setb,
  *     ida_hexrays.m_seta,             # <<<<<<<<<<<<<<
@@ -10166,7 +10166,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_24);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":48
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":48
  *     ida_hexrays.m_setb,
  *     ida_hexrays.m_seta,
  *     ida_hexrays.m_setbe,             # <<<<<<<<<<<<<<
@@ -10179,7 +10179,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_25);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":49
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":49
  *     ida_hexrays.m_seta,
  *     ida_hexrays.m_setbe,
  *     ida_hexrays.m_setg,             # <<<<<<<<<<<<<<
@@ -10192,7 +10192,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_26);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":50
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":50
  *     ida_hexrays.m_setbe,
  *     ida_hexrays.m_setg,
  *     ida_hexrays.m_setge,             # <<<<<<<<<<<<<<
@@ -10205,7 +10205,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_27);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":51
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":51
  *     ida_hexrays.m_setg,
  *     ida_hexrays.m_setge,
  *     ida_hexrays.m_setl,             # <<<<<<<<<<<<<<
@@ -10218,7 +10218,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_28);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":52
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":52
  *     ida_hexrays.m_setge,
  *     ida_hexrays.m_setl,
  *     ida_hexrays.m_setle,             # <<<<<<<<<<<<<<
@@ -10231,7 +10231,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_29);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":53
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":53
  *     ida_hexrays.m_setl,
  *     ida_hexrays.m_setle,
  *     ida_hexrays.m_setp,             # <<<<<<<<<<<<<<
@@ -10244,7 +10244,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_GOTREF(__pyx_t_30);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":27
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":27
  * 
  * cdef object _BINARY_OPCODES = frozenset((
  *     ida_hexrays.m_add,             # <<<<<<<<<<<<<<
@@ -10281,7 +10281,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_DECREF(__pyx_t_29); __pyx_t_29 = 0;
   __Pyx_DECREF(__pyx_t_30); __pyx_t_30 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":26
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":26
  * 
  * 
  * cdef object _BINARY_OPCODES = frozenset((             # <<<<<<<<<<<<<<
@@ -10291,33 +10291,33 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __pyx_t_30 = __Pyx_PyFrozenSet_New(__pyx_t_4); if (unlikely(!__pyx_t_30)) __PYX_ERR(0, 26, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_30);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  __Pyx_XGOTREF(__pyx_v_4d810_8speedups_4expr_12ast_evaluate__BINARY_OPCODES);
-  __Pyx_DECREF_SET(__pyx_v_4d810_8speedups_4expr_12ast_evaluate__BINARY_OPCODES, __pyx_t_30);
+  __Pyx_XGOTREF(__pyx_v_4d810_8speedups_4expr_14c_ast_evaluate__BINARY_OPCODES);
+  __Pyx_DECREF_SET(__pyx_v_4d810_8speedups_4expr_14c_ast_evaluate__BINARY_OPCODES, __pyx_t_30);
   __Pyx_GIVEREF(__pyx_t_30);
   __pyx_t_30 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":63
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":63
  *     """
  * 
  *     cpdef object evaluate_with_leaf_info(self, object node, object leafs_info, object leafs_value):             # <<<<<<<<<<<<<<
  *         dict_index_to_value = {}
  *         for leaf_info, leaf_value in zip(leafs_info, leafs_value):
 */
-  __pyx_t_30 = __Pyx_CyFunction_New(&__pyx_mdef_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_1evaluate_with_leaf_info, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_AstEvaluator_evaluate_with_leaf, NULL, __pyx_mstate_global->__pyx_n_u_d810_speedups_expr_ast_evaluate, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[0])); if (unlikely(!__pyx_t_30)) __PYX_ERR(0, 63, __pyx_L1_error)
+  __pyx_t_30 = __Pyx_CyFunction_New(&__pyx_mdef_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_1evaluate_with_leaf_info, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_AstEvaluator_evaluate_with_leaf, NULL, __pyx_mstate_global->__pyx_n_u_d810_speedups_expr_c_ast_evaluat, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[0])); if (unlikely(!__pyx_t_30)) __PYX_ERR(0, 63, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_30);
-  if (__Pyx_SetItemOnTypeDict(__pyx_mstate_global->__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator, __pyx_mstate_global->__pyx_n_u_evaluate_with_leaf_info, __pyx_t_30) < (0)) __PYX_ERR(0, 63, __pyx_L1_error)
+  if (__Pyx_SetItemOnTypeDict(__pyx_mstate_global->__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator, __pyx_mstate_global->__pyx_n_u_evaluate_with_leaf_info, __pyx_t_30) < (0)) __PYX_ERR(0, 63, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_30); __pyx_t_30 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":70
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":70
  *         return self.evaluate(node, dict_index_to_value)
  * 
  *     cpdef object evaluate(self, object node, dict dict_index_to_value):             # <<<<<<<<<<<<<<
  *         if isinstance(node, AstNode):
  *             return self._eval_node(node, dict_index_to_value)
 */
-  __pyx_t_30 = __Pyx_CyFunction_New(&__pyx_mdef_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_3evaluate, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_AstEvaluator_evaluate, NULL, __pyx_mstate_global->__pyx_n_u_d810_speedups_expr_ast_evaluate, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[1])); if (unlikely(!__pyx_t_30)) __PYX_ERR(0, 70, __pyx_L1_error)
+  __pyx_t_30 = __Pyx_CyFunction_New(&__pyx_mdef_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_3evaluate, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_AstEvaluator_evaluate, NULL, __pyx_mstate_global->__pyx_n_u_d810_speedups_expr_c_ast_evaluat, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[1])); if (unlikely(!__pyx_t_30)) __PYX_ERR(0, 70, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_30);
-  if (__Pyx_SetItemOnTypeDict(__pyx_mstate_global->__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator, __pyx_mstate_global->__pyx_n_u_evaluate, __pyx_t_30) < (0)) __PYX_ERR(0, 70, __pyx_L1_error)
+  if (__Pyx_SetItemOnTypeDict(__pyx_mstate_global->__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator, __pyx_mstate_global->__pyx_n_u_evaluate, __pyx_t_30) < (0)) __PYX_ERR(0, 70, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_30); __pyx_t_30 = 0;
 
   /* "(tree fragment)":1
@@ -10325,9 +10325,9 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
  *     cdef tuple state
  *     cdef object _dict
 */
-  __pyx_t_30 = __Pyx_CyFunction_New(&__pyx_mdef_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_5__reduce_cython__, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_AstEvaluator___reduce_cython, NULL, __pyx_mstate_global->__pyx_n_u_d810_speedups_expr_ast_evaluate, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[2])); if (unlikely(!__pyx_t_30)) __PYX_ERR(1, 1, __pyx_L1_error)
+  __pyx_t_30 = __Pyx_CyFunction_New(&__pyx_mdef_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_5__reduce_cython__, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_AstEvaluator___reduce_cython, NULL, __pyx_mstate_global->__pyx_n_u_d810_speedups_expr_c_ast_evaluat, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[2])); if (unlikely(!__pyx_t_30)) __PYX_ERR(1, 1, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_30);
-  if (__Pyx_SetItemOnTypeDict(__pyx_mstate_global->__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator, __pyx_mstate_global->__pyx_n_u_reduce_cython, __pyx_t_30) < (0)) __PYX_ERR(1, 1, __pyx_L1_error)
+  if (__Pyx_SetItemOnTypeDict(__pyx_mstate_global->__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator, __pyx_mstate_global->__pyx_n_u_reduce_cython, __pyx_t_30) < (0)) __PYX_ERR(1, 1, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_30); __pyx_t_30 = 0;
 
   /* "(tree fragment)":16
@@ -10336,9 +10336,9 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
  * def __setstate_cython__(self, __pyx_state):             # <<<<<<<<<<<<<<
  *     __pyx_unpickle_AstEvaluator__set_state(self, __pyx_state)
 */
-  __pyx_t_30 = __Pyx_CyFunction_New(&__pyx_mdef_4d810_8speedups_4expr_12ast_evaluate_12AstEvaluator_7__setstate_cython__, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_AstEvaluator___setstate_cython, NULL, __pyx_mstate_global->__pyx_n_u_d810_speedups_expr_ast_evaluate, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[3])); if (unlikely(!__pyx_t_30)) __PYX_ERR(1, 16, __pyx_L1_error)
+  __pyx_t_30 = __Pyx_CyFunction_New(&__pyx_mdef_4d810_8speedups_4expr_14c_ast_evaluate_12AstEvaluator_7__setstate_cython__, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_AstEvaluator___setstate_cython, NULL, __pyx_mstate_global->__pyx_n_u_d810_speedups_expr_c_ast_evaluat, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[3])); if (unlikely(!__pyx_t_30)) __PYX_ERR(1, 16, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_30);
-  if (__Pyx_SetItemOnTypeDict(__pyx_mstate_global->__pyx_ptype_4d810_8speedups_4expr_12ast_evaluate_AstEvaluator, __pyx_mstate_global->__pyx_n_u_setstate_cython, __pyx_t_30) < (0)) __PYX_ERR(1, 16, __pyx_L1_error)
+  if (__Pyx_SetItemOnTypeDict(__pyx_mstate_global->__pyx_ptype_4d810_8speedups_4expr_14c_ast_evaluate_AstEvaluator, __pyx_mstate_global->__pyx_n_u_setstate_cython, __pyx_t_30) < (0)) __PYX_ERR(1, 16, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_30); __pyx_t_30 = 0;
 
   /* "(tree fragment)":1
@@ -10346,12 +10346,12 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
  *     cdef object __pyx_PickleError
  *     cdef object __pyx_result
 */
-  __pyx_t_30 = __Pyx_CyFunction_New(&__pyx_mdef_4d810_8speedups_4expr_12ast_evaluate_1__pyx_unpickle_AstEvaluator, 0, __pyx_mstate_global->__pyx_n_u_pyx_unpickle_AstEvaluator, NULL, __pyx_mstate_global->__pyx_n_u_d810_speedups_expr_ast_evaluate, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[4])); if (unlikely(!__pyx_t_30)) __PYX_ERR(1, 1, __pyx_L1_error)
+  __pyx_t_30 = __Pyx_CyFunction_New(&__pyx_mdef_4d810_8speedups_4expr_14c_ast_evaluate_1__pyx_unpickle_AstEvaluator, 0, __pyx_mstate_global->__pyx_n_u_pyx_unpickle_AstEvaluator, NULL, __pyx_mstate_global->__pyx_n_u_d810_speedups_expr_c_ast_evaluat, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[4])); if (unlikely(!__pyx_t_30)) __PYX_ERR(1, 1, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_30);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_pyx_unpickle_AstEvaluator, __pyx_t_30) < (0)) __PYX_ERR(1, 1, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_30); __pyx_t_30 = 0;
 
-  /* "d810/speedups/expr/ast_evaluate.pyx":1
+  /* "d810/speedups/expr/c_ast_evaluate.pyx":1
  * # distutils: language = c++             # <<<<<<<<<<<<<<
  * # cython: language_level=3, embedsignature=True
  * # cython: cdivision=True
@@ -10395,7 +10395,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
   __Pyx_XDECREF(__pyx_t_30);
   if (__pyx_m) {
     if (__pyx_mstate->__pyx_d && stringtab_initialized) {
-      __Pyx_AddTraceback("init d810.speedups.expr.ast_evaluate", __pyx_clineno, __pyx_lineno, __pyx_filename);
+      __Pyx_AddTraceback("init d810.speedups.expr.c_ast_evaluate", __pyx_clineno, __pyx_lineno, __pyx_filename);
     }
     #if !CYTHON_USE_MODULE_STATE
     Py_CLEAR(__pyx_m);
@@ -10409,7 +10409,7 @@ __Pyx_RefNannySetupContext("PyInit_ast_evaluate", 0);
     }
     #endif
   } else if (!PyErr_Occurred()) {
-    PyErr_SetString(PyExc_ImportError, "init d810.speedups.expr.ast_evaluate");
+    PyErr_SetString(PyExc_ImportError, "init d810.speedups.expr.c_ast_evaluate");
   }
   __pyx_L0:;
   __Pyx_RefNannyFinishContext();
@@ -10477,7 +10477,7 @@ static const __Pyx_StringTabEntry __pyx_string_tab[] = {
   {__pyx_k_d810_expr__ast, sizeof(__pyx_k_d810_expr__ast), 0, 1, 1}, /* PyObject cname: __pyx_n_u_d810_expr__ast */
   {__pyx_k_d810_expr_utils, sizeof(__pyx_k_d810_expr_utils), 0, 1, 1}, /* PyObject cname: __pyx_n_u_d810_expr_utils */
   {__pyx_k_d810_hexrays_hexrays_helpers, sizeof(__pyx_k_d810_hexrays_hexrays_helpers), 0, 1, 1}, /* PyObject cname: __pyx_n_u_d810_hexrays_hexrays_helpers */
-  {__pyx_k_d810_speedups_expr_ast_evaluate, sizeof(__pyx_k_d810_speedups_expr_ast_evaluate), 0, 1, 1}, /* PyObject cname: __pyx_n_u_d810_speedups_expr_ast_evaluate */
+  {__pyx_k_d810_speedups_expr_c_ast_evaluat, sizeof(__pyx_k_d810_speedups_expr_c_ast_evaluat), 0, 1, 1}, /* PyObject cname: __pyx_n_u_d810_speedups_expr_c_ast_evaluat */
   {__pyx_k_debug, sizeof(__pyx_k_debug), 0, 1, 1}, /* PyObject cname: __pyx_n_u_debug */
   {__pyx_k_debug_on, sizeof(__pyx_k_debug_on), 0, 1, 1}, /* PyObject cname: __pyx_n_u_debug_on */
   {__pyx_k_dest_size, sizeof(__pyx_k_dest_size), 0, 1, 1}, /* PyObject cname: __pyx_n_u_dest_size */
@@ -10579,7 +10579,7 @@ static const __Pyx_StringTabEntry __pyx_string_tab[] = {
   {__pyx_k_setstate_cython, sizeof(__pyx_k_setstate_cython), 0, 1, 1}, /* PyObject cname: __pyx_n_u_setstate_cython */
   {__pyx_k_signed_to_unsigned, sizeof(__pyx_k_signed_to_unsigned), 0, 1, 1}, /* PyObject cname: __pyx_n_u_signed_to_unsigned */
   {__pyx_k_spec, sizeof(__pyx_k_spec), 0, 1, 1}, /* PyObject cname: __pyx_n_u_spec */
-  {__pyx_k_src_d810_speedups_expr_ast_evalu, sizeof(__pyx_k_src_d810_speedups_expr_ast_evalu), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_src_d810_speedups_expr_ast_evalu */
+  {__pyx_k_src_d810_speedups_expr_c_ast_eva, sizeof(__pyx_k_src_d810_speedups_expr_c_ast_eva), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_src_d810_speedups_expr_c_ast_eva */
   {__pyx_k_state, sizeof(__pyx_k_state), 0, 1, 1}, /* PyObject cname: __pyx_n_u_state */
   {__pyx_k_stringsource, sizeof(__pyx_k_stringsource), 0, 1, 0}, /* PyObject cname: __pyx_kp_u_stringsource */
   {__pyx_k_t, sizeof(__pyx_k_t), 0, 1, 1}, /* PyObject cname: __pyx_n_u_t */
@@ -10676,12 +10676,12 @@ static int __Pyx_CreateCodeObjects(__pyx_mstatetype *__pyx_mstate) {
   {
     const __Pyx_PyCode_New_function_description descr = {4, 0, 0, 4, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 63, 61};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_self, __pyx_mstate->__pyx_n_u_node, __pyx_mstate->__pyx_n_u_leafs_info, __pyx_mstate->__pyx_n_u_leafs_value};
-    __pyx_mstate_global->__pyx_codeobj_tab[0] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_d810_speedups_expr_ast_evalu, __pyx_mstate->__pyx_n_u_evaluate_with_leaf_info, __pyx_k_A_a_K_S_Q_y_Kwa_1IT_q_t9AV1, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[0])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[0] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_d810_speedups_expr_c_ast_eva, __pyx_mstate->__pyx_n_u_evaluate_with_leaf_info, __pyx_k_A_a_K_S_Q_y_Kwa_1IT_q_t9AV1, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[0])) goto bad;
   }
   {
     const __Pyx_PyCode_New_function_description descr = {3, 0, 0, 3, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 70, 98};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_self, __pyx_mstate->__pyx_n_u_node, __pyx_mstate->__pyx_n_u_dict_index_to_value};
-    __pyx_mstate_global->__pyx_codeobj_tab[1] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_d810_speedups_expr_ast_evalu, __pyx_mstate->__pyx_n_u_evaluate, __pyx_k_A_QfA_4_6_QfA_4_6_QfA_4y_Zq_A_T, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[1])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[1] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_d810_speedups_expr_c_ast_eva, __pyx_mstate->__pyx_n_u_evaluate, __pyx_k_A_QfA_4_6_QfA_4_6_QfA_4y_Zq_A_T, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[1])) goto bad;
   }
   {
     const __Pyx_PyCode_New_function_description descr = {1, 0, 0, 4, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 1, 85};

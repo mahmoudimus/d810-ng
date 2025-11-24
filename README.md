@@ -89,8 +89,8 @@ fd --glob "**/*.so" "./src/d810/speedups" --exclude "*.dSYM" -x dsymutil -o '{.}
 When built, the following Cython modules are compiled:
 
 - `d810.speedups.cythxr._chexrays_api` - Hex-Rays API Cython wrappers
-- `d810.speedups.expr.ast` - AST core functionality
-- `d810.speedups.expr.ast_evaluate` - Fast AST evaluator
+- `d810.speedups.expr.c_ast` - AST core functionality
+- `d810.speedups.expr.c_ast_evaluate` - Fast AST evaluator
 - `d810.speedups.optimizers.microcode.flow.constant_prop.c_dataflow` - Fast dataflow analysis
 - `d810.speedups.optimizers.microcode.flow.constant_prop.c_stackvars_constprop` - Stack variable constant propagation
 
