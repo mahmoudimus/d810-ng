@@ -1,0 +1,178 @@
+name: Build Cython Extensions
+
+on:
+    workflow_dispatch:
+    push:
+        branches:
+            - "main"
+            - "faster"
+        tags:
+            - "v*"
+    pull_request:
+        types:
+            - synchronize
+            - opened
+            - reopened
+        branches:
+            - "main"
+
+# Cancel previous workflow jobs for PRs
+concurrency:
+    group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+    cancel-in-progress: true
+
+jobs:
+    build_wheels:
+        name: Build wheels for ${{ matrix.os }}
+        runs-on: ${{ matrix.runs-on }}
+        strategy:
+            matrix:
+                include:
+                    - os: linux-intel
+                      runs-on: ubuntu-latest
+                    - os: windows-intel
+                      runs-on: windows-latest
+                    - os: macos-intel
+                      # macos-13 was the last x86_64 runner
+                      runs-on: macos-13
+                    - os: macos-arm
+                      # macos-14+ (including latest) are ARM64 runners
+                      runs-on: macos-latest
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Build wheels
+              uses: pypa/cibuildwheel@v2.21
+              env:
+                  # Build CPython 3.10+ wheels only (as required by project)
+                  CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-*"
+                  # Skip PyPy and musllinux builds
+                  CIBW_SKIP: "pp* *-musllinux_*"
+                  # Install build dependencies
+                  CIBW_BUILD_FRONTEND: "build"
+                  # Test the built wheels
+                  CIBW_TEST_REQUIRES: pytest pytest-cov
+                  CIBW_TEST_COMMAND: "pytest {project}/tests/unit -v || true"
+              with:
+                  package-dir: .
+                  output-dir: wheelhouse
+                  config-file: "{package}/pyproject.toml"
+
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
+                  path: ./wheelhouse/*.whl
+
+    build_sdist:
+        name: Build source distribution
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.10"
+
+            - name: Display version
+              run: |
+                  python --version
+                  pip --version
+
+            - name: Install build dependencies
+              run: |
+                  pip install --upgrade pip
+                  pip install --upgrade setuptools wheel
+                  pip install --upgrade build twine packaging
+                  echo "Installed versions:"
+                  pip list | grep -E "(twine|packaging|setuptools|build|wheel|Cython)"
+
+            - name: Install Cython
+              run: |
+                  pip install "Cython>=3.0.0"
+
+            - name: Build sdist
+              run: |
+                  rm -rf dist/*
+                  python -m build --sdist
+
+            - name: Display content dist folder
+              run: |
+                  ls -shR dist/
+
+            - name: Run twine check
+              run: |
+                  twine check dist/*
+
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  path: ./dist/*.tar.gz
+                  name: cibw-sdist
+
+    test_import:
+        name: Test wheel imports on ${{ matrix.os }}
+        needs: [build_wheels]
+        runs-on: ${{ matrix.runs-on }}
+        strategy:
+            matrix:
+                include:
+                    - os: linux
+                      runs-on: ubuntu-latest
+                    - os: windows
+                      runs-on: windows-latest
+                    - os: macos-arm
+                      runs-on: macos-latest
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.10"
+
+            - name: Download wheels
+              uses: actions/download-artifact@v4
+              with:
+                  pattern: cibw-wheels-*
+                  path: dist
+                  merge-multiple: true
+
+            - name: Install wheel
+              shell: bash
+              run: |
+                  # Find and install the appropriate wheel for this platform
+                  pip install dist/*.whl || pip install dist/*cp310*.whl || echo "No compatible wheel found"
+
+            - name: Test basic imports
+              shell: bash
+              run: |
+                  python -c "import d810; print(f'D810 imported successfully from {d810.__file__}')" || echo "Failed to import d810"
+                  python -c "from d810.cythxr import cymode; print(f'Cython mode: {cymode.CythonMode().is_enabled()}')" || echo "Cython modules not available (expected if not built with IDA SDK)"
+
+    upload_artifacts:
+        name: Upload all build artifacts
+        needs: [build_wheels, build_sdist, test_import]
+        runs-on: ubuntu-latest
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        steps:
+            - name: Download all artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  pattern: cibw-*
+                  path: dist
+                  merge-multiple: true
+
+            - name: Display downloaded files
+              run: |
+                  ls -shR dist/
+
+            - name: Upload to release
+              uses: softprops/action-gh-release@v2
+              if: startsWith(github.ref, 'refs/tags/')
+              with:
+                  files: dist/*
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

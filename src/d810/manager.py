@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import contextlib
+import cProfile
 import dataclasses
 import inspect
 import pathlib
+import pstats
 import time
 import typing
 
 from d810.conf import D810Configuration, ProjectConfiguration
 from d810.conf.loggers import clear_logs, configure_loggers, getLogger
+from d810.cythxr.cymode import CythonMode
 from d810.expr.utils import MOP_CONSTANT_CACHE, MOP_TO_AST_CACHE
 from d810.hexrays.hexrays_hooks import (
     BlockOptimizerManager,
@@ -21,6 +24,7 @@ from d810.optimizers.microcode.instructions.handler import InstructionOptimizati
 from d810.project_manager import ProjectManager
 from d810.registry import EventEmitter
 from d810.singleton import SingletonMeta
+from d810.stats import OptimizationStatistics
 
 # Import GUI only when needed (not in headless/test mode)
 try:
@@ -133,6 +137,14 @@ class D810Manager:
         self.pre_pass_hook = pre_hook
         self.post_pass_hook = post_hook
 
+    def disable_profiling(self):
+        self._profiling_enabled = False
+        self.stop_profiling()
+
+    def enable_profiling(self):
+        self._profiling_enabled = True
+        self.start_profiling()
+
     def start(self):
         if self._started:
             self.stop()
@@ -141,9 +153,15 @@ class D810Manager:
 
         # Instantiate core manager classes from registry
         t_inst = time.perf_counter()
-        self.instruction_optimizer = InstructionOptimizerManager(self.log_dir)
+        self.instruction_optimizer = InstructionOptimizerManager(
+            self.stats,
+            log_dir=self.log_dir,
+        )
         self.instruction_optimizer.configure(**self.instruction_optimizer_config)
-        self.block_optimizer = BlockOptimizerManager(self.log_dir)
+        self.block_optimizer = BlockOptimizerManager(
+            self.stats,
+            log_dir=self.log_dir,
+        )
         self.block_optimizer.configure(**self.block_optimizer_config)
         print(f"    ⏱ Manager instantiation: {time.perf_counter() - t_inst:.2f}s")
 
@@ -163,40 +181,6 @@ class D810Manager:
         print(f"    ⏱ Hook installation: {time.perf_counter() - t_hooks:.2f}s")
         print(f"    ⏱ D810Manager.start() total: {time.perf_counter() - t0:.2f}s")
         self._started = True
-
-    def _install_hooks(self):
-        # must become before listeners are installed
-        for _subscriber in (
-            self.start_profiling,
-            self.instruction_optimizer.reset_rule_usage_statistic,
-            self.block_optimizer.reset_rule_usage_statistic,
-            MOP_CONSTANT_CACHE.clear,
-            MOP_TO_AST_CACHE.clear,
-        ):
-            self.event_emitter.on(DecompilationEvent.STARTED, _subscriber)
-
-        for _subscriber in (
-            self.stop_profiling,
-            self.instruction_optimizer.show_rule_usage_statistic,
-            self.block_optimizer.show_rule_usage_statistic,
-            lambda: logger.info(
-                "MOP_CONSTANT_CACHE stats: %s", MOP_CONSTANT_CACHE.stats
-            ),
-            lambda: logger.info("MOP_TO_AST_CACHE stats: %s", MOP_TO_AST_CACHE.stats),
-        ):
-            self.event_emitter.on(DecompilationEvent.FINISHED, _subscriber)
-
-        self.instruction_optimizer.install()
-        self.block_optimizer.install()
-        self.hx_decompiler_hook.hook()
-
-    def configure_instruction_optimizer(self, rules, **kwargs):
-        self.instruction_optimizer_rules = [rule for rule in rules]
-        self.instruction_optimizer_config = kwargs
-
-    def configure_block_optimizer(self, rules, **kwargs):
-        self.block_optimizer_rules = [rule for rule in rules]
-        self.block_optimizer_config = kwargs
 
     def stop(self):
         if not self._started:
@@ -404,7 +388,9 @@ class D810State(metaclass=SingletonMeta):
             for rule_cls in InstructionOptimizationRule.registry.values()
             if not inspect.isabstract(rule_cls)
         ]
-        print(f"  ⏱ Instantiate {len(self.known_ins_rules)} instruction rules: {time.perf_counter() - t_rules:.2f}s")
+        print(
+            f"  ⏱ Instantiate {len(self.known_ins_rules)} instruction rules: {time.perf_counter() - t_rules:.2f}s"
+        )
 
         t_blk = time.perf_counter()
         self.known_blk_rules = [
@@ -412,7 +398,9 @@ class D810State(metaclass=SingletonMeta):
             for rule_cls in FlowOptimizationRule.registry.values()
             if not inspect.isabstract(rule_cls)
         ]
-        print(f"  ⏱ Instantiate {len(self.known_blk_rules)} block rules: {time.perf_counter() - t_blk:.2f}s")
+        print(
+            f"  ⏱ Instantiate {len(self.known_blk_rules)} block rules: {time.perf_counter() - t_blk:.2f}s"
+        )
 
         # Clamp to available projects, if any
         if projects := len(self.project_manager):

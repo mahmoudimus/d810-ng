@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "wheel", "Cython"]
+requires = ["setuptools>=77.0.1", "wheel", "Cython>=3.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -14,14 +14,27 @@ description = "This is a next generation version of D-810, an IDA Pro plugin whi
 dependencies = ["z3-solver", "typing-extensions"]
 
 [project.optional-dependencies]
-dev = ["pyinstrument>=5.0.0,<6.0.0", "coverage[toml]", "pytest", "pytest-cov"]
-ci = ["coverage[toml]", "pytest", "pytest-cov"]
+dev = ["pyinstrument>=5.0.0,<6.0.0", "coverage[toml]", "pytest", "pytest-cov", "Cython>=3.0.0"]
+ci = ["coverage[toml]", "pytest", "pytest-cov", "Cython>=3.0.0"]
+speedups = ["Cython>=3.0.0"]
 
 [tool.setuptools]
 package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+# Include Cython source files in the distribution
+# This allows users to rebuild extensions if needed
+"*" = [
+    "*.pyx",    # Cython implementation source
+    "*.pxd",    # Cython header files
+    "*.c",      # Cythonized C files (for source distributions)
+    "*.cpp",    # Cythonized C++ files
+    "*.h",      # C header files
+    "*.hpp",    # C++ header files
+]
 
 [tool.cyright]
 include = ["*.py", "src/", "include/"]
