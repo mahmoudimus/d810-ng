@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict
+import logging
 
 from ida_hexrays import *
 
@@ -37,7 +37,7 @@ from d810.hexrays.hexrays_helpers import (
 # the searched mops have only one possible values. For instance, this is a preliminary step used in code unflattening.
 
 
-logger = getLogger("D810.tracker")
+logger = getLogger(__name__, logging.WARNING)
 
 
 class InstructionDefUseCollector(mop_visitor_t):
@@ -48,6 +48,10 @@ class InstructionDefUseCollector(mop_visitor_t):
         self.target_mops = []
 
     def visit_mop(self, op: mop_t, op_type: int, is_target: bool):
+        # Skip mops with invalid sizes (e.g., function references with size=-1)
+        if op.size < 0:
+            return 0
+
         if is_target:
             append_mop_if_not_in_list(op, self.target_mops)
         else:
@@ -109,7 +113,8 @@ class MopHistory(object):
         self.history = []
         self.unresolved_mop_list = []
 
-        self._mc_interpreter = MicroCodeInterpreter()
+        # Don't use symbolic mode for tracking - we need to know when variables are unresolved
+        self._mc_interpreter = MicroCodeInterpreter(symbolic_mode=False)
         self._mc_initial_environment = MicroCodeEnvironment()
         self._mc_current_environment = self._mc_initial_environment.get_copy()
         self._is_dirty = True
@@ -176,6 +181,7 @@ class MopHistory(object):
 
     def _execute_microcode(self) -> bool:
         if not self._is_dirty:
+            logger.debug("_execute_microcode: already clean, using cached results")
             return True
         formatted_mop_searched_list = (
             "['" + "', '".join([format_mop_t(x) for x in self.searched_mop_list]) + "']"
@@ -183,6 +189,12 @@ class MopHistory(object):
         logger.debug(
             "Computing: {0} for path {1}".format(
                 formatted_mop_searched_list, self.block_serial_path
+            )
+        )
+        logger.debug(
+            "History has {0} blocks with total {1} instructions".format(
+                len(self.history),
+                sum(len(blk_info.ins_list) for blk_info in self.history),
             )
         )
         self._mc_current_environment = self._mc_initial_environment.get_copy()
@@ -199,11 +211,27 @@ class MopHistory(object):
                     self._is_dirty = False
                     return False
         self._is_dirty = False
+        # Debug: dump environment after execution
+        if logger.debug_on:
+            self._mc_current_environment.dump(
+                "Tracker environment after _execute_microcode"
+            )
         return True
 
     def get_mop_constant_value(self, searched_mop: mop_t) -> Union[None, int]:
+        if logger.debug_on:
+            logger.debug(
+                "get_mop_constant_value called for {0}, _is_dirty={1}, history_len={2}".format(
+                    format_mop_t(searched_mop), self._is_dirty, len(self.history)
+                )
+            )
         if not self._execute_microcode():
+            logger.debug("get_mop_constant_value: _execute_microcode returned False")
             return None
+        if logger.debug_on:
+            self._mc_current_environment.dump(
+                f"Tracker environment before eval_mop for {format_mop_t(searched_mop)}"
+            )
         return self._mc_interpreter.eval_mop(searched_mop, self._mc_current_environment)
 
     def print_info(self, detailed_info=False):
@@ -253,6 +281,17 @@ class MopHistory(object):
 
 
 def get_standard_and_memory_mop_lists(mop_in: mop_t) -> tuple[list[mop_t], list[mop_t]]:
+    # Filter out mops with invalid sizes (e.g., function references with size=-1)
+    # These cannot be tracked or evaluated as variables
+    if mop_in.size < 0:
+        if logger.debug_on:
+            logger.debug(
+                "Skipping mop with invalid size (%d): %s",
+                mop_in.size,
+                format_mop_t(mop_in),
+            )
+        return [], []
+
     if mop_in.t in [mop_r, mop_S]:
         return [mop_in], []
     elif mop_in.t == mop_v:
