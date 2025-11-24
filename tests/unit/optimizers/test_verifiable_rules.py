@@ -18,10 +18,17 @@ import pytest
 from d810.optimizers.rules import RULE_REGISTRY, VerifiableRule
 
 
-@pytest.mark.requires_ida
-@pytest.mark.slow
+@pytest.mark.slow  # Z3 verification takes ~12 seconds
 class TestVerifiableRules:
-    """Test suite for verifiable optimization rules."""
+    """Test suite for verifiable optimization rules.
+
+    NOTE: These tests only require Z3 and Python, NOT IDA Pro!
+    The verification is pure symbolic math - no IDA needed.
+
+    However, importing rule modules currently requires IDA because
+    they import from d810.hexrays.hexrays_helpers (which imports ida_hexrays).
+    After MBA package separation, these will be pure_python tests.
+    """
 
     def test_registry_is_populated(self):
         """Sanity check: ensure at least some rules were discovered and registered.
