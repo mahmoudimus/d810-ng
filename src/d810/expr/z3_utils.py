@@ -1,5 +1,6 @@
 import functools
 import typing
+from typing import Dict, Tuple
 
 # Use platform-independent opcodes (no IDA dependency!)
 # Import as module to use qualified names in match statements
@@ -29,7 +30,7 @@ from d810.hexrays.hexrays_formatters import (
     format_mop_t,
     opcode_to_string,
 )
-from d810.hexrays.hexrays_helpers import get_mop_index
+from d810.hexrays.hexrays_helpers import get_mop_index, structural_mop_hash
 
 logger = getLogger(__name__)
 z3_file_logger = getLogger("D810.z3_test")
@@ -67,7 +68,18 @@ def requires_z3_installed(func: typing.Callable[..., typing.Any]):
 @requires_z3_installed
 @functools.lru_cache(maxsize=1)
 def get_solver() -> z3.Solver:
-    return z3.Solver()
+    s = z3.Solver()
+    # Bound solver work to prevent pathological slowdowns in hot paths.
+    # 50ms per query is generally enough for our simple equalities and keeps
+    # total time bounded in large functions.
+    try:
+        p = z3.ParamsRef()
+        p.set("timeout", 50)  # milliseconds
+        s.set(params=p)
+    except Exception:
+        # Older z3 versions or API quirks – ignore and keep default settings.
+        pass
+    return s
 
 
 @requires_z3_installed
@@ -228,11 +240,10 @@ def ast_to_z3_expression(ast: AstNode | AstLeaf | None, use_bitvecval=False):
                 )
             return extracted
         case _:
-            raise D810Z3Exception(
-                "Z3 evaluation: Unknown opcode {0} for {1}".format(
-                    opcode_to_string(ast.opcode), ast
-                )
-            )
+            # Gracefully fail on unknown opcode; avoid type issues in logging
+            op = getattr(ast, "opcode", None)
+            op_str = opcode_to_string(int(op)) if isinstance(op, int) else str(op)
+            raise D810Z3Exception(f"Z3 evaluation: Unknown opcode {op_str} for {ast}")
 
 
 @requires_z3_installed
@@ -255,6 +266,10 @@ def mop_list_to_z3_expression_list(mop_list: list[ida_hexrays.mop_t]):
             ast_leaf_list,
         )
     return [ast_to_z3_expression(ast) for ast in ast_list]
+
+
+# Module-level memoization for Z3 checks
+_Z3_EQ_CACHE: Dict[Tuple[Tuple[int, int, int|str], Tuple[int, int, int|str]], bool] = {}
 
 
 @requires_z3_installed
@@ -282,16 +297,31 @@ def z3_check_mop_equality(
     # If quick checks didn't decide, fall back to Z3 even when types differ.
     if logger.debug_on:
         logger.debug(
-            "z3_check_mop_equality: mop1.t: %s, mop2.t: %s",
+            "z3_check_mop_equality: mop1: %s, mop2: %s",
             format_mop_t(mop1),
             format_mop_t(mop2),
         )
         logger.debug(
-            "z3_check_mop_equality: mop1.dstr(): %s, mop2.dstr(): %s",
+            "z3_check_mop_equality:\n\tmop1.dstr(): %s\n\tmop2.dstr(): %s\n\thashes: %016X vs %016X",
             mop1.dstr(),
             mop2.dstr(),
+            structural_mop_hash(mop1, 0),
+            structural_mop_hash(mop2, 0),
         )
-    # If pre-filters don't apply, fall back to Z3.
+    # If pre-filters don't apply, fall back to Z3 with a memoized check keyed by
+    # a cheap representation of the operands.
+    try:
+        k1 = (int(mop1.t), int(mop1.size), structural_mop_hash(mop1, 0))
+        k2 = (int(mop2.t), int(mop2.size), structural_mop_hash(mop2, 0))
+    except Exception:
+        k1 = (int(mop1.t), int(mop1.size), mop1.dstr())
+        k2 = (int(mop2.t), int(mop2.size), mop2.dstr())
+    if k2 < k1:
+        k1, k2 = k2, k1
+    cache_key = (k1, k2)
+    cached = _Z3_EQ_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
     exprs = mop_list_to_z3_expression_list([mop1, mop2])
     if len(exprs) != 2:
         return False
@@ -300,15 +330,12 @@ def z3_check_mop_equality(
     _solver.push()
     _solver.add(z3.Not(z3_mop1 == z3_mop2))
     is_equal = _solver.check() == z3.unsat
-    if logger.debug_on:
-        logger.debug(
-            "z3_mop1: %s, z3_mop2: %s, z3_check_mop_equality: is_equal: %s",
-            z3_mop1,
-            z3_mop2,
-            is_equal,
-        )
     _solver.pop()
+    _Z3_EQ_CACHE[cache_key] = is_equal
     return is_equal
+
+
+_Z3_NEQ_CACHE: Dict[Tuple[Tuple[int, int, int|str], Tuple[int, int, int|str]], bool] = {}
 
 
 @requires_z3_installed
@@ -335,16 +362,33 @@ def z3_check_mop_inequality(
     # Otherwise fall back to Z3 (also handles differing types).
     if logger.debug_on:
         logger.debug(
-            "z3_check_mop_inequality: mop1.t: %s, mop2.t: %s",
+            "z3_check_mop_inequality: mop1: %s, mop2: %s",
             format_mop_t(mop1),
             format_mop_t(mop2),
         )
         logger.debug(
-            "z3_check_mop_inequality: mop1.dstr(): %s, mop2.dstr(): %s",
+            "z3_check_mop_inequality:\n\tmop1.dstr(): %s\n\tmop2.dstr(): %s\n\thashes: %016X vs %016X",
             mop1.dstr(),
             mop2.dstr(),
+            structural_mop_hash(mop1, 0),
+            structural_mop_hash(mop2, 0),
         )
-    # If pre-filters don't apply, fall back to Z3.
+    # If pre-filters don't apply, fall back to Z3 with a memoized check keyed by
+    # a cheap representation of the operands.
+    try:
+        k1 = (int(mop1.t), int(mop1.size), structural_mop_hash(mop1, 0))
+        k2 = (int(mop2.t), int(mop2.size), structural_mop_hash(mop2, 0))
+    except Exception:
+        k1 = (int(mop1.t), int(mop1.size), mop1.dstr())
+        k2 = (int(mop2.t), int(mop2.size), mop2.dstr())
+    if k2 < k1:
+        k1, k2 = k2, k1
+    if k2 < k1:
+        k1, k2 = k2, k1
+    cache_key = (k1, k2)
+    cached = _Z3_NEQ_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
     exprs = mop_list_to_z3_expression_list([mop1, mop2])
     if len(exprs) != 2:
         return True
@@ -353,14 +397,8 @@ def z3_check_mop_inequality(
     _solver.push()
     _solver.add(z3_mop1 == z3_mop2)
     is_unequal = _solver.check() == z3.unsat
-    if logger.debug_on:
-        logger.debug(
-            "z3_check_mop_inequality: z3_mop1 ( %s ) != z3_mop2 ( %s ) ? is_unequal: %s",
-            z3_mop1,
-            z3_mop2,
-            is_unequal,
-        )
     _solver.pop()
+    _Z3_NEQ_CACHE[cache_key] = is_unequal
     return is_unequal
 
 
