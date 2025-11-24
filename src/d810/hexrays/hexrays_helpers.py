@@ -185,7 +185,7 @@ except ImportError:
     ida_hexrays = _MockIDAHexrays()
 
 from d810.conf.loggers import getLogger
-from d810.cythxr._chexrays_api import hash_mop as cy_hash_mop
+from speedups.cythxr._chexrays_api import hash_mop as cy_hash_mop
 
 logger = getLogger(__name__)
 
