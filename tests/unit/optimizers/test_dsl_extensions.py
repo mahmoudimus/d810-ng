@@ -9,9 +9,10 @@ These tests verify that the extended DSL features work correctly:
 import pytest
 from unittest.mock import Mock
 
-from d810.optimizers.dsl import (
-    Var, Const, DynamicConst, when, ConstraintPredicate
+from d810.mba.dsl import (
+    Var, Const, DynamicConst, ConstraintPredicate
 )
+from d810.mba.dsl import when
 from d810.optimizers.rules import VerifiableRule
 from d810.optimizers.microcode.instructions.pattern_matching.rewrite_add_refactored import (
     Add_SpecialConstantRule_1,

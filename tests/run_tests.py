@@ -61,7 +61,7 @@ def run_test(test_name, test_func):
 
 def test_dsl_imports():
     """Test that DSL modules can be imported."""
-    from d810.optimizers.dsl import (
+    from d810.mba.dsl import (
         Var, Const, DynamicConst, when, ConstraintPredicate,
         ZERO, ONE, TWO, SymbolicExpression
     )
@@ -102,7 +102,7 @@ def test_refactored_rules_import():
 
 def test_dynamic_const_creation():
     """Test DynamicConst creation and usage."""
-    from d810.optimizers.dsl import DynamicConst, Var
+    from d810.mba.dsl import DynamicConst, Var
     from unittest.mock import Mock
 
     # Create dynamic constant
@@ -128,7 +128,7 @@ def test_dynamic_const_creation():
 
 def test_constraint_predicates():
     """Test constraint predicate helpers."""
-    from d810.optimizers.dsl import when
+    from d810.mba.dsl import when
     from unittest.mock import Mock
 
     # Test const_equals
@@ -220,7 +220,7 @@ def test_rule_registry_populated():
 
 def test_check_runtime_constraints():
     """Test runtime constraint checking mechanism."""
-    from d810.optimizers.dsl import Var, Const, when
+    from d810.mba.dsl import Var, Const, when
     from d810.optimizers.rules import VerifiableRule
     from unittest.mock import Mock
 

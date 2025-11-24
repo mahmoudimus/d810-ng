@@ -22,7 +22,7 @@ except ImportError:
     Z3_AVAILABLE = False
 
 if TYPE_CHECKING:
-    from d810.optimizers.dsl import SymbolicExpression
+    from d810.mba.dsl import SymbolicExpression
 
 
 class Z3VerificationVisitor:
@@ -33,7 +33,7 @@ class Z3VerificationVisitor:
     IDA Pro - it works entirely with platform-independent symbolic expressions.
 
     Example:
-        >>> from d810.optimizers.dsl import Var
+        >>> from d810.mba.dsl import Var
         >>> x, y = Var("x"), Var("y")
         >>> pattern = (x | y) - (x & y)  # Pure SymbolicExpression
         >>>
@@ -312,7 +312,7 @@ class Z3VerificationVisitor:
         Raises:
             ValueError: If constraint type is unsupported
         """
-        from d810.optimizers.constraints import (
+        from d810.mba.constraints import (
             AndConstraint,
             ComparisonConstraint,
             EqualityConstraint,
@@ -368,7 +368,7 @@ class Z3VerificationVisitor:
         Returns:
             Z3 BitVecRef
         """
-        from d810.optimizers.dsl import SymbolicExpression
+        from d810.mba.dsl import SymbolicExpression
 
         if isinstance(expr, SymbolicExpression):
             return self.visit(expr)
@@ -420,7 +420,7 @@ def prove_equivalence(
                          values that demonstrate the difference. None if equivalent.
 
     Example:
-        >>> from d810.optimizers.dsl import Var
+        >>> from d810.mba.dsl import Var
         >>> x, y = Var("x"), Var("y")
         >>> pattern = (x | y) - (x & y)
         >>> replacement = x ^ y
