@@ -215,11 +215,11 @@ def ext_modules():
         annotate=DEBUG_MODE,
         gdb_debug=DEBUG_MODE,
     )
-    # Build all Cython extensions from speedups/ directory
+    # Build all Cython extensions from d810/speedups/ directory
     modules += partialed_cythonize(
         Extension(
             "*",
-            ["src/speedups/**/*.pyx"],
+            ["src/d810/speedups/**/*.pyx"],
             language="c++",
             include_dirs=include_paths,
             library_dirs=library_paths,
@@ -238,7 +238,7 @@ setup(
     version="0.1.0",
     description="D-810 next generation plugin for IDA Pro",
     ext_modules=ext_modules(),
-    packages=find_packages(where="src", include=("d810*", "speedups*")),
+    packages=find_packages(where="src", include=("d810*",)),
     package_dir={"": "src"},
     python_requires=">=3.10",
     zip_safe=False,
