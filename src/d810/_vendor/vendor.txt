@@ -1,0 +1,24 @@
+# d810 Vendored Dependencies
+#
+# This file lists all vendored dependencies. Format follows pip's vendor.txt.
+# Dependencies are vendored as source directories to avoid conflicts with
+# IDA Pro's Python environment.
+#
+# To update vendored packages:
+# 1. Update version here
+# 2. Download/clone the new version
+# 3. Copy source into src/d810/_vendor/<package>/
+# 4. Apply any necessary patches from tools/vendoring/patches/
+# 5. Test thoroughly
+#
+# Currently vendored:
+# (none yet - placeholder for future vendoring)
+#
+# Candidates for vendoring:
+# - miasm2: If we need specific version/patches for IDA compatibility
+# - z3-solver: If bundling is needed for binary distributions
+# - Any other dependencies that cause conflicts in IDA environment
+
+# Example format (when vendoring):
+# miasm==0.1.5+d810.1
+#     # Custom d810 build with IDA compatibility patches

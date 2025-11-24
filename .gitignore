@@ -7,6 +7,14 @@
 **.pyc
 **.log
 
+# Vendored dependencies (following pip's approach)
+# NOTE: Vendored source code IS checked into git (like pip does)
+# Only ignore generated files from vendored packages
+src/d810/_vendor/**/__pycache__/
+src/d810/_vendor/**/*.pyc
+src/d810/_vendor/**/*.pyo
+src/d810/_vendor/**/*.egg-info/
+
 # AI tools
 .cursorindexignore
 .cursorignore
