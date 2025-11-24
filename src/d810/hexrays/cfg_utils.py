@@ -1,4 +1,6 @@
+import contextlib
 import functools
+import logging
 
 import ida_hexrays
 import idaapi
@@ -9,22 +11,23 @@ from d810.errors import ControlFlowException
 from d810.hexrays.hexrays_formatters import block_printer
 from d810.hexrays.hexrays_helpers import CONDITIONAL_JUMP_OPCODES
 
-helper_logger = getLogger("D810.helper")
+helper_logger = getLogger(__name__)
 
 
-def log_block_info(blk: mblock_t, logger_func=helper_logger.info):
+def log_block_info(blk: mblock_t, logger_func=helper_logger.info, ctx: str = ""):
     if blk is None:
         logger_func("Block is None")
         return
+    if ctx:
+        logger_func("%s", ctx)
     vp = block_printer()
     blk._print(vp)
     logger_func(
-        "Block {0} with successors {1} and predecessors {2}:\n{3}".format(
-            blk.serial,
-            [x for x in blk.succset],
-            [x for x in blk.predset],
-            vp.get_block_mc(),
-        )
+        "Block %s with successors %s and predecessors %s:\n%s",
+        blk.serial,
+        list(blk.succset),
+        list(blk.predset),
+        vp.get_block_mc(),
     )
 
 
@@ -40,6 +43,10 @@ def _get_mba_frame_size(mba: ida_hexrays.mba_t | None) -> int | None:
     return None
 
 
+# Optional second-level cache: one name per SSA *valnum* (fast path)
+_VALNUM_NAME_CACHE: dict[int, str] = {}
+
+
 @functools.lru_cache(maxsize=16384)
 def _cached_stack_var_name(
     mop_identity: int,  #  not used in the function but we need this bad boy for caching
@@ -49,12 +56,7 @@ def _cached_stack_var_name(
     valnum: int,
     frame_size: int | None,
 ) -> str:
-    """Compute & cache printable variable names (identity-based).
-
-    All arguments are immutable scalars, so the function is safe for
-    functools.lru_cache.  The *mop_identity* (id(mop)) ensures each concrete
-    mop_t instance gets its own entry even if scalar fields collide.
-    """
+    """Compute & cache printable variable names (identity-based)."""
     if t == ida_hexrays.mop_S:
         if frame_size is not None and frame_size >= reg_or_off:
             disp = frame_size - reg_or_off
@@ -67,20 +69,27 @@ def _cached_stack_var_name(
 
 
 def get_stack_var_name(mop: ida_hexrays.mop_t) -> str | None:
-    """Return a stable human-readable name for a stack/register operand.
+    """Return a stable human-readable name for *mop*.
 
     Fast path: lookup by ``mop.valnum`` in `_VALNUM_NAME_CACHE`.  Falls back to
     identity-based LRU cache on a miss.
     """
+    cached = _VALNUM_NAME_CACHE.get(mop.valnum)
+    if cached is not None:
+        return cached
+
     if mop.t == ida_hexrays.mop_S:
         frame_size = _get_mba_frame_size(getattr(mop.s, "mba", None))
-        return _cached_stack_var_name(
+        name = _cached_stack_var_name(
             id(mop), mop.t, mop.s.off, mop.size, mop.valnum, frame_size
         )
     elif mop.t == ida_hexrays.mop_r:
         name = _cached_stack_var_name(id(mop), mop.t, mop.r, mop.size, mop.valnum, None)
     else:
         return None
+    return name
+
+    _VALNUM_NAME_CACHE[mop.valnum] = name
     return name
 
 
@@ -108,14 +117,24 @@ def safe_verify(
         mba.verify(True)
     except RuntimeError as e:
         logger_func("verify failed after %s: %s", ctx, e, exc_info=True)
-        # attempt to locate a problematic block: dump the last one
-        try:
-            last_blk = (
-                mba.get_mblock(mba.qty - 2) if mba.qty >= 2 else mba.get_mblock(0)
-            )
-            log_block_info(last_blk, logger_func)
-        except Exception:  # pragma: no cover
-            pass
+        # attempt to locate problematic blocks: dump the last two blocks if possible
+        with contextlib.suppress(Exception):
+            divider = "-" * 14
+            if (num_blocks := mba.qty) != 0:
+                if num_blocks >= 2:
+                    log_block_info(
+                        mba.get_mblock(num_blocks - 2),
+                        logger_func,
+                        f"{divider}[blk -2]{divider}",
+                    )
+                    log_block_info(
+                        mba.get_mblock(num_blocks - 1),
+                        logger_func,
+                        f"{divider}[blk -1]{divider}",
+                    )
+                log_block_info(
+                    mba.get_mblock(0), logger_func, f"{divider}[blk 0]{divider}"
+                )
         raise
 
 
@@ -332,7 +351,7 @@ def update_blk_successor(
     if blk.nsucc() == 1:
         change_1way_block_successor(blk, new_successor_serial)
     elif blk.nsucc() == 2:
-        if old_successor_serial == blk.serial + 1:
+        if old_successor_serial == blk.nextb.serial:
             helper_logger.info(
                 "Can't update direct block successor: {0} - {1} - {2}".format(
                     blk.serial, old_successor_serial, new_successor_serial
@@ -452,7 +471,7 @@ def update_block_successors(blk: mblock_t, blk_succ_serial_list: list[int]):
 
 def insert_nop_blk(blk: mblock_t) -> mblock_t:
     mba = blk.mba
-    nop_block = mba.copy_block(blk, blk.serial + 1)
+    nop_block = mba.copy_block(blk, blk.nextb.serial)
     cur_ins = nop_block.head
     if cur_ins == None:
         cur_inst = minsn_t(blk.start)

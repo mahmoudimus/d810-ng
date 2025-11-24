@@ -31,7 +31,7 @@ from d810.hexrays.hexrays_helpers import (
     STRING_TO_MATURITY_DICT,
 )
 
-logger = getLogger("D810.helper")
+logger = getLogger(__name__)
 
 _trans_table = str.maketrans(
     "", "", "".join(chr(i) for i in range(256) if not (0x20 <= i <= 0x7E))
