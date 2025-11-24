@@ -1,0 +1,18 @@
+diff a/src/d810/hexrays/hexrays_helpers.py b/src/d810/hexrays/hexrays_helpers.py	(rejected hunks)
+@@ -36,6 +36,7 @@ from ida_hexrays import (
+ )
+ 
+ from d810.conf.loggers import getLogger
++from d810.cythxr._chexrays_api import hash_mop as cy_hash_mop
+ 
+ logger = getLogger(__name__)
+ 
+@@ -250,7 +271,7 @@ MINSN_TO_AST_FORBIDDEN_OPCODES = CONTROL_FLOW_OPCODES + [
+     m_ext,
+ ]
+ 
+-SUB_TABLE = {
++SUB_TABLE: dict[int, int] = {
+     1: 0x100,
+     2: 0x10000,
+     4: 0x100000000,

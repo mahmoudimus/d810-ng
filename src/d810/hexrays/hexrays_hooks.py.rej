@@ -1,0 +1,19 @@
+diff a/src/d810/hexrays/hexrays_hooks.py b/src/d810/hexrays/hexrays_hooks.py	(rejected hunks)
+@@ -312,14 +303,15 @@ class BlockOptimizerManager(optblock_t):
+                     optimizer_logger.info(
+                         "Rule {0} matched: {1} patches".format(cfg_rule.name, nb_patch)
+                     )
+-                    self.cfg_rules_usage_info[cfg_rule.name].append(nb_patch)
++                    if self.stats is not None:
++                        self.stats.record_cfg_rule_patches(cfg_rule.name, nb_patch)
++
+                     return nb_patch
+         return 0
+ 
+     def add_rule(self, cfg_rule: FlowOptimizationRule):
+         optimizer_logger.info("Adding cfg rule {0}".format(cfg_rule))
+         self.cfg_rules.add(cfg_rule)
+-        self.cfg_rules_usage_info[cfg_rule.name] = []
+ 
+     def configure(self, **kwargs):
+         pass

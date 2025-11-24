@@ -12,8 +12,9 @@ import ida_hexrays
 
 from d810.conf.loggers import getLogger
 import d810.hexrays.hexrays_formatters as fmt
-from d810.cythxr._chexrays cimport (
+from speedups.cythxr._chexrays cimport (
     ea_t,
+    m_nop,
     mcode_t,
     minsn_t,
     mop_t_ptr,
@@ -408,7 +409,7 @@ cpdef object fast_minsn_to_ast(object ins_py,
         return None
 
     # very light filter: only real ops or instruction results
-    if ins.opcode == mcode_t.m_nop:
+    if ins.opcode == m_nop:
         if logger.debug_on:
             try:
                 logger.debug(
