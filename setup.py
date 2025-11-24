@@ -113,6 +113,7 @@ def link_args():
             # Use @loader_path to encode a relative rpath.  The placeholder
             # ``{rpath}`` will be substituted at runtime below.
             rpath = os.path.join("lib")
+            debug_flags = []
             if DEBUG_MODE:
                 debug_flags = ["-g"]
             return [
@@ -120,6 +121,7 @@ def link_args():
             ] + debug_flags
         case "Linux":
             rpath = os.path.join("lib")
+            debug_flags = []
             if DEBUG_MODE:
                 debug_flags = ["-g"]
             return ["-Wl,-rpath,$ORIGIN/" + rpath] + debug_flags
