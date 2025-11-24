@@ -9,6 +9,7 @@ import idaapi
 
 import d810
 import d810._compat as _compat
+import d810.ida_reloadable as reloadable
 
 D810_VERSION = "0.1"
 
@@ -39,121 +40,7 @@ class _UIHooks(idaapi.UI_Hooks):
         pass
 
 
-class Plugin(abc.ABC, idaapi.plugin_t):
-
-    @abc.abstractmethod
-    def init(self): ...
-
-    @_compat.override
-    @abc.abstractmethod
-    def run(self, args): ...
-
-    @_compat.override
-    @abc.abstractmethod
-    def term(self): ...
-
-
-class LateInitPlugin(Plugin):
-
-    def __init__(self):
-        super().__init__()
-        self._ui_hooks: _UIHooks = _UIHooks()
-
-    @_compat.override
-    def init(self):
-        self._ui_hooks.ready_to_run = self.ready_to_run
-        if not self._ui_hooks.hook():
-            print("LateInitPlugin.__init__ hooking failed!", file=sys.stderr)
-            return idaapi.PLUGIN_SKIP
-        return idaapi.PLUGIN_OK
-
-    def ready_to_run(self):
-        self.late_init()
-        self._ui_hooks.unhook()
-
-    @abc.abstractmethod
-    def late_init(self): ...
-
-
-class ReloadablePlugin(LateInitPlugin, idaapi.action_handler_t):
-    def __init__(
-        self,
-        *,
-        global_name: str,
-        base_package_name: str,
-        plugin_class: str,
-    ):
-        super().__init__()
-        self.global_name = global_name
-        self.base_package_name = base_package_name
-        self.plugin_class = plugin_class
-        self.plugin = self._import_plugin_cls()
-
-    def _import_plugin_cls(self):
-        self.plugin_module, self.plugin_class_name = self.plugin_class.rsplit(".", 1)
-        mod = importlib.import_module(self.plugin_module)
-        return getattr(mod, self.plugin_class_name)()
-
-    @_compat.override
-    def update(self, ctx: ida_kernwin.action_ctx_base_t) -> int:
-        return idaapi.AST_ENABLE_ALWAYS
-
-    @_compat.override
-    def activate(self, ctx: ida_kernwin.action_ctx_base_t):
-        with self.plugin_setup_reload():
-            self.reload()
-        return 1
-
-    @_compat.override
-    def late_init(self):
-        self.add_plugin_to_console()
-        self.register_reload_action()
-
-    @_compat.override
-    def term(self):
-        self.unregister_reload_action()
-        if self.plugin is not None and hasattr(self.plugin, "unload"):
-            self.plugin.unload()
-
-    def register_reload_action(self):
-        idaapi.register_action(
-            idaapi.action_desc_t(
-                f"{self.global_name}:reload_plugin",
-                f"Reload plugin: {self.global_name}",
-                self,
-            )
-        )
-
-    def unregister_reload_action(self):
-        idaapi.unregister_action(f"{self.global_name}:reload_plugin")
-
-    def add_plugin_to_console(self):
-        # add plugin to the IDA python console scope, for test/dev/cli access
-        setattr(sys.modules["__main__"], self.global_name, self)
-
-    @contextlib.contextmanager
-    def plugin_setup_reload(self):
-        """Hot-reload the plugin core."""
-        # Unload existing plugin if loaded
-        if self.plugin.is_loaded():
-            self.unregister_reload_action()
-            self.term()
-            self.plugin = self._import_plugin_cls()
-            self.plugin.reset()
-
-        yield
-
-        # Re-register action and load plugin
-        self.register_reload_action()
-        print(f"{self.global_name} reloading...")
-        self.add_plugin_to_console()
-        self.plugin.load()
-
-    @abc.abstractmethod
-    def reload(self): ...
-
-
-class D810Plugin(ReloadablePlugin):
+class D810Plugin(reloadable.ReloadablePluginBase, idaapi.action_handler_t):
     #
     # Plugin flags:
     # - PLUGIN_MOD: plugin may modify the database
@@ -174,6 +61,9 @@ class D810Plugin(ReloadablePlugin):
             global_name="D810",
             base_package_name="d810",
             plugin_class="d810.manager.D810State",
+            hook_cls=_UIHooks,
+            skip_code=idaapi.PLUGIN_SKIP,
+            ok_code=idaapi.PLUGIN_OK,
         )
         self.suppress_reload_errors = False
 
@@ -206,6 +96,32 @@ class D810Plugin(ReloadablePlugin):
         super().term()
         print(f"Terminating {self.wanted_name}...")
 
+    def register_reload_action(self):
+        """Register the reload action in IDA."""
+        idaapi.register_action(
+            idaapi.action_desc_t(
+                f"{self.global_name}:reload_plugin",
+                f"Reload plugin: {self.global_name}",
+                self,
+            )
+        )
+
+    def unregister_reload_action(self):
+        """Unregister the reload action from IDA."""
+        idaapi.unregister_action(f"{self.global_name}:reload_plugin")
+
+    @_compat.override
+    def update(self, ctx: ida_kernwin.action_ctx_base_t) -> int:
+        """Action handler update - always enabled."""
+        return idaapi.AST_ENABLE_ALWAYS
+
+    @_compat.override
+    def activate(self, ctx: ida_kernwin.action_ctx_base_t):
+        """Action handler activate - triggers reload."""
+        with self.plugin_setup_reload():
+            self.reload()
+        return 1
+
     @_compat.override
     def reload(self):
         """Hot-reload the *entire* package.
@@ -223,14 +139,12 @@ class D810Plugin(ReloadablePlugin):
         The helper prints a concise warning listing only the *core* cycles it
         found; modules merely *blocked* by a cycle are ordered automatically.
         """
-        from d810.reloadable import _reload_package_with_graph
 
         with self.plugin_setup_reload():
-            _reload_package_with_graph(
-                pkg_path=d810.__path__,
-                base_package=self.base_package_name,
-                skip_prefixes=(f"{self.base_package_name}.registry",),
-                suppress_errors=self.suppress_reload_errors,
+            reloadable.reload_package(
+                d810,
+                skip=[f"{self.base_package_name}.registry"],
+                suppress_errors=self.suppress_reload_errors
             )
 
 
