@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools", "wheel", "Cython"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -14,7 +14,7 @@ description = "This is a next generation version of D-810, an IDA Pro plugin whi
 dependencies = ["z3-solver", "typing-extensions"]
 
 [project.optional-dependencies]
-dev = ["pyinstrument", "coverage[toml]", "pytest", "pytest-cov"]
+dev = ["pyinstrument>=5.0.0,<6.0.0", "coverage[toml]", "pytest", "pytest-cov"]
 ci = ["coverage[toml]", "pytest", "pytest-cov"]
 
 [tool.setuptools]
@@ -22,6 +22,24 @@ package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.cyright]
+include = ["*.py", "src/", "include/"]
+exclude = ["build/", "docs/", "scripts/", "samples/", "tests/"]
+
+reportGeneralTypeIssues = true
+reportOptionalSubscript = true
+reportOptionalMemberAccess = true
+reportOptionalCall = true
+reportOptionalIterable = true
+reportOptionalContextManager = true
+reportOptionalOperand = true
+reportMissingModuleSource = true
+
+[tool.cython-lint]
+max-line-length = 88
+ignore = ['E503', 'E504']
+exclude = []
 
 [tool.coverage.run]
 source = ["src/d810"]
