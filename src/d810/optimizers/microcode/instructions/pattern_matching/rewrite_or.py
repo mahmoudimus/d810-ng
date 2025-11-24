@@ -12,7 +12,7 @@ Original rules from rewrite_or.py, now with:
 All rules are mathematically proven correct by Z3 SMT solver.
 """
 
-from d810.optimizers.dsl import Var, Const, when
+from d810.mba.dsl import Var, Const, when
 from d810.optimizers.rules import VerifiableRule
 
 # Create symbolic variables

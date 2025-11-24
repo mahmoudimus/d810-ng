@@ -6,7 +6,7 @@ multiplication operations, primarily MBA (Mixed Boolean-Arithmetic) patterns.
 All rules are verified using Z3 SMT solver.
 """
 
-from d810.optimizers.dsl import Var, Const, when
+from d810.mba.dsl import Var, Const, when
 from d810.optimizers.rules import VerifiableRule
 
 # Define variables for pattern matching

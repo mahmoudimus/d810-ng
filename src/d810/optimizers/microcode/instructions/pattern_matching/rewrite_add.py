@@ -12,7 +12,7 @@ Original rules from rewrite_add.py, now with:
 All rules are mathematically proven correct by Z3 SMT solver.
 """
 
-from d810.optimizers.dsl import Var, Const, NEGATIVE_ONE, NEGATIVE_TWO
+from d810.mba.dsl import Var, Const, NEGATIVE_ONE, NEGATIVE_TWO
 from d810.optimizers.rules import VerifiableRule
 
 # Create symbolic variables
@@ -163,7 +163,7 @@ class Add_OllvmRule_3(VerifiableRule):
 # The following rules use the extended DSL with constraints and dynamic constants.
 
 
-from d810.optimizers.dsl import when, DynamicConst
+from d810.mba.dsl import when, DynamicConst
 
 
 class Add_SpecialConstantRule_1(VerifiableRule):

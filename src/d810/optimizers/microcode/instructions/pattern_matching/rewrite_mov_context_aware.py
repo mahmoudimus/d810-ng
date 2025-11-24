@@ -4,7 +4,7 @@ These rules demonstrate the context-aware DSL for pattern matching rules that ne
 to inspect or modify the instruction context beyond the source operands.
 """
 
-from d810.optimizers.dsl import Const, Var
+from d810.mba.dsl import Const, Var
 from d810.optimizers.extensions import context, when
 from d810.optimizers.rules import VerifiableRule
 
