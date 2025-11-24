@@ -310,7 +310,7 @@ OPCODES_INFO = {
 }
 
 
-MATURITY_TO_STRING_DICT = {
+MATURITY_TO_STRING_DICT: dict[int, str] = {
     MMAT_ZERO: "MMAT_ZERO",
     MMAT_GENERATED: "MMAT_GENERATED",
     MMAT_PREOPTIMIZED: "MMAT_PREOPTIMIZED",
@@ -321,9 +321,11 @@ MATURITY_TO_STRING_DICT = {
     MMAT_GLBOPT3: "MMAT_GLBOPT3",
     MMAT_LVARS: "MMAT_LVARS",
 }
-STRING_TO_MATURITY_DICT = {v: k for k, v in MATURITY_TO_STRING_DICT.items()}
+STRING_TO_MATURITY_DICT: dict[str, int] = {
+    v: k for k, v in MATURITY_TO_STRING_DICT.items()
+}
 
-MOP_TYPE_TO_STRING_DICT = {
+MOP_TYPE_TO_STRING_DICT: dict[int, str] = {
     mop_z: "mop_z",
     mop_r: "mop_r",
     mop_n: "mop_n",
@@ -342,12 +344,30 @@ MOP_TYPE_TO_STRING_DICT = {
     mop_sc: "mop_sc",
 }
 
-Z3_SPECIAL_OPERANDS = ["UDiv", "URem", "LShR", "UGT", "UGE", "ULT", "ULE"]
+Z3_SPECIAL_OPERANDS: list[str] = ["UDiv", "URem", "LShR", "UGT", "UGE", "ULT", "ULE"]
 
-BOOLEAN_OPCODES = [m_lnot, m_bnot, m_or, m_and, m_xor]
-ARITHMETICAL_OPCODES = [m_neg, m_add, m_sub, m_mul, m_udiv, m_sdiv, m_umod, m_smod]
-BIT_OPERATIONS_OPCODES = [m_shl, m_shr, m_sar, m_mov, m_xds, m_xdu, m_low, m_high]
-CHECK_OPCODES = [
+BOOLEAN_OPCODES: list[int] = [m_lnot, m_bnot, m_or, m_and, m_xor]
+ARITHMETICAL_OPCODES: list[int] = [
+    m_neg,
+    m_add,
+    m_sub,
+    m_mul,
+    m_udiv,
+    m_sdiv,
+    m_umod,
+    m_smod,
+]
+BIT_OPERATIONS_OPCODES: list[int] = [
+    m_shl,
+    m_shr,
+    m_sar,
+    m_mov,
+    m_xds,
+    m_xdu,
+    m_low,
+    m_high,
+]
+CHECK_OPCODES: list[int] = [
     m_sets,
     m_seto,
     m_setp,
@@ -363,11 +383,11 @@ CHECK_OPCODES = [
     m_setle,
 ]
 
-MBA_RELATED_OPCODES = (
+MBA_RELATED_OPCODES: list[int] = (
     BOOLEAN_OPCODES + ARITHMETICAL_OPCODES + BIT_OPERATIONS_OPCODES + CHECK_OPCODES
 )
 
-CONDITIONAL_JUMP_OPCODES = [
+CONDITIONAL_JUMP_OPCODES: list[int] = [
     m_jcnd,
     m_jnz,
     m_jz,
@@ -381,10 +401,10 @@ CONDITIONAL_JUMP_OPCODES = [
     m_jle,
     m_jtbl,
 ]
-UNCONDITIONAL_JUMP_OPCODES = [m_goto, m_ijmp]
-CONTROL_FLOW_OPCODES = CONDITIONAL_JUMP_OPCODES + UNCONDITIONAL_JUMP_OPCODES
+UNCONDITIONAL_JUMP_OPCODES: list[int] = [m_goto, m_ijmp]
+CONTROL_FLOW_OPCODES: list[int] = CONDITIONAL_JUMP_OPCODES + UNCONDITIONAL_JUMP_OPCODES
 
-MINSN_TO_AST_FORBIDDEN_OPCODES = CONTROL_FLOW_OPCODES + [
+MINSN_TO_AST_FORBIDDEN_OPCODES: list[int] = CONTROL_FLOW_OPCODES + [
     m_ret,
     m_nop,
     m_stx,
@@ -404,14 +424,14 @@ SUB_TABLE = {
 }
 # The AND_TABLE is an all-ones mask (equivalent to -1 in two's complement).
 # XORing with an all-ones mask is the same as a bitwise NOT (~).
-AND_TABLE = {
+AND_TABLE: dict[int, int] = {
     1: 0xFF,
     2: 0xFFFF,
     4: 0xFFFFFFFF,
     8: 0xFFFFFFFFFFFFFFFF,
     16: 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF,
 }
-MSB_TABLE = {
+MSB_TABLE: dict[int, int] = {
     1: 0x80,
     2: 0x8000,
     4: 0x80000000,
@@ -421,6 +441,107 @@ MSB_TABLE = {
 
 
 # Hex-Rays mop equality checking
+_EQUAL_BNOT_CACHE: dict[tuple[int, int], bool] = {}
+_EQUAL_BNOT_MAX = 8192
+_EQUAL_IGN_CACHE: dict[tuple[int, int], bool] = {}
+_EQUAL_IGN_MAX = 8192
+
+
+def _mop_cache_key(op: mop_t) -> str:
+    """Stable, cheap key for caching equality checks without using dstr()."""
+    t = op.t
+    sz = op.size
+    # Constants: include value
+    if t == mop_n:
+        try:
+            return f"n:{sz}:{op.nnn.value}"
+        except Exception:
+            return f"n:{sz}:?"
+    # Global address
+    if t == mop_v:
+        try:
+            return f"v:{sz}:{op.g}"
+        except Exception:
+            return f"v:{sz}:?"
+    # Symbolic reference; prefer start_ea when available (exclude stkvars)
+    if t == mop_S:
+        start_ea = getattr(op.s, "start_ea", None)
+        if start_ea is not None:
+            return f"S:{sz}:{start_ea}"
+        off = getattr(op.s, "off", -1)
+        return f"Sstk:{sz}:{off}"
+    # Nested instruction: use opcode + identity of the inner instruction
+    if t == mop_d and op.d is not None:
+        try:
+            return f"d:{sz}:{op.d.opcode}:{id(op.d)}"
+        except Exception:
+            return f"d:{sz}:{id(op)}"
+    # Register
+    if t == mop_r:
+        return f"r:{sz}:{getattr(op, 'r', '?')}"
+    # Memory b form: capture base type; avoid non-existent fields access
+    if t == mop_b:
+        bt = getattr(op.b, "t", -1)
+        return f"b:{sz}:{bt}:{id(op)}"
+    # Pair
+    if t == mop_p:
+        return f"p:{sz}:{id(op)}"
+    # Fallback to type+size+identity
+    return f"{t}:{sz}:{id(op)}"
+
+
+def mop_quick_key_ignore_size(op: mop_t) -> str:
+    """Cheap signature for grouping operands under ignore-size equality.
+
+    This intentionally ignores the operand size and uses structural fields that
+    are compared in equal_mops_ignore_size. It is not a perfect hash: keys may
+    collide across non-equal operands, so callers must still verify equality
+    within a bucket using equal_mops_ignore_size.
+    """
+    t = op.t
+    if t == mop_n:
+        try:
+            return f"n:{op.nnn.value}"
+        except Exception:
+            return "n:?"
+    if t == mop_v:
+        try:
+            return f"v:{op.g}"
+        except Exception:
+            return "v:?"
+    if t == mop_S:
+        start_ea = getattr(op.s, "start_ea", None)
+        if start_ea is not None:
+            return f"S:{start_ea}"
+        off = getattr(op.s, "off", -1)
+        return f"Soff:{off}"
+    if t == mop_r:
+        return f"r:{getattr(op, 'r', '?')}"
+    if t == mop_b:
+        bt = getattr(op.b, "t", -1)
+        return f"b:{bt}"
+    if t == mop_d and op.d is not None:
+        # Group by opcode only; detailed check is done later
+        return f"d:{op.d.opcode}"
+    if t == mop_p:
+        return "p"
+    return f"t:{t}"
+
+
+def structural_mop_hash(op: mop_t, func_entry_ea: int = 0) -> int:
+    """Use Cython fast hasher if available; fallback to Python quick key.
+
+    This returns a 64-bit int when Cython is present; otherwise a Python hash
+    of the quick key which is still cheap and avoids dstr().
+    """
+    if cy_hash_mop is not None:
+        try:
+            return int(cy_hash_mop(op, func_entry_ea))
+        except Exception:
+            pass
+    return hash(mop_quick_key_ignore_size(op))
+
+
 def equal_bnot_cst(lo: mop_t, ro: mop_t, mop_size=None) -> bool:
     if (lo.t != mop_n) or (ro.t != mop_n):
         return False
@@ -432,28 +553,43 @@ def equal_bnot_cst(lo: mop_t, ro: mop_t, mop_size=None) -> bool:
 
 
 def equal_bnot_mop(lo: mop_t, ro: mop_t, test_two_sides=True) -> bool:
+    # Try cache first (symmetry-aware)
+    try:
+        h1 = int(structural_mop_hash(lo, 0))
+        h2 = int(structural_mop_hash(ro, 0))
+        key = (h1, h2) if h1 <= h2 else (h2, h1)
+    except Exception:
+        key = (id(lo), id(ro)) if id(lo) <= id(ro) else (id(ro), id(lo))
+    cached = _EQUAL_BNOT_CACHE.get(key)
+    if cached is not None:
+        return cached
+
+    result = False
     if lo.t == mop_n:
-        return equal_bnot_cst(lo, ro)
+        result = equal_bnot_cst(lo, ro)
+    else:
+        # Direct ~x pattern
+        if (lo.t == mop_d) and lo.d.opcode == m_bnot:
+            if equal_mops_ignore_size(lo.d.l, ro):
+                result = True
+        # Hex-Rays: ~(-x) == x - 1
+        if not result and (lo.t == mop_d) and lo.d.opcode == m_neg:
+            if (ro.t == mop_d) and ro.d.opcode == m_sub:
+                if ro.d.r.t == mop_n and ro.d.r.nnn.value == 1:
+                    if equal_mops_ignore_size(ro.d.l, lo.d.l):
+                        result = True
+        # Unsigned extend wrapper
+        if not result and (lo.t == mop_d) and lo.d.opcode == m_xds:
+            if equal_bnot_mop(lo.d.l, ro):
+                result = True
+        # Symmetry
+        if not result and test_two_sides:
+            result = equal_bnot_mop(ro, lo, test_two_sides=False)
 
-    # We first check for a bnot operand
-    if (lo.t == mop_d) and lo.d.opcode == m_bnot:
-        if equal_mops_ignore_size(lo.d.l, ro):
-            return True
-
-    # Otherwise Hexrays may have optimized using ~(-x) = x - 1
-    if (lo.t == mop_d) and lo.d.opcode == m_neg:
-        if (ro.t == mop_d) and ro.d.opcode == m_sub:
-            if ro.d.r.t == mop_n and ro.d.r.nnn.value == 1:
-                if equal_mops_ignore_size(ro.d.l, lo.d.l):
-                    return True
-
-    if (lo.t == mop_d) and lo.d.opcode == m_xds:
-        if equal_bnot_mop(lo.d.l, ro):
-            return True
-
-    if test_two_sides:
-        return equal_bnot_mop(ro, lo, test_two_sides=False)
-    return False
+    if len(_EQUAL_BNOT_CACHE) > _EQUAL_BNOT_MAX:
+        _EQUAL_BNOT_CACHE.clear()
+    _EQUAL_BNOT_CACHE[key] = result
+    return result
 
 
 def equal_ignore_msb_cst(lo: mop_t, ro: mop_t) -> bool:
@@ -478,54 +614,80 @@ def equal_mops_bypass_xdu(lo: mop_t, ro: mop_t) -> bool:
 def equal_mops_ignore_size(lo: mop_t, ro: mop_t) -> bool:
     if (lo is None) or (ro is None):
         return False
+    # Exact same SWIG object → equal
+    if lo is ro:
+        return True
+    # Cheap type check first
     if lo.t != ro.t:
         return False
+    # Symmetry-aware bounded cache using structural hash (fast path)
+    try:
+        h1 = int(structural_mop_hash(lo, 0))
+        h2 = int(structural_mop_hash(ro, 0))
+        key = (h1, h2) if h1 <= h2 else (h2, h1)
+        cached = _EQUAL_IGN_CACHE.get(key)
+        if cached is not None:
+            return cached
+    except Exception:
+        key = None  # fallback
     if lo.t == mop_z:
-        return True
+        result = True
     elif lo.t == mop_fn:
-        return lo.fpc == ro.fpc
+        result = lo.fpc == ro.fpc
     elif lo.t == mop_n:
-        return lo.nnn.value == ro.nnn.value
+        result = lo.nnn.value == ro.nnn.value
     elif lo.t == mop_S:
         if lo.s == ro.s:
-            return True
-        if lo.s.off == ro.s.off:
-            # Is it right?
-            return True
-        return False
+            result = True
+        elif lo.s.off == ro.s.off:
+            result = True
+        else:
+            result = False
     elif lo.t == mop_v:
-        return lo.g == ro.g
+        result = lo.g == ro.g
     elif lo.t == mop_d:
-        return lo.d.equal_insns(ro.d, EQ_IGNSIZE)
+        result = lo.d.equal_insns(ro.d, EQ_IGNSIZE)
         # return lo.d.equal_insns(ro.d, EQ_IGNSIZE | EQ_IGNCODE)
     elif lo.t == mop_b:
-        return lo.b == ro.b
+        result = lo.b == ro.b
     elif lo.t == mop_r:
-        return lo.r == ro.r
+        result = lo.r == ro.r
     elif lo.t == mop_f:
-        return False
+        result = False
     elif lo.t == mop_l:
-        return lo.l == ro.l
+        result = lo.l == ro.l
     elif lo.t == mop_a:
         if lo.a.insize != ro.a.insize:
-            return False
-        if lo.a.outsize != ro.a.outsize:
-            return False
-        return equal_mops_ignore_size(lo.a, ro.a)
+            result = False
+        elif lo.a.outsize != ro.a.outsize:
+            result = False
+        else:
+            result = equal_mops_ignore_size(lo.a, ro.a)
+        if key is not None:
+            if len(_EQUAL_IGN_CACHE) > _EQUAL_IGN_MAX:
+                _EQUAL_IGN_CACHE.clear()
+            _EQUAL_IGN_CACHE[key] = result
+        return result
     elif lo.t == mop_h:
-        return ro.helper == lo.helper
+        result = ro.helper == lo.helper
     elif lo.t == mop_str:
-        return ro.cstr == lo.cstr
+        result = ro.cstr == lo.cstr
     elif lo.t == mop_c:
-        return ro.c == lo.c
+        result = ro.c == lo.c
     elif lo.t == mop_p:
-        return equal_mops_ignore_size(
+        result = equal_mops_ignore_size(
             lo.pair.lop, ro.pair.lop
         ) and equal_mops_ignore_size(lo.pair.hop, ro.pair.hop)
     elif lo.t == mop_sc:
-        return False
+        result = False
     else:
-        return False
+        result = False
+
+    if key is not None:
+        if len(_EQUAL_IGN_CACHE) > _EQUAL_IGN_MAX:
+            _EQUAL_IGN_CACHE.clear()
+        _EQUAL_IGN_CACHE[key] = result
+    return result
 
 
 def is_check_mop(lo: mop_t) -> bool:

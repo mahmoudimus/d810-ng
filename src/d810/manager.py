@@ -38,6 +38,32 @@ D810_LOG_DIR_NAME = "d810_logs"
 logger = getLogger("D810")
 
 
+class CProfileWrapper:
+    """
+    A simple wrapper around cProfile.Profile that exposes an `.is_running` property.
+    """
+
+    def __init__(self):
+        self._profiler = cProfile.Profile()
+        self._is_running = False
+
+    @property
+    def is_running(self):
+        return self._is_running
+
+    def enable(self, *args, **kwargs):
+        self._profiler.enable(*args, **kwargs)
+        self._is_running = True
+
+    def disable(self):
+        self._profiler.disable()
+        self._is_running = False
+
+    @property
+    def profiler(self):
+        return self._profiler
+
+
 @dataclasses.dataclass
 class D810Manager:
     log_dir: pathlib.Path
@@ -50,10 +76,18 @@ class D810Manager:
     profiler: typing.Any = dataclasses.field(
         default_factory=lambda: pyinstrument.Profiler() if pyinstrument else None
     )
+    cprofiler: CProfileWrapper | None = dataclasses.field(
+        default_factory=lambda: CProfileWrapper() if cProfile else None
+    )
+    stats: OptimizationStatistics = dataclasses.field(
+        default_factory=OptimizationStatistics
+    )
     instruction_optimizer: InstructionOptimizerManager = dataclasses.field(init=False)
     block_optimizer: BlockOptimizerManager = dataclasses.field(init=False)
     hx_decompiler_hook: HexraysDecompilationHook = dataclasses.field(init=False)
     _started: bool = dataclasses.field(default=False, init=False)
+    _profiling_enabled: bool = dataclasses.field(default=False, init=False)
+    _start_ts: float = dataclasses.field(default=0.0, init=False)
 
     @property
     def started(self):
@@ -63,10 +97,21 @@ class D810Manager:
         self.config = kwargs
 
     def start_profiling(self):
+        if not self._profiling_enabled:
+            return
+
+        if self.cprofiler and not self.cprofiler.is_running:
+            self.cprofiler.enable()
         if self.profiler and not self.profiler.is_running:
             self.profiler.start()
 
     def stop_profiling(self) -> pathlib.Path | None:
+        if self.cprofiler and self.cprofiler.is_running:
+            self.cprofiler.disable()
+            output_path = self.log_dir / "d810_cprofile.prof"
+            self.cprofiler.profiler.dump_stats(str(output_path))
+            pstats.Stats(str(output_path)).strip_dirs().sort_stats("time").print_stats()
+            return output_path
         if self.profiler and self.profiler.is_running:
             self.profiler.stop()
             self.profiler.print()
@@ -162,8 +207,56 @@ class D810Manager:
         self.block_optimizer.remove()
         self.hx_decompiler_hook.unhook()
         self.event_emitter.clear()
-        if self.profiler:
+        if self.profiler or self.cprofiler:
             self.stop_profiling()
+
+    def _start_timer(self):
+        self._start_ts = time.perf_counter()
+
+    def _stop_timer(self, report: bool = True):
+        if report:
+            m, s = divmod(time.perf_counter() - self._start_ts, 60)
+            logger.info(
+                "Decompilation finished in %dm %ds",
+                int(m),
+                int(s),
+            )
+        self._start_ts = 0.0
+
+    def _install_hooks(self):
+        # must become before listeners are installed
+        for _subscriber in (
+            self.start_profiling,
+            MOP_CONSTANT_CACHE.clear,
+            MOP_TO_AST_CACHE.clear,
+            self.stats.reset,
+            self._start_timer,
+        ):
+            self.event_emitter.on(DecompilationEvent.STARTED, _subscriber)
+
+        for _subscriber in (
+            self.stop_profiling,
+            self._report_caches,
+            self.stats.report,
+            self._stop_timer,
+        ):
+            self.event_emitter.on(DecompilationEvent.FINISHED, _subscriber)
+
+        self.instruction_optimizer.install()
+        self.block_optimizer.install()
+        self.hx_decompiler_hook.hook()
+
+    def _report_caches(self):
+        logger.info("MOP_CONSTANT_CACHE stats: %s", MOP_CONSTANT_CACHE.stats())
+        logger.info("MOP_TO_AST_CACHE stats: %s", MOP_TO_AST_CACHE.stats())
+
+    def configure_instruction_optimizer(self, rules, **kwargs):
+        self.instruction_optimizer_rules = [rule for rule in rules]
+        self.instruction_optimizer_config = kwargs
+
+    def configure_block_optimizer(self, rules, **kwargs):
+        self.block_optimizer_rules = [rule for rule in rules]
+        self.block_optimizer_config = kwargs
 
 
 class D810State(metaclass=SingletonMeta):
@@ -209,6 +302,7 @@ class D810State(metaclass=SingletonMeta):
         # to a sensible default when the option is missing, instead of reading
         # the raw option that may be None and break pathlib.Path construction.
         self.manager = D810Manager(self.log_dir)
+        self._cython_mode = CythonMode(self.d810_config.get("cython_mode", True))
         self._initialized = True
 
     def add_project(self, config: ProjectConfiguration):
@@ -352,3 +446,17 @@ class D810State(metaclass=SingletonMeta):
         if project_index != _old_project_index:
             logger.info("switching back to project %s", _old_project_index)
             self.load_project(_old_project_index)
+
+    def enable_cython_speedups(self):
+        self._cython_mode.enable()
+
+    def disable_cython_speedups(self):
+        self._cython_mode.disable()
+
+    def are_cython_speedups_enabled(self):
+        return self._cython_mode.is_enabled()
+
+    # Expose statistics to callers (e.g., tests)
+    @property
+    def stats(self) -> OptimizationStatistics:
+        return self.manager.stats
