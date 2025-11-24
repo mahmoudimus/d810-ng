@@ -12,13 +12,18 @@
 # 5. Test thoroughly
 #
 # Currently vendored:
-# (none yet - placeholder for future vendoring)
+
+# ida-reloader - Hot-reload infrastructure for IDA Pro plugins
+# Source: https://github.com/mahmoudimus/ida-reloader
+# Vendored from: src/d810/ida_reloadable.py (previously standalone file)
+# Version: 0.1.0 (extracted from d810)
+# Reason: Core infrastructure for plugin reloading, tightly integrated with d810
+ida-reloader==0.1.0+d810
+    # Provides Reloader, DependencyGraph, _Scanner for hot-reloading
+    # No patches needed - used as-is
+
 #
-# Candidates for vendoring:
+# Candidates for future vendoring:
 # - miasm2: If we need specific version/patches for IDA compatibility
 # - z3-solver: If bundling is needed for binary distributions
 # - Any other dependencies that cause conflicts in IDA environment
-
-# Example format (when vendoring):
-# miasm==0.1.5+d810.1
-#     # Custom d810 build with IDA compatibility patches

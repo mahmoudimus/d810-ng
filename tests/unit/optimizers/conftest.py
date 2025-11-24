@@ -53,7 +53,7 @@ def load_all_rules():
         # imports ida_hexrays. After MBA separation, verification tests will
         # be @pytest.mark.pure_python and won't need this scanner at all.
         import d810
-        from d810.ida_reloadable import _Scanner
+        from d810._vendor.ida_reloader import _Scanner
 
         # Get the package path for pattern matching rules
         pattern_matching_path = repo_root / "src" / "d810" / "optimizers" / "microcode" / "instructions" / "pattern_matching"
