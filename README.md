@@ -91,7 +91,6 @@ When built, the following Cython modules are compiled:
 - `speedups.cythxr._chexrays_api` - Hex-Rays API Cython wrappers
 - `speedups.expr.ast` - AST core functionality
 - `speedups.expr.ast_evaluate` - Fast AST evaluator
-- `speedups.expr.c_ast` - Optimized AST operations
 - `speedups.optimizers.microcode.flow.constant_prop.c_dataflow` - Fast dataflow analysis
 - `speedups.optimizers.microcode.flow.constant_prop.c_stackvars_constprop` - Stack variable constant propagation
 
