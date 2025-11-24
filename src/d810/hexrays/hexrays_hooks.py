@@ -4,7 +4,6 @@ import enum
 import pathlib
 import typing
 
-import ida_hexrays
 from ida_hexrays import *
 
 from d810.conf.loggers import getLogger
@@ -25,7 +24,6 @@ from d810.optimizers.microcode.instructions.handler import (
 
 main_logger = getLogger("D810")
 optimizer_logger = getLogger("D810.optimizer")
-helper_logger = getLogger("D810.helper")
 
 DEFAULT_OPTIMIZATION_PATTERN_MATURITIES = [
     MMAT_PREOPTIMIZED,
@@ -63,13 +61,15 @@ if typing.TYPE_CHECKING:
         PeepholeOptimizer,
     )
     from d810.optimizers.microcode.instructions.z3.handler import Z3Optimizer
+    from d810.stats import OptimizationStatistics
 
 
 class InstructionOptimizerManager(optinsn_t):
-    def __init__(self, log_dir: pathlib.Path):
+    def __init__(self, stats: OptimizationStatistics, log_dir: pathlib.Path):
         optimizer_logger.debug("Initializing {0}...".format(self.__class__.__name__))
         super().__init__()
         self.log_dir = log_dir
+        self.stats = stats
         self.instruction_visitor = InstructionVisitorManager(self)
         self._last_optimizer_tried = None
         self.current_maturity = None
@@ -78,7 +78,7 @@ class InstructionOptimizerManager(optinsn_t):
         self.dump_intermediate_microcode = False
 
         self.instruction_optimizers = []
-        self.optimizer_usage_info = {}
+        # usage tracking moved to centralized statistics object
         ChainOptimizer: type[ChainOptimizer] = InstructionOptimizer.get(
             "ChainOptimizer"
         )
@@ -97,30 +97,47 @@ class InstructionOptimizerManager(optinsn_t):
         Z3Optimizer: type[Z3Optimizer] = InstructionOptimizer.get("Z3Optimizer")
         self.add_optimizer(
             PatternOptimizer(
-                DEFAULT_OPTIMIZATION_PATTERN_MATURITIES, log_dir=self.log_dir
+                DEFAULT_OPTIMIZATION_PATTERN_MATURITIES,
+                stats=self.stats,
+                log_dir=self.log_dir,
             )
         )
         self.add_optimizer(
-            ChainOptimizer(DEFAULT_OPTIMIZATION_CHAIN_MATURITIES, log_dir=self.log_dir)
+            ChainOptimizer(
+                DEFAULT_OPTIMIZATION_CHAIN_MATURITIES,
+                stats=self.stats,
+                log_dir=self.log_dir,
+            )
         )
         self.add_optimizer(
-            Z3Optimizer(DEFAULT_OPTIMIZATION_Z3_MATURITIES, log_dir=self.log_dir)
+            Z3Optimizer(
+                DEFAULT_OPTIMIZATION_Z3_MATURITIES,
+                stats=self.stats,
+                log_dir=self.log_dir,
+            )
         )
         self.add_optimizer(
-            EarlyOptimizer(DEFAULT_OPTIMIZATION_EARLY_MATURITIES, log_dir=self.log_dir)
+            EarlyOptimizer(
+                DEFAULT_OPTIMIZATION_EARLY_MATURITIES,
+                stats=self.stats,
+                log_dir=self.log_dir,
+            )
         )
         self.add_optimizer(
             PeepholeOptimizer(
-                DEFAULT_OPTIMIZATION_PEEPHOLE_MATURITIES, log_dir=self.log_dir
+                DEFAULT_OPTIMIZATION_PEEPHOLE_MATURITIES,
+                stats=self.stats,
+                log_dir=self.log_dir,
             )
         )
         self.analyzer = InstructionAnalyzer(
-            DEFAULT_ANALYZER_MATURITIES, log_dir=self.log_dir
+            DEFAULT_ANALYZER_MATURITIES,
+            stats=self.stats,
+            log_dir=self.log_dir,
         )
 
     def add_optimizer(self, optimizer: InstructionOptimizer):
         self.instruction_optimizers.append(optimizer)
-        self.optimizer_usage_info[optimizer.name] = 0
 
     def add_rule(self, rule: InstructionOptimizationRule):
         # optimizer_log.info("Trying to add rule {0}".format(rule))
@@ -160,22 +177,7 @@ class InstructionOptimizerManager(optinsn_t):
             )
         return False
 
-    def reset_rule_usage_statistic(self):
-        self.optimizer_usage_info = {}
-        for ins_optimizer in self.instruction_optimizers:
-            self.optimizer_usage_info[ins_optimizer.name] = 0
-            ins_optimizer.reset_rule_usage_statistic()
-
-    def show_rule_usage_statistic(self):
-        for optimizer_name, optimizer_nb_match in self.optimizer_usage_info.items():
-            if optimizer_nb_match > 0:
-                main_logger.info(
-                    "Instruction optimizer '%s' has been used %d times",
-                    optimizer_name,
-                    optimizer_nb_match,
-                )
-        for ins_optimizer in self.instruction_optimizers:
-            ins_optimizer.show_rule_usage_statistic()
+    # statistics are managed centrally via the stats object
 
     def log_info_on_input(self, blk: mblock_t, ins: minsn_t):
         mba: mbl_array_t = blk.mba
@@ -234,7 +236,9 @@ class InstructionOptimizerManager(optinsn_t):
                         )
                 else:
                     ins.swap(new_ins)
-                    self.optimizer_usage_info[ins_optimizer.name] += 1
+                    if self.stats is not None:
+                        self.stats.record_optimizer_match(ins_optimizer.name)
+
                     if self.generate_z3_code:
                         try:
                             log_z3_instructions(new_ins, ins)
@@ -257,14 +261,15 @@ class InstructionVisitorManager(minsn_visitor_t):
 
 
 class BlockOptimizerManager(optblock_t):
-    def __init__(self, log_dir: pathlib.Path):
+    def __init__(self, stats: OptimizationStatistics, log_dir: pathlib.Path):
         optimizer_logger.debug("Initializing {0}...".format(self.__class__.__name__))
         super().__init__()
         self.log_dir = log_dir
+        self.stats = stats
         self.cfg_rules = set()
 
         self.current_maturity = None
-        self.cfg_rules_usage_info = {}
+        # usage tracking moved to centralized statistics object
 
     def func(self, blk: mblock_t):
         self.log_info_on_input(blk)
@@ -283,21 +288,7 @@ class BlockOptimizerManager(optblock_t):
 
             self.current_maturity = mba.maturity
 
-    def reset_rule_usage_statistic(self):
-        self.cfg_rules_usage_info = {}
-        for rule in self.cfg_rules:
-            self.cfg_rules_usage_info[rule.name] = []
-
-    def show_rule_usage_statistic(self):
-        for rule_name, rule_nb_patch_list in self.cfg_rules_usage_info.items():
-            nb_use = len(rule_nb_patch_list)
-            if nb_use > 0:
-                main_logger.info(
-                    "BlkRule '%s' has been used %d times for a total of %d patches",
-                    rule_name,
-                    nb_use,
-                    sum(rule_nb_patch_list),
-                )
+    # statistics are managed centrally via the stats object
 
     def optimize(self, blk: mblock_t):
         for cfg_rule in self.cfg_rules:
