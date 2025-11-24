@@ -158,7 +158,7 @@ python setup.py build_ext --inplace
 ### Testing Cython Mode
 
 ```python
-from d810.cythxr.cymode import CythonMode
+from d810.conf.cymode import CythonMode
 
 mode = CythonMode()
 print(f"Cython enabled: {mode.is_enabled()}")
