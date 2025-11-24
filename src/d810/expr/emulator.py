@@ -9,8 +9,8 @@ import idaapi
 
 import d810.expr.utils as utils
 from d810.conf.loggers import getLogger
-from speedups.cythxr._chexrays_api import get_stack_or_reg_name
-from speedups.cythxr._chexrays_api import hash_mop as cy_hash_mop
+from d810.speedups.cythxr._chexrays_api import get_stack_or_reg_name
+from d810.speedups.cythxr._chexrays_api import hash_mop as cy_hash_mop
 from d810.errors import (
     EmulationException,
     EmulationIndirectJumpException,

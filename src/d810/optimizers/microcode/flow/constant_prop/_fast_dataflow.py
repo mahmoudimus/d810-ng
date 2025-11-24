@@ -2,7 +2,7 @@
 
 # Try to import Cython-optimized version first
 try:
-    from speedups.optimizers.microcode.flow.constant_prop.c_dataflow import (
+    from d810.speedups.optimizers.microcode.flow.constant_prop.c_dataflow import (
         cy_extract_assignment,
         cy_get_written_var_name,
         cy_is_constant_stack_assignment,

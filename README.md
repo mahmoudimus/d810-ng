@@ -81,18 +81,18 @@ On macOS, use `dsymutil` to create `.dSYM` bundles for debugging:
 
 ```bash
 # Create debug symbols for all compiled modules
-fd --glob "**/*.so" "./src/speedups" --exclude "*.dSYM" -x dsymutil -o '{.}.so.dSYM' '{}'
+fd --glob "**/*.so" "./src/d810/speedups" --exclude "*.dSYM" -x dsymutil -o '{.}.so.dSYM' '{}'
 ```
 
 ### Compiled Modules
 
 When built, the following Cython modules are compiled:
 
-- `speedups.cythxr._chexrays_api` - Hex-Rays API Cython wrappers
-- `speedups.expr.ast` - AST core functionality
-- `speedups.expr.ast_evaluate` - Fast AST evaluator
-- `speedups.optimizers.microcode.flow.constant_prop.c_dataflow` - Fast dataflow analysis
-- `speedups.optimizers.microcode.flow.constant_prop.c_stackvars_constprop` - Stack variable constant propagation
+- `d810.speedups.cythxr._chexrays_api` - Hex-Rays API Cython wrappers
+- `d810.speedups.expr.ast` - AST core functionality
+- `d810.speedups.expr.ast_evaluate` - Fast AST evaluator
+- `d810.speedups.optimizers.microcode.flow.constant_prop.c_dataflow` - Fast dataflow analysis
+- `d810.speedups.optimizers.microcode.flow.constant_prop.c_stackvars_constprop` - Stack variable constant propagation
 
 ### Platform-Specific Notes
 
