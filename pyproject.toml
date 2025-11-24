@@ -60,6 +60,7 @@ omit = [
     "*/tests/*",
     "*/test_*",
     "*/__pycache__/*",
+    "*/d810/_vendor/*",  # Exclude vendored dependencies
 ]
 
 [tool.coverage.report]
@@ -71,4 +72,53 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
     "@abstractmethod",
+]
+
+# Vendoring configuration (following pip's approach)
+# See src/d810/_vendor/README.md for documentation
+[tool.vendoring]
+destination = "src/d810/_vendor/"
+requirements = "src/d810/_vendor/vendor.txt"
+namespace = "d810._vendor"
+protected-files = ["__init__.py", "README.md", "vendor.txt"]
+patches-dir = "tools/vendoring/patches"
+
+[tool.vendoring.transformations]
+# Exclude unnecessary files to reduce repository size
+drop = [
+    "*.c",              # C extension source (we don't compile vendored packages)
+    "*.so",             # Compiled extensions
+    "*.dylib",          # macOS shared libraries
+    "*.dll",            # Windows DLLs
+    "test/",            # Tests
+    "tests/",
+    "testing/",
+    "example/",
+    "examples/",
+    "doc/",
+    "docs/",
+    ".git/",
+    ".github/",
+    ".gitignore",
+    "__pycache__/",
+    "*.pyc",
+    "*.pyo",
+    "*.egg-info/",
+]
+
+# Rewrite imports if vendored packages import each other
+# Example: substitute = [{match='from dependency import', replace='from d810._vendor.dependency import'}]
+substitute = []
+
+[tool.pytest.ini_options]
+# Exclude vendored packages from testing
+addopts = ["--ignore=src/d810/_vendor"]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "pure_python: Tests that can run without IDA Pro (fast, no external dependencies)",
+    "requires_ida: Tests that require IDA Pro to run",
+    "slow: Slow tests (>10s) - typically Z3 verification",
 ]
