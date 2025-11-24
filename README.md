@@ -38,6 +38,25 @@ The plugin works out-of-the-box without any compilation:
 pip install -e .
 ```
 
+### Installation Profiles
+
+```bash
+# Development: testing, coverage, vendoring tool
+pip install -e ".[dev]"
+
+# CI: testing only (no vendoring tool needed)
+pip install -e ".[ci]"
+
+# Profiling: pyinstrument for performance analysis
+pip install -e ".[profiling]"
+
+# Speedups: Cython for performance improvements
+pip install -e ".[speedups]"
+
+# Combine as needed:
+pip install -e ".[dev,profiling]"
+```
+
 D-810 automatically detects if Cython speedups are available and falls back to pure Python implementations if not.
 
 ### Building Cython Extensions
@@ -46,10 +65,10 @@ To build with performance optimizations:
 
 #### Requirements
 
-- **Python**: 3.10 or higher
-- **Cython**: 3.0.0 or higher
-- **setuptools**: 77.0.1 or higher
-- **IDA SDK**: For full Hex-Rays integration (set via `IDA_SDK` environment variable)
+* **Python**: 3.10 or higher
+* **Cython**: 3.0.0 or higher
+* **setuptools**: 77.0.1 or higher
+* **IDA SDK**: For full Hex-Rays integration (set via `IDA_SDK` environment variable)
 
 #### Standard Build
 
@@ -70,10 +89,11 @@ DEBUG=1 IDA_SDK=/path/to/idasdk python setup.py build_ext --inplace
 ```
 
 This enables:
-- Debug symbols (`-g`, `-ggdb`)
-- Line tracing for profiling
-- Coverage support
-- Assertions enabled
+
+* Debug symbols (`-g`, `-ggdb`)
+* Line tracing for profiling
+* Coverage support
+* Assertions enabled
 
 #### Creating Debug Symbols (macOS)
 
@@ -88,11 +108,11 @@ fd --glob "**/*.so" "./src/d810/speedups" --exclude "*.dSYM" -x dsymutil -o '{.}
 
 When built, the following Cython modules are compiled:
 
-- `d810.speedups.cythxr._chexrays_api` - Hex-Rays API Cython wrappers
-- `d810.speedups.expr.c_ast` - AST core functionality
-- `d810.speedups.expr.c_ast_evaluate` - Fast AST evaluator
-- `d810.speedups.optimizers.microcode.flow.constant_prop.c_dataflow` - Fast dataflow analysis
-- `d810.speedups.optimizers.microcode.flow.constant_prop.c_stackvars_constprop` - Stack variable constant propagation
+* `d810.speedups.cythxr._chexrays_api` - Hex-Rays API Cython wrappers
+* `d810.speedups.expr.c_ast` - AST core functionality
+* `d810.speedups.expr.c_ast_evaluate` - Fast AST evaluator
+* `d810.speedups.optimizers.microcode.flow.constant_prop.c_dataflow` - Fast dataflow analysis
+* `d810.speedups.optimizers.microcode.flow.constant_prop.c_stackvars_constprop` - Stack variable constant propagation
 
 ### Platform-Specific Notes
 
@@ -139,9 +159,9 @@ print(f"Cython enabled: {_USING_CYTHON}")
 
 The repository includes automated wheel building for distribution. See `.github/workflows/build-cython.yml` for the CI/CD pipeline that builds platform-specific wheels for:
 
-- **Linux**: x86_64 (Ubuntu latest)
-- **macOS**: x86_64 (Intel) and ARM64 (Apple Silicon)
-- **Windows**: x86_64
+* **Linux**: x86_64 (Ubuntu latest)
+* **macOS**: x86_64 (Intel) and ARM64 (Apple Silicon)
+* **Windows**: x86_64
 
 **Python versions**: 3.10, 3.11, 3.12, 3.13
 
@@ -198,9 +218,10 @@ class MySimpleRule(VerifiableRule):
 ```
 
 **That's it!** Your rule is now:
-- ✅ Automatically registered with d810
-- ✅ Automatically tested with Z3 to prove correctness
-- ✅ Ready to use in deobfuscation
+
+* ✅ Automatically registered with d810
+* ✅ Automatically tested with Z3 to prove correctness
+* ✅ Ready to use in deobfuscation
 
 ### Rule with Constraints
 
@@ -335,8 +356,9 @@ class MyZextRule(VerifiableRule):
 ```
 
 **Note**: `Zext(expr, target_width)` creates a zero-extension operation that:
-- Converts to Z3's `ZeroExt` for verification
-- Maps to IDA's `M_XDU` opcode for pattern matching
+
+* Converts to Z3's `ZeroExt` for verification
+* Maps to IDA's `M_XDU` opcode for pattern matching
 
 ### Bit-Width-Specific Verification
 
@@ -386,31 +408,35 @@ class Xor_Hodur_2(VerifiableRule):
 ```
 
 **Key points:**
-- **`BIT_WIDTH = 8`**: Tells Z3 to create 8-bit bitvectors instead of 32-bit
-- **`get_constraints()`**: Override to provide explicit Z3 constraints that account for overflow
-- **`check_candidate()`**: Runtime validation with actual constant values from IDA
-- **Why this works**: In 8-bit arithmetic, `256 ≡ 0 (mod 256)`, so `c_0 + c_1 = 256` becomes `c_0 + c_1 = 0`
+
+* **`BIT_WIDTH = 8`**: Tells Z3 to create 8-bit bitvectors instead of 32-bit
+* **`get_constraints()`**: Override to provide explicit Z3 constraints that account for overflow
+* **`check_candidate()`**: Runtime validation with actual constant values from IDA
+* **Why this works**: In 8-bit arithmetic, `256 ≡ 0 (mod 256)`, so `c_0 + c_1 = 256` becomes `c_0 + c_1 = 0`
 
 **Common bit-widths:**
-- `BIT_WIDTH = 8` - Byte operations (0-255, 256 wraps to 0)
-- `BIT_WIDTH = 16` - Word operations (0-65535, 65536 wraps to 0)
-- `BIT_WIDTH = 32` - Default for most rules (0-4294967295)
+
+* `BIT_WIDTH = 8` - Byte operations (0-255, 256 wraps to 0)
+* `BIT_WIDTH = 16` - Word operations (0-65535, 65536 wraps to 0)
+* `BIT_WIDTH = 32` - Default for most rules (0-4294967295)
 
 This approach is preferable to `SKIP_VERIFICATION` because:
-- ✅ Z3 still verifies mathematical correctness at the appropriate bit-width
-- ✅ Catches subtle bugs that might only appear in byte/word operations
-- ✅ Documents the size-specific nature of the rule explicitly
+
+* ✅ Z3 still verifies mathematical correctness at the appropriate bit-width
+* ✅ Catches subtle bugs that might only appear in byte/word operations
+* ✅ Documents the size-specific nature of the rule explicitly
 
 ### Context-Aware Rules (Advanced)
 
 Some rules need to inspect or modify the instruction context beyond just the source operands. The **context-aware DSL** provides declarative helpers for these advanced cases without requiring direct manipulation of IDA's internal API.
 
 **Use cases:**
-- Rules that only apply to specific destination types (registers, memory, high-half registers)
-- Rules that need to bind values from the instruction context (parent register, operand size)
-- Rules that modify the destination operand (e.g., changing from high-half to full register)
 
-**Example: Fix IDA's constant propagation for high-half register writes**
+* Rules that only apply to specific destination types (registers, memory, high-half registers)
+* Rules that need to bind values from the instruction context (parent register, operand size)
+* Rules that modify the destination operand (e.g., changing from high-half to full register)
+
+#### Example: Fix IDA's constant propagation for high-half register writes
 
 ```python
 from d810.optimizers.dsl import Const, Var, VerifiableRule
@@ -452,13 +478,15 @@ class ReplaceMovHighContext(VerifiableRule):
 **Available helpers:**
 
 **Context constraints (used in `CONSTRAINTS`):**
-- `when.dst.is_high_half` - Check if destination is high-half register (e.g., r6^2)
-- `when.dst.is_register` - Check if destination is a register
-- `when.dst.is_memory` - Check if destination is a memory location
+
+* `when.dst.is_high_half` - Check if destination is high-half register (e.g., r6^2)
+* `when.dst.is_register` - Check if destination is a register
+* `when.dst.is_memory` - Check if destination is a memory location
 
 **Context providers (used in `CONTEXT_VARS`):**
-- `context.dst.parent_register` - Get parent register (e.g., r6 from r6^2)
-- `context.dst.operand_size` - Get destination size in bytes
+
+* `context.dst.parent_register` - Get parent register (e.g., r6 from r6^2)
+* `context.dst.operand_size` - Get destination size in bytes
 
 **How it works:**
 
@@ -468,11 +496,12 @@ class ReplaceMovHighContext(VerifiableRule):
 4. **No IDA imports**: Users write pure declarative logic; the framework handles IDA internals
 
 **Why use context-aware DSL?**
-- ✅ **Abstraction**: No need to understand IDA's C++ API (`mop_t`, `mop_r`, etc.)
-- ✅ **Safety**: Framework handles dangerous mop creation and modification
-- ✅ **Discoverability**: IDE autocomplete shows available helpers (`context.dst.*`, `when.dst.*`)
-- ✅ **Testability**: Helpers are unit-testable in isolation
-- ✅ **Maintainability**: Architecture-specific logic centralized in one place
+
+* ✅ **Abstraction**: No need to understand IDA's C++ API (`mop_t`, `mop_r`, etc.)
+* ✅ **Safety**: Framework handles dangerous mop creation and modification
+* ✅ **Discoverability**: IDE autocomplete shows available helpers (`context.dst.*`, `when.dst.*`)
+* ✅ **Testability**: Helpers are unit-testable in isolation
+* ✅ **Maintainability**: Architecture-specific logic centralized in one place
 
 For more examples, see `src/d810/optimizers/microcode/instructions/pattern_matching/rewrite_mov_context_aware.py`.
 
@@ -512,7 +541,8 @@ class MyKnownIncorrectRule(VerifiableRule):
 ### File Organization
 
 Create your rules in the appropriate file under:
-```
+
+```bash
 src/d810/optimizers/microcode/instructions/pattern_matching/
 ├── rewrite_add.py          # Addition/subtraction rules
 ├── rewrite_and.py          # Bitwise AND rules
@@ -554,21 +584,22 @@ pytest tests/unit/optimizers/test_verifiable_rules.py::TestVerifiableRules::test
 4. **Test generation**: A parameterized test is created for each rule automatically
 
 **Verification coverage**: Currently **170/177 rules (96.0%)** are automatically verified. The remaining 7 rules are:
-- 5 marked `KNOWN_INCORRECT` (kept for test parity with main branch)
-- 2 marked `SKIP_VERIFICATION` (performance: complex MBA multiplication rules)
+
+* 5 marked `KNOWN_INCORRECT` (kept for test parity with main branch)
+* 2 marked `SKIP_VERIFICATION` (performance: complex MBA multiplication rules)
 
 **What gets verified:**
 
-- ✅ Algebraic identities (e.g., `(x | y) - (x & y) ⟺ x ^ y`)
-- ✅ Constrained transformations (e.g., `(x ^ c1) + 2*(x & c2) ⟺ x + c1` when `c1 == c2`)
-- ✅ Predicate simplifications (e.g., `(x | c1) != c2 ⟺ 1` when `(c1 | c2) != c2`)
-- ✅ Dynamic constants (e.g., computing result constants from matched values)
-- ✅ Extension operations (e.g., `Zext(x & 1, 32) == 2 ⟺ 0`)
-- ✅ Bit-width-specific rules (e.g., byte operations with `BIT_WIDTH = 8`)
+* ✅ Algebraic identities (e.g., `(x | y) - (x & y) ⟺ x ^ y`)
+* ✅ Constrained transformations (e.g., `(x ^ c1) + 2*(x & c2) ⟺ x + c1` when `c1 == c2`)
+* ✅ Predicate simplifications (e.g., `(x | c1) != c2 ⟺ 1` when `(c1 | c2) != c2`)
+* ✅ Dynamic constants (e.g., computing result constants from matched values)
+* ✅ Extension operations (e.g., `Zext(x & 1, 32) == 2 ⟺ 0`)
+* ✅ Bit-width-specific rules (e.g., byte operations with `BIT_WIDTH = 8`)
 
 **Example test output:**
 
-```
+```bash
 tests/unit/optimizers/test_verifiable_rules.py::TestVerifiableRules::test_rule_is_correct[Add_HackersDelightRule_1] PASSED
 tests/unit/optimizers/test_verifiable_rules.py::TestVerifiableRules::test_rule_is_correct[Xor_Rule_1] PASSED
 tests/unit/optimizers/test_verifiable_rules.py::TestVerifiableRules::test_rule_is_correct[PredSetnz_1] PASSED
@@ -593,22 +624,26 @@ This immediate feedback prevents incorrect optimizations from being merged!
 ### DSL Reference
 
 **Variables:**
-- `Var("name")` - Symbolic variable (matches any expression)
-- `x, y, z = Var("x_0"), Var("x_1"), Var("x_2")` - Pre-defined variables
+
+* `Var("name")` - Symbolic variable (matches any expression)
+* `x, y, z = Var("x_0"), Var("x_1"), Var("x_2")` - Pre-defined variables
 
 **Constants:**
-- `Const("name")` - Pattern-matching constant (symbolic)
-- `Const("name", value)` - Concrete constant (e.g., `Const("ONE", 1)`)
+
+* `Const("name")` - Pattern-matching constant (symbolic)
+* `Const("name", value)` - Concrete constant (e.g., `Const("ONE", 1)`)
 
 **Operators:**
-- Arithmetic: `+`, `-`, `*`
-- Bitwise: `&`, `|`, `^`, `~`
-- Shifts: `>>` (logical right), `.sar()` (arithmetic right), `<<` (left)
+
+* Arithmetic: `+`, `-`, `*`
+* Bitwise: `&`, `|`, `^`, `~`
+* Shifts: `>>` (logical right), `.sar()` (arithmetic right), `<<` (left)
 
 **Constraints:**
-- Declarative: `c_1 == c_2`, `c_res == c_1 + c_2`
-- Runtime: `lambda ctx: ctx["c_1"].value < 100`
-- Helper: `when.is_bnot("x", "bnot_x")` - Check if one variable is bitwise NOT of another
+
+* Declarative: `c_1 == c_2`, `c_res == c_1 + c_2`
+* Runtime: `lambda ctx: ctx["c_1"].value < 100`
+* Helper: `when.is_bnot("x", "bnot_x")` - Check if one variable is bitwise NOT of another
 
 ### Best Practices
 
@@ -685,31 +720,33 @@ We welcome contributions of new obfuscated sample code! The repository includes 
 When you commit C source files to `samples/src/`, a GitHub Actions workflow automatically:
 
 1. **Builds binaries** for all supported platforms and architectures:
-   - **Windows**: x86_64, x86 (32-bit) → `.dll` files
-   - **macOS**: x86_64 (Intel), arm64 (Apple Silicon) → `.dylib` files
-   - **Linux**: x86_64, x86, arm64 → `.so` files
+   * **Windows**: x86_64, x86 (32-bit) → `.dll` files
+   * **macOS**: x86_64 (Intel), arm64 (Apple Silicon) → `.dylib` files
+   * **Linux**: x86_64, x86, arm64 → `.so` files
 
 2. **Generates debug symbols**:
-   - **Windows**: `.pdb` files (automatically generated by MSVC)
-   - **macOS**: `.dSYM` bundles (generated via `dsymutil`)
-   - **Linux**: Debug info embedded in `.so` files (compiled with `-g`)
+   * **Windows**: `.pdb` files (automatically generated by MSVC)
+   * **macOS**: `.dSYM` bundles (generated via `dsymutil`)
+   * **Linux**: Debug info embedded in `.so` files (compiled with `-g`)
 
 3. **Commits results** back to the repository in `samples/bins/` with consistent naming:
-   - `libobfuscated_windows_x86_64.dll` + `libobfuscated_windows_x86_64.pdb`
-   - `libobfuscated_darwin_arm64.dylib` + `libobfuscated_darwin_arm64.dylib.dSYM/`
-   - `libobfuscated_linux_x86_64.so` (with embedded debug symbols)
+   * `libobfuscated_windows_x86_64.dll` + `libobfuscated_windows_x86_64.pdb`
+   * `libobfuscated_darwin_arm64.dylib` + `libobfuscated_darwin_arm64.dylib.dSYM/`
+   * `libobfuscated_linux_x86_64.so` (with embedded debug symbols)
 
 #### Adding a New Sample
 
 To contribute a new obfuscated sample:
 
 1. **Add your C source file** to `samples/src/c/`:
+
    ```bash
    # Example: Add a new virtualization obfuscation sample
    samples/src/c/my_new_obfuscation.c
    ```
 
 2. **Commit and push**:
+
    ```bash
    git add samples/src/c/my_new_obfuscation.c
    git commit -m "feat: add virtualization obfuscation sample"
@@ -717,10 +754,10 @@ To contribute a new obfuscated sample:
    ```
 
 3. **Wait for automated build**: The GitHub Actions workflow will automatically:
-   - Detect changes in `samples/src/`
-   - Build binaries for all 7 platform/architecture combinations
-   - Generate debug symbols
-   - Commit built binaries to `samples/bins/`
+   * Detect changes in `samples/src/`
+   * Build binaries for all 7 platform/architecture combinations
+   * Generate debug symbols
+   * Commit built binaries to `samples/bins/`
 
 4. **Use in tests**: Once the workflow completes, your sample binaries are ready to use in IDA Pro for testing deobfuscation rules.
 
@@ -728,11 +765,11 @@ To contribute a new obfuscated sample:
 
 When contributing samples, please:
 
-- **Add a descriptive comment** at the top of your C file explaining the obfuscation technique
-- **Include meaningful function names** that describe what's being obfuscated
-- **Document the source** if the obfuscation was generated by a tool (OLLVM, Tigress, etc.)
-- **Keep samples focused**: Each file should demonstrate specific obfuscation techniques
-- **Test locally first**: Verify your code compiles with the Makefile before committing
+* **Add a descriptive comment** at the top of your C file explaining the obfuscation technique
+* **Include meaningful function names** that describe what's being obfuscated
+* **Document the source** if the obfuscation was generated by a tool (OLLVM, Tigress, etc.)
+* **Keep samples focused**: Each file should demonstrate specific obfuscation techniques
+* **Test locally first**: Verify your code compiles with the Makefile before committing
 
 #### Example Sample Structure
 
@@ -772,10 +809,11 @@ int32_t flattened_function(int32_t input) {
 #### Workflow Triggers
 
 The build workflow is triggered automatically when:
-- Files in `samples/src/` are modified
-- The `samples/Makefile` is updated
-- Header files in `samples/include/` change
-- The workflow file itself is modified (`.github/workflows/build-binaries.yml`)
+
+* Files in `samples/src/` are modified
+* The `samples/Makefile` is updated
+* Header files in `samples/include/` change
+* The workflow file itself is modified (`.github/workflows/build-binaries.yml`)
 
 You can also manually trigger builds from the GitHub Actions tab using "Run workflow".
 
@@ -783,7 +821,7 @@ You can also manually trigger builds from the GitHub Actions tab using "Run work
 
 All built binaries and debug symbols are committed to the repository at `samples/bins/`:
 
-```
+```bash
 samples/bins/
 ├── libobfuscated_windows_x86_64.dll
 ├── libobfuscated_windows_x86_64.pdb
@@ -811,6 +849,15 @@ This ensures that anyone cloning the repository has immediate access to pre-buil
 **Before**: !["Before"](./docs/source/images/test_xor_before.png "Before Plugin")
 
 **After**: !["After"](./docs/source/images/test_xor_after.png "After Plugin")
+
+## Vendored Dependencies
+
+D810-ng employs vendoring dependencies ala [pip](https://github.com/pypa/pip/blob/main/src/pip/_vendor/README.rst) as well as uses its [Automatic Vendoring](https://github.com/pypa/pip/blob/main/src/pip/_vendor/README.rst#automatic-vendoring) via the [vendoring](https://pypi.org/project/vendoring/) tool. It is important to note that **vendoring is a development-time process, not a runtime dependency.**
+
+* The `vendoring` tool is only needed by developers who add/update vendored packages
+* End users do NOT need to install the `vendoring` tool
+* Vendored packages are committed to git and distributed with d810
+* At runtime, Python simply imports from `d810._vendor.*` like any other module
 
 ## Warnings
 
@@ -840,4 +887,3 @@ Rolf Rolles for the huge work he has done with his [HexRaysDeob plugin](https://
 Dennis Elser for the [genmc plugin](https://github.com/patois/genmc) plugin which was very helpful for debugging D-810 errors.
 
 A special thank you to [Boris Batteux](https://gitlab.com/borisbatteux) for this great plugin!
-# CI/CD with IDA Pro
