@@ -155,7 +155,7 @@ class SymbolicExpression:
         Returns:
             A ComparisonConstraint that can be used in CONSTRAINTS list
         """
-        from d810.optimizers.constraints import ComparisonConstraint
+        from d810.mba.constraints import ComparisonConstraint
 
         return ComparisonConstraint(self, other, "!=", "ne")
 
@@ -168,7 +168,7 @@ class SymbolicExpression:
         Returns:
             A ComparisonConstraint that can be used in CONSTRAINTS list
         """
-        from d810.optimizers.constraints import ComparisonConstraint
+        from d810.mba.constraints import ComparisonConstraint
 
         return ComparisonConstraint(self, other, "<", "lt")
 
@@ -181,7 +181,7 @@ class SymbolicExpression:
         Returns:
             A ComparisonConstraint that can be used in CONSTRAINTS list
         """
-        from d810.optimizers.constraints import ComparisonConstraint
+        from d810.mba.constraints import ComparisonConstraint
 
         return ComparisonConstraint(self, other, "<=", "le")
 
@@ -194,7 +194,7 @@ class SymbolicExpression:
         Returns:
             A ComparisonConstraint that can be used in CONSTRAINTS list
         """
-        from d810.optimizers.constraints import ComparisonConstraint
+        from d810.mba.constraints import ComparisonConstraint
 
         return ComparisonConstraint(self, other, ">", "gt")
 
@@ -207,7 +207,7 @@ class SymbolicExpression:
         Returns:
             A ComparisonConstraint that can be used in CONSTRAINTS list
         """
-        from d810.optimizers.constraints import ComparisonConstraint
+        from d810.mba.constraints import ComparisonConstraint
 
         return ComparisonConstraint(self, other, ">=", "ge")
 
@@ -327,7 +327,7 @@ class SymbolicExpression:
         """
         from d810.expr.ast import AstNode
         from d810.opcodes import M_SETAE, M_SETB, M_SETNZ, M_SETZ, M_SUB
-        from d810.optimizers.constraints import ComparisonConstraint, EqualityConstraint
+        from d810.mba.constraints import ComparisonConstraint, EqualityConstraint
 
         if isinstance(constraint, ComparisonConstraint):
             left_node = constraint.left.node
