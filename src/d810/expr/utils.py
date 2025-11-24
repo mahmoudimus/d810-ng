@@ -2,18 +2,21 @@ import ctypes
 
 from d810.cache import CacheImpl
 from d810.hexrays.hexrays_helpers import MSB_TABLE
+from d810.registry import survives_reload
 
 CTYPE_SIGNED_TABLE = {
     1: ctypes.c_int8,
     2: ctypes.c_int16,
     4: ctypes.c_int32,
     8: ctypes.c_int64,
+    16: ctypes.c_ubyte * 16,
 }
 CTYPE_UNSIGNED_TABLE = {
     1: ctypes.c_uint8,
     2: ctypes.c_uint16,
     4: ctypes.c_uint32,
     8: ctypes.c_uint64,
+    16: ctypes.c_ubyte * 16,
 }
 
 
@@ -34,11 +37,38 @@ def get_all_subclasses(python_class):
 
 
 def unsigned_to_signed(unsigned_value, nb_bytes):
-    return CTYPE_SIGNED_TABLE[nb_bytes](unsigned_value).value
+    ctype_class = CTYPE_SIGNED_TABLE[nb_bytes]
+    if nb_bytes == 16:
+        # For 128-bit values, convert to bytes and back as signed
+        byte_array = ctype_class()
+        for i in range(16):
+            byte_array[i] = (unsigned_value >> (i * 8)) & 0xFF
+        # Convert back to int, treating as signed
+        result = 0
+        for i in range(16):
+            result |= byte_array[i] << (i * 8)
+        # Apply sign extension if MSB is set
+        if result & (1 << 127):
+            result |= ~((1 << 128) - 1)
+        return result
+    else:
+        return ctype_class(unsigned_value).value
 
 
 def signed_to_unsigned(signed_value, nb_bytes):
-    return CTYPE_UNSIGNED_TABLE[nb_bytes](signed_value).value
+    ctype_class = CTYPE_UNSIGNED_TABLE[nb_bytes]
+    if nb_bytes == 16:
+        # For 128-bit values, convert to bytes and back as unsigned
+        byte_array = ctype_class()
+        for i in range(16):
+            byte_array[i] = (signed_value >> (i * 8)) & 0xFF
+        # Convert back to int as unsigned
+        result = 0
+        for i in range(16):
+            result |= byte_array[i] << (i * 8)
+        return result & ((1 << 128) - 1)
+    else:
+        return ctype_class(signed_value).value
 
 
 def get_msb(value, nb_bytes):
@@ -66,7 +96,10 @@ def get_sub_of(op1, op2, nb_bytes):
 
 
 def get_parity_flag(op1, op2, nb_bytes):
-    tmp = CTYPE_UNSIGNED_TABLE[nb_bytes](op1 - op2).value
+    if nb_bytes == 16:
+        tmp = signed_to_unsigned(op1 - op2, nb_bytes)
+    else:
+        tmp = CTYPE_UNSIGNED_TABLE[nb_bytes](op1 - op2).value
     return (bin(tmp).count("1") + 1) % 2
 
 
@@ -129,14 +162,22 @@ def __ROR8__(value: int, count: int) -> int:
     return __ror__(value, count, 64)
 
 
-MOP_CONSTANT_CACHE = CacheImpl(
-    max_size=20480,
-    survive_reload=True,
-    reload_key="_SHARED_MOP_CONSTANT_CACHE",
-)
+@survives_reload(reload_key="_SHARED_MOP_CACHES")
+class _SharedMopCaches:
+    """
+    Holds the global mop caches and survives module reloads so every
+    importer (Python or Cython) sees the same instances.
+    """
 
-MOP_TO_AST_CACHE = CacheImpl(
-    max_size=20480,
-    survive_reload=True,
-    reload_key="_SHARED_MOP_TO_AST_CACHE",
-)
+    def __init__(self) -> None:
+        # Keep sizes reasonable; tweak as needed elsewhere.
+        self.MOP_CONSTANT_CACHE = CacheImpl(max_size=1000)
+        self.MOP_TO_AST_CACHE = CacheImpl(max_size=20480)
+
+
+_shared_caches = _SharedMopCaches()
+
+# Public module-level aliases used throughout the codebase (and Cython)
+MOP_CONSTANT_CACHE = _shared_caches.MOP_CONSTANT_CACHE
+
+MOP_TO_AST_CACHE = _shared_caches.MOP_TO_AST_CACHE
