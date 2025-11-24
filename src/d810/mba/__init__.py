@@ -11,16 +11,50 @@ The package is designed to be reusable outside of d810/IDA Pro.
 
 __version__ = "0.1.0"
 
-# Public API - available after MBA separation is complete
+# Phase 2 complete: Pure Python components now available
+from d810.mba.constants import SUB_TABLE, AND_TABLE
+from d810.mba.dsl import (
+    Var,
+    Const,
+    Zext,
+    SymbolicExpression,
+)
+from d810.mba.constraints import (
+    ConstraintExpr,
+    EqualityConstraint,
+    ComparisonConstraint,
+    AndConstraint,
+    OrConstraint,
+    NotConstraint,
+)
+from d810.mba.visitors import (
+    Z3VerificationVisitor,
+    prove_equivalence,
+)
+
+# Public API
 __all__ = [
-    # DSL will be exported here after Phase 2
-    # "Var", "Const", "Zext", "SymbolicExpression",
+    # Constants
+    "SUB_TABLE",
+    "AND_TABLE",
 
-    # Constraints will be exported after Phase 2
-    # "ConstraintExpr",
+    # DSL
+    "Var",
+    "Const",
+    "Zext",
+    "SymbolicExpression",
 
-    # Z3 backend will be exported after Phase 2
-    # "prove_equivalence",
+    # Constraints
+    "ConstraintExpr",
+    "EqualityConstraint",
+    "ComparisonConstraint",
+    "AndConstraint",
+    "OrConstraint",
+    "NotConstraint",
+
+    # Z3 backend
+    "Z3VerificationVisitor",
+    "prove_equivalence",
 
     # Verifier will be exported after Phase 3
     # "MBARule", "verify_transformation",
