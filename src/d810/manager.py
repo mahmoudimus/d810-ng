@@ -10,8 +10,8 @@ import time
 import typing
 
 from d810.conf import D810Configuration, ProjectConfiguration
+from d810.conf.cymode import CythonMode
 from d810.conf.loggers import clear_logs, configure_loggers, getLogger
-from d810.cythxr.cymode import CythonMode
 from d810.expr.utils import MOP_CONSTANT_CACHE, MOP_TO_AST_CACHE
 from d810.hexrays.hexrays_hooks import (
     BlockOptimizerManager,

@@ -150,7 +150,7 @@ jobs:
               shell: bash
               run: |
                   python -c "import d810; print(f'D810 imported successfully from {d810.__file__}')" || echo "Failed to import d810"
-                  python -c "from d810.cythxr import cymode; print(f'Cython mode: {cymode.CythonMode().is_enabled()}')" || echo "Cython modules not available (expected if not built with IDA SDK)"
+                  python -c "from d810.conf import cymode; print(f'Cython mode: {cymode.CythonMode().is_enabled()}')" || echo "Cython modules not available (expected if not built with IDA SDK)"
 
     upload_artifacts:
         name: Upload all build artifacts
