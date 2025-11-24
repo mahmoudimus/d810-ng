@@ -8,33 +8,18 @@ This test module demonstrates the power of the refactored rule system:
 
 The single test function below replaces what would have been dozens of manual
 test cases in the old system.
+
+NOTE: Rules are automatically discovered and loaded by the conftest.py
+      fixture using the d810 scanner infrastructure. No manual imports needed!
 """
 
 import pytest
 
 from d810.optimizers.rules import RULE_REGISTRY, VerifiableRule
 
-# Import all rule modules to populate the registry
-try:
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_add
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_and
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_bnot
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_cst
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_misc
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_mov
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_mul
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_neg
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_or
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_predicates
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_sub
-    import d810.optimizers.microcode.instructions.pattern_matching.rewrite_xor
-    import d810.optimizers.microcode.instructions.pattern_matching.hodur_verifiable
-except ImportError as e:
-    # If running in an environment without IDA, some imports might fail
-    # The test will be skipped if no rules are registered
-    pass
 
-
+@pytest.mark.requires_ida
+@pytest.mark.slow
 class TestVerifiableRules:
     """Test suite for verifiable optimization rules."""
 
@@ -121,12 +106,14 @@ class TestVerifiableRules:
 
 
 # When a developer adds a new VerifiableRule subclass:
-# 1. Import the module containing it in this file
-# 2. The rule is automatically added to RULE_REGISTRY
-# 3. All three tests above automatically apply to it
-# 4. No additional test code needs to be written!
+# 1. Create the rule class in a module under pattern_matching/
+# 2. The scanner automatically discovers and loads it (via conftest.py)
+# 3. The rule is automatically added to RULE_REGISTRY via __init_subclass__
+# 4. All three tests above automatically apply to it
+# 5. No additional test code or imports needed!
 #
 # This is the power of the refactored architecture:
-# - Rules are self-verifying
+# - Rules are self-verifying (Z3 proves correctness)
 # - Tests are generic and comprehensive
-# - Adding rules is trivial and safe
+# - Scanner automatically discovers new rules
+# - Adding rules is trivial and safe (no manual test updates)
