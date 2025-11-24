@@ -11,7 +11,7 @@ The package is designed to be reusable outside of d810/IDA Pro.
 
 __version__ = "0.1.0"
 
-# Phase 2 complete: Pure Python components now available
+# Phase 2 & 3 complete: Pure Python components and verifier available
 from d810.mba.constants import SUB_TABLE, AND_TABLE
 from d810.mba.dsl import (
     Var,
@@ -30,6 +30,11 @@ from d810.mba.constraints import (
 from d810.mba.visitors import (
     Z3VerificationVisitor,
     prove_equivalence,
+)
+from d810.mba.verifier import (
+    MBARule,
+    ConstrainedMBARule,
+    verify_transformation,
 )
 
 # Public API
@@ -56,6 +61,8 @@ __all__ = [
     "Z3VerificationVisitor",
     "prove_equivalence",
 
-    # Verifier will be exported after Phase 3
-    # "MBARule", "verify_transformation",
+    # Verifier (Phase 3)
+    "MBARule",
+    "ConstrainedMBARule",
+    "verify_transformation",
 ]
