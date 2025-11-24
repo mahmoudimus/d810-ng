@@ -26,6 +26,128 @@ It is recommended to install Z3 to be able to use several features of D-810:
 pip3 install z3-solver
 ```
 
+## Building with Cython Performance Optimizations
+
+D-810 ng includes optional Cython-accelerated modules for performance-critical code paths. The plugin works in pure Python mode without building, but you can optionally compile the Cython extensions for better performance.
+
+### Quick Start: Pure Python (No Build)
+
+The plugin works out-of-the-box without any compilation:
+
+```bash
+pip install -e .
+```
+
+D-810 automatically detects if Cython speedups are available and falls back to pure Python implementations if not.
+
+### Building Cython Extensions
+
+To build with performance optimizations:
+
+#### Requirements
+
+- **Python**: 3.10 or higher
+- **Cython**: 3.0.0 or higher
+- **setuptools**: 77.0.1 or higher
+- **IDA SDK**: For full Hex-Rays integration (set via `IDA_SDK` environment variable)
+
+#### Standard Build
+
+```bash
+# Install with Cython speedups
+pip install -e .[speedups]
+
+# Or build explicitly
+IDA_SDK=/path/to/idasdk python setup.py build_ext --inplace
+```
+
+#### Debug Build
+
+For development with debug symbols and profiling:
+
+```bash
+DEBUG=1 IDA_SDK=/path/to/idasdk python setup.py build_ext --inplace
+```
+
+This enables:
+- Debug symbols (`-g`, `-ggdb`)
+- Line tracing for profiling
+- Coverage support
+- Assertions enabled
+
+#### Creating Debug Symbols (macOS)
+
+On macOS, use `dsymutil` to create `.dSYM` bundles for debugging:
+
+```bash
+# Create debug symbols for all compiled modules
+fd --glob "**/*.so" "./src/speedups" --exclude "*.dSYM" -x dsymutil -o '{.}.so.dSYM' '{}'
+```
+
+### Compiled Modules
+
+When built, the following Cython modules are compiled:
+
+- `speedups.cythxr._chexrays_api` - Hex-Rays API Cython wrappers
+- `speedups.expr.ast` - AST core functionality
+- `speedups.expr.ast_evaluate` - Fast AST evaluator
+- `speedups.expr.rly_fast_ast` - Optimized AST operations
+- `speedups.optimizers.microcode.flow.constant_prop.fast_dataflow` - Fast dataflow analysis
+- `speedups.optimizers.microcode.flow.constant_prop.stackvars_constprop` - Stack variable constant propagation
+
+### Platform-Specific Notes
+
+#### macOS
+
+```bash
+# Set minimum macOS version (automatically configured)
+# Requires macOS 10.9+
+# ARM64 builds supported on Apple Silicon
+# x86_64 builds supported on Intel Macs
+
+IDA_SDK=/path/to/idasdk python setup.py build_ext --inplace
+```
+
+#### Linux
+
+```bash
+# Builds with GCC
+# Suppresses IDA SDK-specific warnings automatically
+
+IDA_SDK=/path/to/idasdk python setup.py build_ext --inplace
+```
+
+#### Windows
+
+```bash
+# Builds with MSVC
+# Uses /TP for C++ mode and /EHa for exception handling
+
+set IDA_SDK=C:\path\to\idasdk
+python setup.py build_ext --inplace
+```
+
+### Verifying Cython Mode
+
+Check if Cython speedups are loaded:
+
+```python
+from d810.expr.ast import _USING_CYTHON
+print(f"Cython enabled: {_USING_CYTHON}")
+```
+
+### GitHub Actions CI/CD
+
+The repository includes automated wheel building for distribution. See `.github/workflows/build-cython.yml` for the CI/CD pipeline that builds platform-specific wheels for:
+
+- **Linux**: x86_64 (Ubuntu latest)
+- **macOS**: x86_64 (Intel) and ARM64 (Apple Silicon)
+- **Windows**: x86_64
+
+**Python versions**: 3.10, 3.11, 3.12, 3.13
+
+For more details, see [`docs/BUILDING.md`](docs/BUILDING.md).
+
 ## Using D-810 ng
 
 * Load the plugin by using the `Ctrl-Shift-D` shortcut, you should see this configuration GUI
