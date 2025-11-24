@@ -303,10 +303,15 @@ class BlockOptimizerManager(optblock_t):
                     optimizer_logger.info(
                         "Rule {0} matched: {1} patches".format(cfg_rule.name, nb_patch)
                     )
-                    self.cfg_rules_usage_info[cfg_rule.name].append(nb_patch)
+                    if self.stats is not None:
+                        self.stats.record_cfg_rule_patches(cfg_rule.name, nb_patch)
+                    # self.cfg_rules_usage_info[cfg_rule.name].append(nb_patch)
 
                     # Record instrumentation if context is available
-                    from d810.optimizers.instrumentation import get_current_deobfuscation_context
+                    from d810.optimizers.instrumentation import (
+                        get_current_deobfuscation_context,
+                    )
+
                     ctx = get_current_deobfuscation_context()
                     if ctx is not None:
                         ctx.record_flow_rule_execution(
@@ -314,8 +319,12 @@ class BlockOptimizerManager(optblock_t):
                             changes=nb_patch,
                             maturity=self.current_maturity,
                             # Try to extract flow-specific metadata from rule name
-                            dispatchers=1 if "unflatten" in cfg_rule.name.lower() else 0,
-                            edges_unflattened=nb_patch if "unflatten" in cfg_rule.name.lower() else 0,
+                            dispatchers=(
+                                1 if "unflatten" in cfg_rule.name.lower() else 0
+                            ),
+                            edges_unflattened=(
+                                nb_patch if "unflatten" in cfg_rule.name.lower() else 0
+                            ),
                         )
 
                     return nb_patch
@@ -324,7 +333,6 @@ class BlockOptimizerManager(optblock_t):
     def add_rule(self, cfg_rule: FlowOptimizationRule):
         optimizer_logger.info("Adding cfg rule {0}".format(cfg_rule))
         self.cfg_rules.add(cfg_rule)
-        self.cfg_rules_usage_info[cfg_rule.name] = []
 
     def configure(self, **kwargs):
         pass

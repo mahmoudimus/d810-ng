@@ -30,12 +30,13 @@ try:
         mop_n,
         mop_p,
         mop_r,
-    mop_S,
-    mop_sc,
-    mop_str,
-    mop_v,
-    mop_z,
-)
+        mop_S,
+        mop_sc,
+        mop_str,
+        mop_v,
+        mop_z,
+    )
+
     IDA_AVAILABLE = True
 except ImportError:
     # Allow module to be imported for unit testing without IDA Pro
@@ -45,12 +46,16 @@ except ImportError:
     # Mock minimal IDA types/constants needed for AST construction
     class mop_t:  # type: ignore
         pass
+
     class minsn_t:  # type: ignore
         pass
+
     class mblock_t:  # type: ignore
         pass
+
     class mba_t:  # type: ignore
         pass
+
     mop_n = 0  # type: ignore
 
     # Mock all IDA constants - MUST use unique values so OPCODES_INFO dict works
@@ -180,6 +185,7 @@ except ImportError:
     ida_hexrays = _MockIDAHexrays()
 
 from d810.conf.loggers import getLogger
+from d810.cythxr._chexrays_api import hash_mop as cy_hash_mop
 
 logger = getLogger(__name__)
 
@@ -415,7 +421,7 @@ MINSN_TO_AST_FORBIDDEN_OPCODES: list[int] = CONTROL_FLOW_OPCODES + [
 ]
 
 # These constant tables don't depend on IDA and are always available
-SUB_TABLE = {
+SUB_TABLE: dict[int, int] = {
     1: 0x100,
     2: 0x10000,
     4: 0x100000000,
