@@ -75,7 +75,7 @@ class Z3ConstantOptimization(Z3Rule):
             #   new_instruction = self.get_replacement(typing.cast(AstNode, tmp))
             #   return new_instruction
             c_res_mop = mop_t()
-            c_res_mop.make_number(val_0, tmp.mop.size)
+            c_res_mop.make_number(val_0, tmp.mop.size or 1)
             if z3_check_mop_equality(tmp.mop, c_res_mop):
                 if logger.debug_on:
                     logger.debug("  z3_check_mop_equality is equal")

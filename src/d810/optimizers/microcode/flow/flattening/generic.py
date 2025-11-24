@@ -203,7 +203,9 @@ class GenericDispatcherInfo(object):
     def emulate_dispatcher_with_father_history(
         self, father_history: MopHistory
     ) -> tuple[mblock_t, list[minsn_t]]:
-        microcode_interpreter = MicroCodeInterpreter()
+        # Use concrete values from tracker - do NOT use symbolic mode here
+        # Symbolic mode would generate fake values instead of using tracked values
+        microcode_interpreter = MicroCodeInterpreter(symbolic_mode=False)
         microcode_environment = MicroCodeEnvironment()
         dispatcher_input_info = []
         # First, we setup the MicroCodeEnvironment with the state variables (self.entry_block.use_before_def_list)
@@ -354,7 +356,13 @@ class GenericDispatcherCollector(minsn_visitor_t):
             return 0
         self.explored_blk_serials.append(self.blk.serial)
         disp_info = self.DISPATCHER_CLASS(self.blk.mba)
-        is_good_candidate = disp_info.explore(self.blk)
+        # Pass entropy thresholds if available
+        kwargs = {}
+        if hasattr(self, "min_entropy"):
+            kwargs["min_entropy"] = self.min_entropy
+        if hasattr(self, "max_entropy"):
+            kwargs["max_entropy"] = self.max_entropy
+        is_good_candidate = disp_info.explore(self.blk, **kwargs)
         if not is_good_candidate:
             return 0
         if not self.specific_checks(disp_info):

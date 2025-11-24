@@ -16,12 +16,13 @@ rules_chain_logger = getLogger("D810.rules.chain")
 
 
 class ChainSimplification(object):
-    def __init__(self, opcode):
+    def __init__(self, opcode, func_entry_ea: int = 0):
         self.opcode = opcode
         self.formatted_ins = ""
         self.non_cst_mop_list = []
         self.cst_mop_list = []
         self._is_instruction_simplified = False
+        self.func_entry_ea = func_entry_ea
 
     def add_mop(self, mop):
         if (mop.t == mop_d) and (mop.d.opcode == self.opcode):
@@ -68,60 +69,115 @@ class ChainSimplification(object):
             return [final_cst_mop]
 
     def get_simplified_non_constant(self):
+        # Fast path
         if len(self.non_cst_mop_list) == 0:
             return []
-        elif len(self.non_cst_mop_list) == 1:
+        if len(self.non_cst_mop_list) == 1:
             return self.non_cst_mop_list
-        else:
-            is_always_0 = False
-            index_removed = []
-            for i in range(len(self.non_cst_mop_list)):
-                for j in range(i + 1, len(self.non_cst_mop_list)):
-                    if (i not in index_removed) and (j not in index_removed):
-                        if equal_mops_ignore_size(
-                            self.non_cst_mop_list[i], self.non_cst_mop_list[j]
-                        ):
-                            if self.opcode == m_xor:
-                                # x ^ x == 0
-                                rules_chain_logger.debug(
-                                    "Doing non cst simplification (xor): {0}, {1} in {2}".format(
-                                        i, j, self.formatted_ins
-                                    )
-                                )
-                                index_removed += [i, j]
-                            elif self.opcode == m_and:
-                                # x & x == x
-                                rules_chain_logger.debug(
-                                    "Doing non cst simplification (and): {0}, {1} in {2}".format(
-                                        i, j, self.formatted_ins
-                                    )
-                                )
-                                index_removed += [j]
-                            elif self.opcode == m_or:
-                                # x | x == x
-                                rules_chain_logger.debug(
-                                    "Doing non cst simplification (or): {0}, {1} in {2}".format(
-                                        i, j, self.formatted_ins
-                                    )
-                                )
-                                index_removed += [j]
-                        elif equal_bnot_mop(
-                            self.non_cst_mop_list[i], self.non_cst_mop_list[j]
-                        ):
-                            if self.opcode == m_and:
-                                is_always_0 = True
 
-            if len(index_removed) == 0 and not is_always_0:
-                return self.non_cst_mop_list
-            final_mop_list = []
-            self._is_instruction_simplified = True
-            if is_always_0:
-                final_mop_list.append(self.create_cst_mop(0, self.res_mop_size))
-                return final_mop_list
-            for i in range(len(self.non_cst_mop_list)):
-                if i not in index_removed:
-                    final_mop_list.append(self.non_cst_mop_list[i])
+        # Local memo for equality to avoid recomputing within one instruction
+        eq_memo: dict[tuple[int, int], bool] = {}
+
+        def _eq(a, b) -> bool:
+            ka, kb = id(a), id(b)
+            key = (ka, kb) if ka <= kb else (kb, ka)
+            cached = eq_memo.get(key)
+            if cached is not None:
+                return cached
+            res = equal_mops_ignore_size(a, b)
+            eq_memo[key] = res
+            return res
+
+        from d810.hexrays.hexrays_helpers import structural_mop_hash
+
+        # Bucket first by structural hash and build per-bucket unique reps
+        buckets: dict[int, list[mop_t]] = {}
+        bucket_reps: dict[int, list[mop_t]] = {}
+        unique: list[mop_t] = []
+
+        for m in self.non_cst_mop_list:
+            try:
+                k = structural_mop_hash(m, self.func_entry_ea)
+            except Exception:
+                k = m.t
+            reps = bucket_reps.setdefault(k, [])
+            for rep in reps:
+                if _eq(m, rep):
+                    break
+            else:
+                reps.append(m)
+                unique.append(m)
+            buckets.setdefault(k, []).append(m)
+
+        # Index mapping for removals over the flattened unique list
+        idx_of = {id(m): i for i, m in enumerate(unique)}
+        index_removed: set[int] = set()
+        is_always_0 = False
+
+        # Within-bucket reduction without O(n^2): group by equality
+        for key, members in bucket_reps.items():
+            if len(members) < 2:
+                continue
+            # Map representative id -> all indices in 'unique' that are equal to it
+            groups: list[mop_t] = []
+            group_indices: dict[int, list[int]] = {}
+
+            # For each original member occurrence in this bucket, assign to a group
+            for m in buckets[key]:
+                # Find representative for this member
+                for rep in members:
+                    if _eq(m, rep):
+                        rid = id(rep)
+                        groups.append(rep) if rid not in group_indices else None
+                        group_indices.setdefault(rid, []).append(idx_of[id(m)])
+                        break
+
+            # Now apply opcode-specific consolidation
+            if self.opcode == m_xor:
+                for rid, idxs in group_indices.items():
+                    if len(idxs) % 2 == 0:
+                        index_removed.update(idxs)
+                    else:
+                        # keep one, drop the rest
+                        index_removed.update(idxs[1:])
+            elif self.opcode in (m_and, m_or):
+                for rid, idxs in group_indices.items():
+                    # keep first occurrence only
+                    index_removed.update(idxs[1:])
+
+        # Cross-bucket bnot only when needed for AND → zero
+        if self.opcode == m_and and not is_always_0:
+            keys = list(bucket_reps.keys())
+            for i in range(len(keys)):
+                for j in range(i + 1, len(keys)):
+                    for mi in bucket_reps[keys[i]]:
+                        ii = idx_of[id(mi)]
+                        if ii in index_removed:
+                            continue
+                        for mj in bucket_reps[keys[j]]:
+                            jj = idx_of[id(mj)]
+                            if jj in index_removed:
+                                continue
+                            if equal_bnot_mop(mi, mj):
+                                is_always_0 = True
+                                break
+                        if is_always_0:
+                            break
+                if is_always_0:
+                    break
+
+        if len(index_removed) == 0 and not is_always_0:
+            return unique
+
+        final_mop_list: list[mop_t] = []
+        self._is_instruction_simplified = True
+        if is_always_0:
+            final_mop_list.append(self.create_cst_mop(0, self.res_mop_size))
             return final_mop_list
+        for idx, mop in enumerate(unique):
+            if idx not in index_removed:
+                final_mop_list.append(mop)
+        return final_mop_list
 
     def simplify(self, ins):
         self.res_mop_size = ins.d.size
@@ -249,7 +305,10 @@ class ArithmeticChainSimplification(object):
 
     def get_simplified_non_constant(self):
         if len(self.add_non_cst_mop_list) == 0 and len(self.sub_non_cst_mop_list) == 0:
-            return [[], []]
+            # Return an explicit zero-constant mop so callers can safely inspect .nnn
+            zero = mop_t()
+            zero.make_number(0, 1)
+            return [], [], zero
         final_add_list = self.add_non_cst_mop_list
         final_sub_list = self.sub_non_cst_mop_list
         index_add_removed = []
@@ -392,7 +451,8 @@ class XorChain(ChainSimplificationRule):
     )
 
     def check_and_replace(self, blk, ins):
-        xor_simplifier = ChainSimplification(m_xor)
+        func_ea = getattr(getattr(blk, "mba", None), "entry_ea", 0)
+        xor_simplifier = ChainSimplification(m_xor, func_entry_ea=func_ea)
         new_ins = xor_simplifier.simplify(ins)
         return new_ins
 
@@ -403,7 +463,8 @@ class AndChain(ChainSimplificationRule):
     )
 
     def check_and_replace(self, blk, ins):
-        and_simplifier = ChainSimplification(m_and)
+        func_ea = getattr(getattr(blk, "mba", None), "entry_ea", 0)
+        and_simplifier = ChainSimplification(m_and, func_entry_ea=func_ea)
         new_ins = and_simplifier.simplify(ins)
         return new_ins
 
@@ -414,7 +475,8 @@ class OrChain(ChainSimplificationRule):
     )
 
     def check_and_replace(self, blk, ins):
-        or_simplifier = ChainSimplification(m_or)
+        func_ea = getattr(getattr(blk, "mba", None), "entry_ea", 0)
+        or_simplifier = ChainSimplification(m_or, func_entry_ea=func_ea)
         new_ins = or_simplifier.simplify(ins)
         return new_ins
 

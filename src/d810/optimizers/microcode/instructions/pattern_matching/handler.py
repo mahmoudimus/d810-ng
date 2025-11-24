@@ -17,6 +17,9 @@ from d810.optimizers.microcode.instructions.handler import (
 optimizer_logger = getLogger("D810.optimizer")
 pattern_search_logger = getLogger("D810.pattern_search")
 
+if typing.TYPE_CHECKING:
+    from d810.stats import OptimizationStatistics
+
 
 class PatternMatchingRule(GenericPatternRule):
     FUZZ_PATTERN: bool = True
@@ -56,7 +59,7 @@ class PatternMatchingRule(GenericPatternRule):
         else:
             self.pattern_candidates = ast_generator(self.PATTERN)
         if self.PATTERNS is not None:
-            self.pattern_candidates += [x for x in self.PATTERNS]
+            self.pattern_candidates += list(self.PATTERNS)
 
     def check_pattern_and_replace(self, candidate_pattern: AstNode, test_ast: AstNode):
         if optimizer_logger.debug_on:
@@ -97,7 +100,7 @@ class PatternMatchingRule(GenericPatternRule):
 @dataclasses.dataclass
 class RulePatternInfo:
     rule: InstructionOptimizationRule
-    pattern: AstNode
+    pattern: AstBase
 
 
 def signature_generator(ref_sig):
@@ -119,7 +122,7 @@ class PatternStorage(object):
         self.next_layer_patterns: dict[str, tuple[list[str], PatternStorage]] = {}
         self.rule_resolved = []
 
-    def add_pattern_for_rule(self, pattern: AstNode, rule: InstructionOptimizationRule):
+    def add_pattern_for_rule(self, pattern: AstBase, rule: InstructionOptimizationRule):
         layer_signature = self.layer_signature_to_key(
             pattern.get_depth_signature(self.depth)
         )
@@ -246,9 +249,14 @@ class PatternOptimizer(InstructionOptimizer):
 
     RULE_CLASSES = [PatternMatchingRule]
 
-    def __init__(self, maturities, log_dir=None):
-        super().__init__(maturities, log_dir=log_dir)
+    def __init__(self, maturities, stats: "OptimizationStatistics", log_dir=None):
+        super().__init__(maturities, stats, log_dir=log_dir)
         self.pattern_storage = PatternStorage(depth=1)
+        # Fast-path filter: restrict AST building to instructions whose opcode
+        # appears as the root opcode of at least one registered rule pattern.
+        # This avoids paying the cost of minsn_to_ast() for obviously
+        # incompatible instructions.
+        self._allowed_root_opcodes: set[int] = set()
 
     def add_rule(self, rule: PatternMatchingRule):
         is_ok = super().add_rule(rule)
@@ -261,6 +269,15 @@ class PatternOptimizer(InstructionOptimizer):
                     str(pattern),
                 )
             self.pattern_storage.add_pattern_for_rule(pattern, rule)
+            # Collect root opcode for quick opcode pre-filtering
+            try:
+                # Only AstNode instances have an opcode. Guarding with isinstance
+                # keeps static type-checkers happy.
+                if isinstance(pattern, AstNode) and pattern.opcode is not None:
+                    self._allowed_root_opcodes.add(int(pattern.opcode))
+            except Exception:
+                # Be permissive: failure to extract opcode just means we won't pre-filter it
+                pass
         return True
 
     def get_optimized_instruction(self, blk: mblock_t, ins: minsn_t) -> minsn_t | None:
@@ -277,6 +294,16 @@ class PatternOptimizer(InstructionOptimizer):
                     "[PatternOptimizer.get_optimized_instruction] No rules configured, skipping"
                 )
             return None
+
+        # Opcode pre-filter: if the instruction opcode is never used as a root
+        # by any registered rule, there is no point in attempting an AST build.
+        # This shortcut has a substantial impact on hot paths.
+        try:
+            if ins.opcode not in self._allowed_root_opcodes:
+                return None
+        except Exception:
+            # If anything goes wrong while reading opcode, fall through to safe path
+            pass
 
         tmp = minsn_to_ast(ins)
         if tmp is None:
@@ -301,7 +328,6 @@ class PatternOptimizer(InstructionOptimizer):
                     rule_pattern_info.pattern, tmp
                 )
                 if new_ins is not None:
-                    self.rules_usage_info[rule_pattern_info.rule.name] += 1
                     if optimizer_logger.info_on:
                         optimizer_logger.info(
                             "Rule %s matched in maturity %s:",
@@ -313,6 +339,11 @@ class PatternOptimizer(InstructionOptimizer):
                             "  new : %s",
                             format_minsn_t(new_ins),
                         )
+                    if self.stats is not None:
+                        self.stats.record_instruction_rule_match(
+                            rule_name=rule_pattern_info.rule.name
+                        )
+
                     return new_ins
             except RuntimeError as e:
                 optimizer_logger.error(
@@ -391,7 +422,7 @@ def get_opcode_operands(ref_opcode: int, ast_node: AstBase) -> list[AstBase]:
     if not isinstance(ast_node, AstBase) or not ast_node.is_node():
         return [ast_node]
     ast_node = typing.cast(AstNode, ast_node)
-    if ast_node.opcode == ref_opcode:
+    if ast_node.opcode is not None and ast_node.opcode == ref_opcode:
         left = (
             get_opcode_operands(ref_opcode, ast_node.left)
             if ast_node.left is not None
@@ -408,6 +439,8 @@ def get_opcode_operands(ref_opcode: int, ast_node: AstBase) -> list[AstBase]:
 
 
 def get_similar_opcode_operands(ast_node: AstNode) -> list[AstNode]:
+    if ast_node.opcode is None:
+        return [ast_node]
     if ast_node.opcode in [m_add, m_sub]:
         add_elts = get_addition_operands(ast_node)
         all_add_ordering = get_all_binary_tree_representation(add_elts)
@@ -416,7 +449,7 @@ def get_similar_opcode_operands(ast_node: AstNode) -> list[AstNode]:
             ast_res.append(generate_ast(m_add, leaf_ordering))
         return ast_res
     elif ast_node.opcode in [m_xor, m_or, m_and, m_mul]:
-        same_elts = get_opcode_operands(ast_node.opcode, ast_node)
+        same_elts = get_opcode_operands(int(ast_node.opcode), ast_node)
         all_same_ordering = get_all_binary_tree_representation(same_elts)
         ast_res = []
         for leaf_ordering in all_same_ordering:
@@ -484,9 +517,10 @@ def ast_generator(ast_node: AstBase | None, excluded_opcodes=None) -> list[AstBa
                     for sub_ast_right in sub_ast_right_list:
                         sub_ast_left = typing.cast(AstNode, sub_ast_left)
                         sub_ast_right = typing.cast(AstNode, sub_ast_right)
-                        res_ast += get_ast_variations_with_add_sub(
-                            ast_node.opcode, sub_ast_left, sub_ast_right
-                        )
+                        if ast_node.opcode is not None:
+                            res_ast += get_ast_variations_with_add_sub(
+                                int(ast_node.opcode), sub_ast_left, sub_ast_right
+                            )
             return res_ast
     if ast_node.opcode not in [m_add, m_sub, m_or, m_and, m_mul]:
         excluded_opcodes = []
@@ -511,8 +545,9 @@ def ast_generator(ast_node: AstBase | None, excluded_opcodes=None) -> list[AstBa
             for sub_ast_right in sub_ast_right_list:
                 sub_ast_left = typing.cast(AstNode, sub_ast_left)
                 sub_ast_right = typing.cast(AstNode, sub_ast_right)
-                res_ast += get_ast_variations_with_add_sub(
-                    ast_node.opcode, sub_ast_left, sub_ast_right
-                )
+                if ast_node.opcode is not None:
+                    res_ast += get_ast_variations_with_add_sub(
+                        int(ast_node.opcode), sub_ast_left, sub_ast_right
+                    )
         return res_ast
     return []

@@ -116,16 +116,22 @@ class JumpOptimizationRule(Registrant):
     ):
         if instruction.opcode not in self.ORIGINAL_JUMP_OPCODES:
             return None
+        if instruction.d is None or instruction.d.t != mop_b:
+            return None
         self.jump_original_block_serial = instruction.d.b
-        self.direct_block_serial = blk.serial + 1
+        if blk.nextb is None:
+            return None  # or bail gracefully
+        self.direct_block_serial = blk.nextb.serial
         self.jump_replacement_block_serial = None
         valid_candidates = self.get_valid_candidates(
             instruction, left_ast, right_ast, stop_early=True
         )
         if len(valid_candidates) == 0:
             return None
-        if self.jump_original_block_serial is None:
-            self.jump_replacement_block_serial = self.jump_original_block_serial
+        # if self.jump_original_block_serial is None:
+        #     self.jump_replacement_block_serial = self.jump_original_block_serial
+        if self.jump_original_block_serial is None and self.direct_block_serial is None:
+            return None
         left_candidate, right_candidate = valid_candidates[0]
         new_ins = self.get_replacement(instruction, left_candidate, right_candidate)
         return new_ins
@@ -244,10 +250,22 @@ class JumpFixer(FlowOptimizationRule):
                     optimizer_logger.info("  new : {0}".format(format_minsn_t(new_ins)))
                     if new_ins.opcode == m_goto:
                         make_2way_block_goto(blk, new_ins.d.b)
+                        return True
                     else:
-                        change_2way_block_conditional_successor(blk, new_ins.d.b)
-                        blk.make_nop(blk.tail)
-                        blk.insert_into_block(new_ins, blk.tail)
+                        # old:
+                        # change_2way_block_conditional_successor(blk, new_ins.d.b)
+                        # blk.make_nop(blk.tail)
+                        # blk.insert_into_block(new_ins, blk.tail)
+                        # new:
+                        # either:
+                        tail = blk.tail
+                        tail.opcode = new_ins.opcode
+                        tail.l = new_ins.l
+                        tail.r = new_ins.r
+                        tail.d = new_ins.d
+                        # or:
+                        # blk.make_nop(blk.tail)
+                        # blk.insert_into_block(new_ins, blk.tail)
                         return True
             except RuntimeError as e:
                 optimizer_logger.error(
