@@ -7,7 +7,7 @@ All rules have been migrated to the declarative DSL and are automatically
 verified with Z3.
 """
 
-from d810.optimizers.dsl import Const, Var, ONE, ZERO
+from d810.mba.dsl import Const, Var, ONE, ZERO
 from d810.optimizers.rules import VerifiableRule
 
 # Common variables for HODUR patterns

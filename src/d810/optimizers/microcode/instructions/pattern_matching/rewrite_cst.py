@@ -7,7 +7,7 @@ All rules are verified using Z3 SMT solver.
 """
 
 from d810.hexrays.hexrays_helpers import AND_TABLE, SUB_TABLE
-from d810.optimizers.dsl import Var, Const, DynamicConst, when
+from d810.mba.dsl import Var, Const, DynamicConst, when
 from d810.optimizers.rules import VerifiableRule
 
 # Define variables for pattern matching

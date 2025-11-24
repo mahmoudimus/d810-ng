@@ -8,7 +8,7 @@ These rules eliminate redundant Boolean algebra that reduces to an identity.
 All rules are verified using Z3 SMT solver.
 """
 
-from d810.optimizers.dsl import Var, when
+from d810.mba.dsl import Var, when
 from d810.optimizers.rules import VerifiableRule
 
 # Define variables for pattern matching

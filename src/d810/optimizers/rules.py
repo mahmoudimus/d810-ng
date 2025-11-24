@@ -20,8 +20,8 @@ except ImportError:
     Z3_AVAILABLE = False
 
 from d810.conf.loggers import getLogger
-from d810.expr.visitors import prove_equivalence
-from d810.optimizers.dsl import SymbolicExpression
+from d810.mba.visitors import prove_equivalence
+from d810.mba.dsl import SymbolicExpression
 
 # Import types only for type checking to avoid circular imports and IDA dependencies
 if TYPE_CHECKING:

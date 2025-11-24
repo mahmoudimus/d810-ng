@@ -11,7 +11,7 @@ Rules are organized by category:
 - BnotAdd_* : NOT + addition combinations (MBA)
 """
 
-from d810.optimizers.dsl import Var, Const, when, NEGATIVE_ONE
+from d810.mba.dsl import Var, Const, when, NEGATIVE_ONE
 from d810.optimizers.rules import VerifiableRule
 
 # Define variables for pattern matching
