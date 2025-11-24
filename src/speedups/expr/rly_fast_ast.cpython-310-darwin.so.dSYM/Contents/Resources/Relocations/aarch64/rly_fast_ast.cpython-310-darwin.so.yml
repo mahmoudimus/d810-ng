@@ -1,6 +1,6 @@
 ---
 triple:          'arm64-apple-darwin'
-binary-path:     'src/speedups/expr/rly_fast_ast.cpython-310-darwin.so'
+binary-path:     './src/speedups/expr/rly_fast_ast.cpython-310-darwin.so'
 relocations:
   - { offset: 0x40, size: 0x8, addend: 0x0, symName: ___pyx_module_is_main_speedups__expr__rly_fast_ast, symObjAddr: 0x11F2DC, symBinAddr: 0x1CC48, symSize: 0x0 }
   - { offset: 0x7D, size: 0x8, addend: 0x0, symName: __ZN12_GLOBAL__N_115__pyx_moduledefE, symObjAddr: 0x11240, symBinAddr: 0x1C400, symSize: 0x0 }

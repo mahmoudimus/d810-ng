@@ -24,7 +24,7 @@ cdef bint debug_on = <bint>False
 # ---------------------------------------------------------------------------
 #  Raw C declarations from sibling pxd
 # ---------------------------------------------------------------------------
-from d810.cythxr._chexrays cimport (
+from speedups.cythxr._chexrays cimport (
     SwigPyObject,
     uint,
     uint64,
@@ -48,7 +48,7 @@ from d810.cythxr._chexrays cimport (
     mcallinfo_t,
     LOCOPT_FLAGS,
 )
-from d810.cythxr._chexrays_api cimport stack_var_name as _stack_var_name
+from speedups.cythxr._chexrays_api cimport stack_var_name as _stack_var_name
 
 # ---------------------------------------------------------------------------
 #  Tiny helpers – still in C for speed
