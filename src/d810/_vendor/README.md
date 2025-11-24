@@ -72,12 +72,21 @@ Vendor a dependency when:
 ## Current Status
 
 **Currently vendored**:
-- **`ida-reloader`** (v0.1.0+d810) - Hot-reload infrastructure for IDA Pro plugins
-  - Source: https://github.com/mahmoudimus/ida-reloader
-  - Provides: `Reloader`, `DependencyGraph`, `_Scanner`, `reload_package()`
-  - Reason: Core infrastructure for plugin hot-reloading, tightly integrated with d810
-  - Location: `src/d810/_vendor/ida_reloader/`
-  - Usage: `from d810._vendor.ida_reloader import Reloader`
+
+1. **`ida-reloader`** (v0.1.0+d810) - Hot-reload infrastructure for IDA Pro plugins
+   - Source: https://github.com/mahmoudimus/ida-reloader
+   - Provides: `Reloader`, `DependencyGraph`, `_Scanner`, `reload_package()`
+   - Reason: Core infrastructure for plugin hot-reloading, tightly integrated with d810
+   - Location: `src/d810/_vendor/ida_reloader/`
+   - Usage: `from d810._vendor.ida_reloader import Reloader`
+
+2. **`typing_extensions`** (v4.15.0) - Backport of latest typing features
+   - Source: https://github.com/python/typing_extensions
+   - Provides: `Protocol`, `TypedDict`, `Literal`, `Final`, `override`, `Self`, etc.
+   - Reason: Ensure consistent typing support across Python 3.10-3.13
+   - Location: `src/d810/_vendor/typing_extensions/`
+   - Usage: `from d810._vendor.typing_extensions import Protocol, override`
+   - Note: Accessed via `d810.typing` module for cross-version compatibility
 
 **Candidates for future vendoring**:
 - `miasm2`: If we need custom patches for IDA compatibility
@@ -85,103 +94,159 @@ Vendor a dependency when:
 
 ## Vendoring a New Package
 
-### 1. Evaluate Need
-Ask:
+### Method 1: Automatic Vendoring (Recommended)
+
+Use the `vendoring` tool for packages available on PyPI:
+
+**1. Evaluate Need**
 - Does this package cause conflicts in IDA Pro?
 - Do we need a specific version or custom patches?
-- Is the maintenance burden worth the benefit?
+- Is it available on PyPI?
 
-### 2. Download Package Source
+**2. Install vendoring tool** (one-time setup)
 ```bash
-# Clone from source
-git clone https://github.com/package/repo /tmp/package
-cd /tmp/package
-git checkout v1.2.3  # Specific version
-
-# Or download release
-wget https://github.com/package/repo/archive/v1.2.3.tar.gz
-tar xzf v1.2.3.tar.gz
+pip install vendoring
 ```
 
-### 3. Copy to Vendor Directory
+**3. Add package to vendor.txt**
 ```bash
-# Copy package source (not the repo, just the package)
-cp -r /tmp/package/src/package src/d810/_vendor/package
-
-# Remove unnecessary files
-rm -rf src/d810/_vendor/package/tests/
-rm -rf src/d810/_vendor/package/.git/
-rm -rf src/d810/_vendor/package/__pycache__/
+# Add the package and version
+echo "package==1.2.3" >> src/d810/_vendor/vendor.txt
+echo "    # Reason: Brief explanation" >> src/d810/_vendor/vendor.txt
 ```
 
-### 4. Update vendor.txt
+**4. Run vendoring sync**
 ```bash
-echo "package==1.2.3+d810.1" >> src/d810/_vendor/vendor.txt
-echo "    # Custom patches for IDA compatibility" >> src/d810/_vendor/vendor.txt
+# From project root
+python -m vendoring sync
 ```
 
-### 5. Create Patches (if needed)
-If the vendored package imports other packages that we also vendor, create a patch:
+This automatically:
+- Downloads the package from PyPI
+- Extracts it to `src/d810/_vendor/`
+- Downloads LICENSE files
+- Applies any patches from `tools/vendoring/patches/`
+- Generates type stubs
 
+**5. Update imports in d810 code**
 ```bash
-# Create patch file
-cat > tools/vendoring/patches/package.patch << 'EOF'
-diff --git a/src/d810/_vendor/package/submodule.py b/src/d810/_vendor/package/submodule.py
---- a/src/d810/_vendor/package/submodule.py
-+++ b/src/d810/_vendor/package/submodule.py
-@@ -1,4 +1,4 @@
--from dependency import something
-+from d810._vendor.dependency import something
-EOF
-
-# Apply patch
-cd src/d810/_vendor/package
-patch -p4 < ../../../../tools/vendoring/patches/package.patch
-```
-
-### 6. Update Imports in d810
-```bash
-# Find all imports of the package
+# Find all imports
 grep -r "from package import" src/d810/
 grep -r "import package" src/d810/
 
 # Replace with vendored imports
-# from package → from d810._vendor.package
-# import package → import d810._vendor.package as package
+# from package import X → from d810._vendor.package import X
 ```
 
-### 7. Test Thoroughly
+**6. Test**
 ```bash
 # Run tests
 pytest tests/
 
 # Test in IDA Pro
-# Load d810 in IDA and verify vendored package works
+python -c "import idapro; from d810._vendor.package import X; print('✓ Works!')"
 ```
 
-### 8. Document
-Update this README with:
-- Why the package was vendored
-- What version is vendored
-- Any patches applied
-- Testing notes
+**7. Commit**
+```bash
+git add src/d810/_vendor/
+git commit -m "vendor: Add package==1.2.3"
+```
 
-## Using Automation Tools (Optional)
+### Method 2: Manual Vendoring
 
-For easier vendoring, you can use the `vendoring` tool (like pip does):
+Use manual vendoring when:
+- Package is not on PyPI
+- Package needs significant modifications
+- You want fine-grained control
+
+**1. Download Package Source**
+```bash
+# From GitHub release
+wget https://github.com/org/package/archive/v1.2.3.tar.gz
+tar xzf v1.2.3.tar.gz
+cd package-1.2.3
+
+# Or clone from git
+git clone https://github.com/org/package /tmp/package
+cd /tmp/package
+git checkout v1.2.3
+```
+
+**2. Copy to Vendor Directory**
+```bash
+# Copy package source (the actual Python package, not the repo)
+# If the package is in src/package/:
+cp -r /tmp/package/src/package /path/to/d810-ng/src/d810/_vendor/package
+
+# If the package IS the root:
+cp -r /tmp/package /path/to/d810-ng/src/d810/_vendor/package
+
+# Clean up unnecessary files
+cd /path/to/d810-ng/src/d810/_vendor/package
+rm -rf tests/ testing/ .git/ .github/ __pycache__/ *.pyc
+```
+
+**3. Document in vendor.txt**
+```bash
+# Add to vendor.txt (even for manual vendoring, for documentation)
+echo "" >> src/d810/_vendor/vendor.txt
+echo "# package - Brief description" >> src/d810/_vendor/vendor.txt
+echo "# Source: https://github.com/org/package" >> src/d810/_vendor/vendor.txt
+echo "# NOTE: Manually vendored (not on PyPI / needs custom patches)" >> src/d810/_vendor/vendor.txt
+echo "package==1.2.3+d810" >> src/d810/_vendor/vendor.txt
+```
+
+**4. Create Patches (if needed)**
+
+If you need to modify imports within the vendored package:
 
 ```bash
-# Install vendoring tool
-pip install vendoring
+# Create a patch
+cat > tools/vendoring/patches/package.patch << 'EOF'
+--- a/src/d810/_vendor/package/module.py
++++ b/src/d810/_vendor/package/module.py
+@@ -1,4 +1,4 @@
+-from dependency import something
++from d810._vendor.dependency import something
+EOF
 
-# Configure in pyproject.toml (see Configuration section below)
-
-# Vendor all dependencies from vendor.txt
-vendoring sync .
-
-# Update a specific package
-vendoring update . package-name
+# Apply it
+cd src/d810/_vendor/package
+patch -p4 < ../../../tools/vendoring/patches/package.patch
 ```
+
+**5. Update imports & test** (same as automatic method)
+
+**6. Document in README**
+
+Add to the "Currently vendored" section:
+- Package name and version
+- Source URL
+- Why it was vendored
+- What it provides
+- Any special notes (manual vendoring, patches, etc.)
+
+## Updating Vendored Packages
+
+### Automatic Updates (via vendoring tool)
+
+```bash
+# Update all vendored packages to versions specified in vendor.txt
+python -m vendoring sync
+
+# Or update a specific package
+python -m vendoring update package-name
+```
+
+### Manual Updates
+
+1. Download new version (same as initial manual vendoring)
+2. Remove old version: `rm -rf src/d810/_vendor/package/`
+3. Copy new version (follow manual vendoring steps)
+4. Update version in `vendor.txt`
+5. Re-apply any patches if needed
+6. Test thoroughly
 
 ## Configuration
 
@@ -215,6 +280,13 @@ substitute = [
     # Rewrite imports if vendored packages import each other
     # Example: {match='from dependency import', replace='from d810._vendor.dependency import'}
 ]
+
+# License fallback URLs for packages that don't bundle licenses in their distributions
+# IMPORTANT: Use underscores (_) not hyphens (-) in package names!
+# The vendoring tool normalizes all package names to underscores internally.
+[tool.vendoring.license.fallback-urls]
+ida_reloader = "https://raw.githubusercontent.com/mahmoudimus/ida-reloader/main/LICENSE"
+typing_extensions = "https://raw.githubusercontent.com/python/typing_extensions/main/LICENSE"
 
 [tool.pytest.ini_options]
 # Exclude vendored packages from testing
@@ -284,6 +356,13 @@ ImportError: cannot import name 'X' from partially initialized module
 Package 'X' requires 'Y>=2.0' but vendored version is 1.5
 ```
 **Fix**: Update vendored package or patch to remove version check if safe.
+
+### License Fetch Fails with "No hardcoded license URL"
+```
+ValueError: No hardcoded license URL for my_package
+```
+**Fix**: The vendoring tool normalizes package names to use underscores (`_`) instead of hyphens (`-`).
+In `pyproject.toml`, use `my_package` not `my-package` in `[tool.vendoring.license.fallback-urls]`.
 
 ## References
 

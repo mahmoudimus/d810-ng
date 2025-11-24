@@ -1,29 +1,30 @@
 # d810 Vendored Dependencies
 #
-# This file lists all vendored dependencies. Format follows pip's vendor.txt.
-# Dependencies are vendored as source directories to avoid conflicts with
-# IDA Pro's Python environment.
+# This file lists vendored dependencies that are automatically synced
+# using the `vendoring` tool (https://pypi.org/project/vendoring/).
 #
 # To update vendored packages:
-# 1. Update version here
-# 2. Download/clone the new version
-# 3. Copy source into src/d810/_vendor/<package>/
-# 4. Apply any necessary patches from tools/vendoring/patches/
-# 5. Test thoroughly
+#   python -m vendoring sync
 #
-# Currently vendored:
+# To update a specific package version:
+#   1. Update version in this file
+#   2. Run: python -m vendoring sync
+#   3. Test thoroughly
+#
+# All packages must be available on PyPI.
 
 # ida-reloader - Hot-reload infrastructure for IDA Pro plugins
-# Source: https://github.com/mahmoudimus/ida-reloader
-# Vendored from: src/d810/ida_reloadable.py (previously standalone file)
-# Version: 0.1.0 (extracted from d810)
-# Reason: Core infrastructure for plugin reloading, tightly integrated with d810
-ida-reloader==0.1.0+d810
-    # Provides Reloader, DependencyGraph, _Scanner for hot-reloading
-    # No patches needed - used as-is
+# Source: https://github.com/mahmoudimus/ida-reloader (PyPI: https://pypi.org/project/ida-reloader/)
+# Reason: Core infrastructure for plugin hot-reloading
+# Provides: Reloader, DependencyGraph, _Scanner, reload_package()
+ida-reloader==0.1.0
 
-#
+# typing_extensions - Backport of the latest typing features
+# Source: https://github.com/python/typing_extensions (PyPI: https://pypi.org/project/typing-extensions/)
+# Reason: Ensure consistent typing support across Python 3.10-3.13
+# Provides: Protocol, TypedDict, Literal, Final, override, Self, etc.
+typing_extensions==4.15.0
+
 # Candidates for future vendoring:
 # - miasm2: If we need specific version/patches for IDA compatibility
 # - z3-solver: If bundling is needed for binary distributions
-# - Any other dependencies that cause conflicts in IDA environment

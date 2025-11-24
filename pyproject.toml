@@ -14,8 +14,9 @@ description = "This is a next generation version of D-810, an IDA Pro plugin whi
 dependencies = ["z3-solver", "typing-extensions"]
 
 [project.optional-dependencies]
-dev = ["pyinstrument>=5.0.0,<6.0.0", "coverage[toml]", "pytest", "pytest-cov", "Cython>=3.0.0"]
+dev = ["coverage[toml]", "pytest", "pytest-cov", "Cython>=3.0.0", "vendoring>=1.2.0"]
 ci = ["coverage[toml]", "pytest", "pytest-cov", "Cython>=3.0.0"]
+profiling = ["pyinstrument>=5.0.0,<6.0.0"]
 speedups = ["Cython>=3.0.0"]
 
 [tool.setuptools]
@@ -109,6 +110,12 @@ drop = [
 # Rewrite imports if vendored packages import each other
 # Example: substitute = [{match='from dependency import', replace='from d810._vendor.dependency import'}]
 substitute = []
+
+[tool.vendoring.license.fallback-urls]
+# License fallback URLs for packages that don't bundle their license in distributions
+# Note: vendoring tool normalizes package names to underscores
+ida_reloader = "https://raw.githubusercontent.com/mahmoudimus/ida-reloader/main/LICENSE"
+typing_extensions = "https://raw.githubusercontent.com/python/typing_extensions/main/LICENSE"
 
 [tool.pytest.ini_options]
 # Exclude vendored packages from testing
