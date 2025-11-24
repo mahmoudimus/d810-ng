@@ -2,7 +2,7 @@
 
 # Try to import Cython-optimized version first
 try:
-    from d810.speedups.expr.ast import (
+    from d810.speedups.expr.c_ast import (
         AstBase,
         AstConstant,
         AstLeaf,
