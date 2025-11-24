@@ -106,7 +106,7 @@ class TestRuleRegistration(unittest.TestCase):
 
         sys.path.insert(0, "/home/user/d810-ng/src")
 
-        from d810.ida_reloadable import Reloader
+        from d810._vendor.ida_reloader import Reloader
         import d810.optimizers.microcode.instructions.pattern_matching as pattern_pkg
 
         # Get package path

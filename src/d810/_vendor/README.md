@@ -71,7 +71,13 @@ Vendor a dependency when:
 
 ## Current Status
 
-**Currently vendored**: None (infrastructure ready, no packages vendored yet)
+**Currently vendored**:
+- **`ida-reloader`** (v0.1.0+d810) - Hot-reload infrastructure for IDA Pro plugins
+  - Source: https://github.com/mahmoudimus/ida-reloader
+  - Provides: `Reloader`, `DependencyGraph`, `_Scanner`, `reload_package()`
+  - Reason: Core infrastructure for plugin hot-reloading, tightly integrated with d810
+  - Location: `src/d810/_vendor/ida_reloader/`
+  - Usage: `from d810._vendor.ida_reloader import Reloader`
 
 **Candidates for future vendoring**:
 - `miasm2`: If we need custom patches for IDA compatibility

@@ -9,7 +9,7 @@ import idaapi
 
 import d810
 import d810._compat as _compat
-import d810.ida_reloadable as reloadable
+import d810._vendor.ida_reloader as reloadable
 
 D810_VERSION = "0.1"
 
