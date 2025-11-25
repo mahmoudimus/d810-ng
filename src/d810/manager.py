@@ -9,10 +9,27 @@ import pstats
 import time
 import typing
 
-from d810.conf import D810Configuration, ProjectConfiguration
-from d810.conf.cymode import CythonMode
-from d810.conf.loggers import clear_logs, configure_loggers, getLogger
-from d810.expr.utils import MOP_CONSTANT_CACHE, MOP_TO_AST_CACHE
+from d810.core import (
+    D810Configuration,
+    ProjectConfiguration,
+    CythonMode,
+    clear_logs,
+    configure_loggers,
+    getLogger,
+    ProjectManager,
+    EventEmitter,
+    SingletonMeta,
+    OptimizationStatistics,
+)
+
+# Import IDA module for user directory - only used at initialization
+try:
+    import ida_diskio
+    _IDA_USER_DIR: str | None = ida_diskio.get_user_idadir()
+except ImportError:
+    # Fallback for headless/test mode - let D810Configuration use its default
+    _IDA_USER_DIR = None
+from d810.optimizers.caching import MOP_CONSTANT_CACHE, MOP_TO_AST_CACHE
 from d810.hexrays.hexrays_hooks import (
     BlockOptimizerManager,
     DecompilationEvent,
@@ -21,10 +38,6 @@ from d810.hexrays.hexrays_hooks import (
 )
 from d810.optimizers.microcode.flow.handler import FlowOptimizationRule
 from d810.optimizers.microcode.instructions.handler import InstructionOptimizationRule
-from d810.project_manager import ProjectManager
-from d810.registry import EventEmitter
-from d810.singleton import SingletonMeta
-from d810.stats import OptimizationStatistics
 
 # Import GUI only when needed (not in headless/test mode)
 try:
@@ -268,7 +281,7 @@ class D810State(metaclass=SingletonMeta):
 
     def reset(self) -> None:
         self._initialized: bool = False
-        self.d810_config: D810Configuration = D810Configuration()
+        self.d810_config: D810Configuration = D810Configuration(ida_user_dir=_IDA_USER_DIR)
         # manage projects via ProjectManager
         self.project_manager = ProjectManager(self.d810_config)
         self.current_project_index: int = 0
@@ -381,15 +394,22 @@ class D810State(metaclass=SingletonMeta):
         self.current_ins_rules = []
         self.current_blk_rules = []
 
-        # Build lists of available rules, skipping abstract / hidden ones
+        # Build lists of available rules, skipping abstract / hidden ones.
+        # Traditional rules come from InstructionOptimizationRule.registry.
+        # Verifiable rules (from RULE_REGISTRY) are injected directly into
+        # PatternOptimizer at construction time in InstructionOptimizerManager,
+        # so they don't need to be merged here.
         t_rules = time.perf_counter()
+
         self.known_ins_rules = [
             rule_cls()
             for rule_cls in InstructionOptimizationRule.registry.values()
             if not inspect.isabstract(rule_cls)
         ]
+
         print(
-            f"  ⏱ Instantiate {len(self.known_ins_rules)} instruction rules: {time.perf_counter() - t_rules:.2f}s"
+            f"  ⏱ Instantiate {len(self.known_ins_rules)} instruction rules: "
+            f"{time.perf_counter() - t_rules:.2f}s"
         )
 
         t_blk = time.perf_counter()

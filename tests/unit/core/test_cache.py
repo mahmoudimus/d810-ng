@@ -4,13 +4,7 @@ import sys
 import unittest
 import weakref
 
-from .tutils import load_conf_classes
-
-# Ensure d810.conf and submodules import with dummy ida_diskio
-with load_conf_classes():
-    from d810.cache import LFU, CacheImpl, OverweightError, cache, lru_cache
-
-from d810.registry import survives_reload
+from d810.core import LFU, CacheImpl, OverweightError, cache, lru_cache, survives_reload
 
 
 class FixedClock:
@@ -328,7 +322,7 @@ SURVIVES_RELOAD_CACHE = survives_reload(CacheImpl)
 
 class TestSurviveReload(unittest.TestCase):
     def test_same_key_returns_singleton(self):
-        from d810.cache import CacheImpl
+        from d810.core import CacheImpl
 
         c1 = survives_reload(CacheImpl, reload_key="FOO")(max_size=5)
         c2 = survives_reload(CacheImpl, reload_key="FOO")(max_size=10)
@@ -337,14 +331,14 @@ class TestSurviveReload(unittest.TestCase):
         self.assertEqual(c1._max_size, 5)
 
     def test_different_keys_are_distinct(self):
-        from d810.cache import CacheImpl
+        from d810.core import CacheImpl
 
         c1 = survives_reload(CacheImpl, reload_key="A")(max_size=5)
         c2 = survives_reload(CacheImpl, reload_key="B")(max_size=5)
         self.assertIsNot(c1, c2)
 
     def test_default_shared_key(self):
-        from d810.cache import CacheImpl
+        from d810.core import CacheImpl
 
         c1 = survives_reload(CacheImpl)(max_size=3)
         c2 = survives_reload(CacheImpl)(max_size=4)
@@ -354,7 +348,7 @@ class TestSurviveReload(unittest.TestCase):
         self.assertIsNot(c1, c3)
 
     def test_no_survive_reload_creates_new_each_time(self):
-        from d810.cache import CacheImpl
+        from d810.core import CacheImpl
 
         c1 = CacheImpl(max_size=2)
         c2 = CacheImpl(max_size=2)
@@ -371,7 +365,7 @@ class TestSurviveReload(unittest.TestCase):
         self.assertEqual(c2._max_size, 3)  # original config sticks
 
     def test_no_survive_different(self):
-        from d810.cache import CacheImpl
+        from d810.core import CacheImpl
 
         c1 = CacheImpl(max_size=5)
         c2 = CacheImpl(max_size=5)

@@ -33,7 +33,7 @@ from typing import (
 )
 from weakref import WeakKeyDictionary
 
-from d810.typing import LiteralString, Self, TypeAliasType
+from .typing import LiteralString, Self, TypeAliasType
 
 T = TypeVar("T")
 _R = TypeVar("_R", bound="Registrant")
@@ -518,6 +518,27 @@ class Registrant(metaclass=Registry):
         #         pass
         # gen = (c for c in cls.registry.values() if c not in exclude)
         return FilterableGenerator(cls.registry.values(), [predicate])
+
+
+def get_all_subclasses(python_class: type) -> list[type]:
+    """Return all subclasses of a class, recursively.
+
+    Traverses the entire class hierarchy to find all concrete subclasses,
+    returning them sorted by class name.
+    """
+    python_class.__subclasses__()
+
+    subclasses = set()
+    check_these = [python_class]
+
+    while check_these:
+        parent = check_these.pop()
+        for child in parent.__subclasses__():
+            if child not in subclasses:
+                subclasses.add(child)
+                check_these.append(child)
+
+    return sorted(subclasses, key=lambda x: x.__name__)
 
 
 class reify(Generic[T]):

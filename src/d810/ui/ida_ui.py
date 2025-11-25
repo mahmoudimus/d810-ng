@@ -15,8 +15,8 @@ from d810.qt_shim import QtCore, QtWidgets, qt_flag_or
 if typing.TYPE_CHECKING:
     from d810.manager import D810State
 
-from d810.conf import ProjectConfiguration, RuleConfiguration
-from d810.conf.loggers import LoggerConfigurator, getLogger
+from d810.core import ProjectConfiguration, RuleConfiguration
+from d810.core import LoggerConfigurator, getLogger
 from d810.ui.testbed import TestRunnerForm
 
 logger = getLogger("D810.ui")
@@ -35,7 +35,7 @@ class LoggingConfigDialog(QtWidgets.QDialog):
     chosen level on reload).
 
     The dialog relies on :pymod:`PyQt5` for the UI layer and the existing
-    :class:`~d810.conf.loggers.LoggerConfigurator` helper for the heavy
+    :class:`~d810.core.logging.LoggerConfigurator` helper for the heavy
     lifting.
     """
 

@@ -6,7 +6,7 @@ import ida_hexrays
 import idaapi
 from ida_hexrays import *
 
-from d810.conf.loggers import getLogger
+from d810.core import getLogger
 from d810.errors import ControlFlowException
 from d810.hexrays.hexrays_formatters import block_printer
 from d810.hexrays.hexrays_helpers import CONDITIONAL_JUMP_OPCODES

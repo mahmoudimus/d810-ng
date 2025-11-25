@@ -6,7 +6,7 @@ import typing
 
 from ida_hexrays import *
 
-from d810.conf.loggers import getLogger
+from d810.core import getLogger
 from d810.errors import D810Exception
 from d810.expr.z3_utils import log_z3_instructions
 from d810.hexrays.cfg_utils import safe_verify
@@ -61,7 +61,7 @@ if typing.TYPE_CHECKING:
         PeepholeOptimizer,
     )
     from d810.optimizers.microcode.instructions.z3.handler import Z3Optimizer
-    from d810.stats import OptimizationStatistics
+    from d810.core import OptimizationStatistics
 
 
 class InstructionOptimizerManager(optinsn_t):
@@ -95,11 +95,20 @@ class InstructionOptimizerManager(optinsn_t):
             "PeepholeOptimizer"
         )
         Z3Optimizer: type[Z3Optimizer] = InstructionOptimizer.get("Z3Optimizer")
+
+        # Load verifiable rules from RULE_REGISTRY and inject into PatternOptimizer
+        try:
+            from d810.mba.rules import RULE_REGISTRY
+            verifiable_rules = list(RULE_REGISTRY)
+        except ImportError:
+            verifiable_rules = []
+
         self.add_optimizer(
             PatternOptimizer(
                 DEFAULT_OPTIMIZATION_PATTERN_MATURITIES,
                 stats=self.stats,
                 log_dir=self.log_dir,
+                verifiable_rules=verifiable_rules,
             )
         )
         self.add_optimizer(
@@ -305,27 +314,6 @@ class BlockOptimizerManager(optblock_t):
                     )
                     if self.stats is not None:
                         self.stats.record_cfg_rule_patches(cfg_rule.name, nb_patch)
-                    # self.cfg_rules_usage_info[cfg_rule.name].append(nb_patch)
-
-                    # Record instrumentation if context is available
-                    from d810.optimizers.instrumentation import (
-                        get_current_deobfuscation_context,
-                    )
-
-                    ctx = get_current_deobfuscation_context()
-                    if ctx is not None:
-                        ctx.record_flow_rule_execution(
-                            rule_name=cfg_rule.name,
-                            changes=nb_patch,
-                            maturity=self.current_maturity,
-                            # Try to extract flow-specific metadata from rule name
-                            dispatchers=(
-                                1 if "unflatten" in cfg_rule.name.lower() else 0
-                            ),
-                            edges_unflattened=(
-                                nb_patch if "unflatten" in cfg_rule.name.lower() else 0
-                            ),
-                        )
 
                     return nb_patch
         return 0

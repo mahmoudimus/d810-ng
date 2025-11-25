@@ -184,8 +184,12 @@ except ImportError:
 
     ida_hexrays = _MockIDAHexrays()
 
-from d810.conf.loggers import getLogger
-from d810.speedups.cythxr._chexrays_api import hash_mop as cy_hash_mop
+from d810.core import getLogger
+
+try:
+    from d810.speedups.cythxr._chexrays_api import hash_mop as cy_hash_mop
+except ImportError:
+    cy_hash_mop = None
 
 logger = getLogger(__name__)
 
@@ -420,30 +424,8 @@ MINSN_TO_AST_FORBIDDEN_OPCODES: list[int] = CONTROL_FLOW_OPCODES + [
     m_ext,
 ]
 
-# These constant tables don't depend on IDA and are always available
-SUB_TABLE: dict[int, int] = {
-    1: 0x100,
-    2: 0x10000,
-    4: 0x100000000,
-    8: 0x10000000000000000,
-    16: 0x100000000000000000000000000000000,
-}
-# The AND_TABLE is an all-ones mask (equivalent to -1 in two's complement).
-# XORing with an all-ones mask is the same as a bitwise NOT (~).
-AND_TABLE: dict[int, int] = {
-    1: 0xFF,
-    2: 0xFFFF,
-    4: 0xFFFFFFFF,
-    8: 0xFFFFFFFFFFFFFFFF,
-    16: 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF,
-}
-MSB_TABLE: dict[int, int] = {
-    1: 0x80,
-    2: 0x8000,
-    4: 0x80000000,
-    8: 0x8000000000000000,
-    16: 0x80000000000000000000000000000000,
-}
+# Import constant tables from d810.core (IDA-independent)
+from d810.core.bits import AND_TABLE, MSB_TABLE
 
 
 # Hex-Rays mop equality checking
