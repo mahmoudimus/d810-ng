@@ -107,12 +107,23 @@ def test_xor_simplification_example(require_clang, code_comparator):
 
 
 def test_type_cast_variations(require_clang, code_comparator):
-    """Test that equivalent type casts are recognized."""
+    """Test that C-style and functional casts are detected as structurally different.
+
+    While (int)5 and int(5) are semantically equivalent, they parse to different
+    AST nodes in Clang (CStyleCastExpr vs CXXFunctionalCastExpr). The CodeComparator
+    does structural comparison, so it correctly identifies them as different.
+    """
     code1 = "void func() { int a = (int)5; }"
     code2 = "void func() { int a = int(5); }"
 
-    # These should be equivalent (both are int casts)
-    code_comparator.check_equivalence(code1, code2)
+    # These are structurally different (CStyleCastExpr vs CXXFunctionalCastExpr)
+    with pytest.raises(AssertionError):
+        code_comparator.check_equivalence(code1, code2)
+
+    # Same cast syntax should be equivalent
+    code3 = "void func() { int a = (int)5; }"
+    code4 = "void func() { int a =   (int)5; }"  # Just whitespace difference
+    code_comparator.check_equivalence(code3, code4)
 
 
 def test_are_equivalent_true(require_clang, code_comparator):
