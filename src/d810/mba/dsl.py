@@ -265,6 +265,7 @@ class SymbolicExpression:
             M_SHR,
             M_SUB,
             M_XOR,
+            d810_to_ida_opcode,
         )
 
         if self.is_leaf():
@@ -282,7 +283,7 @@ class SymbolicExpression:
             # M_XDU is a unary operation that extends the operand
             # self.left contains the expression, self.value contains target_width
             left_node = self.left.node if self.left else None
-            return AstNode(M_XDU, left_node, None)
+            return AstNode(d810_to_ida_opcode(M_XDU), left_node, None)
 
         # Map operation strings to opcodes
         op_map = {
@@ -307,7 +308,9 @@ class SymbolicExpression:
         left_node = self.left.node if self.left else None
         right_node = self.right.node if self.right else None
 
-        return AstNode(opcode, left_node, right_node)
+        # Convert d810 opcode to IDA opcode for AstNode
+        ida_opcode = d810_to_ida_opcode(opcode)
+        return AstNode(ida_opcode, left_node, right_node)
 
     def _constraint_to_node(self, constraint):
         """Convert a ConstraintExpr to an AstNode for IDA pattern matching.
@@ -326,7 +329,7 @@ class SymbolicExpression:
             (x == y).to_int() → AstNode(M_SETZ, (x-y).node, None)  # SETZ(x-y)
         """
         from d810.expr.ast import AstNode
-        from d810.opcodes import M_SETAE, M_SETB, M_SETNZ, M_SETZ, M_SUB
+        from d810.opcodes import M_SETAE, M_SETB, M_SETNZ, M_SETZ, M_SUB, d810_to_ida_opcode
         from d810.mba.constraints import ComparisonConstraint, EqualityConstraint
 
         if isinstance(constraint, ComparisonConstraint):
@@ -346,29 +349,35 @@ class SymbolicExpression:
             if opcode is None:
                 raise ValueError(f"Unsupported comparison for IDA pattern: {constraint.op_name}")
 
+            # Convert d810 opcode to IDA opcode
+            ida_opcode = d810_to_ida_opcode(opcode)
+            ida_sub = d810_to_ida_opcode(M_SUB)
+
             # For != and ==, IDA uses SETNZ/SETZ with a single operand (difference)
             # For <, >=, etc., use both operands
             if constraint.op_name in ["ne", "eq"]:
                 # Check if comparing to zero
                 if isinstance(constraint.right, SymbolicExpression) and constraint.right.is_constant() and constraint.right.value == 0:
-                    return AstNode(opcode, left_node, None)
+                    return AstNode(ida_opcode, left_node, None)
                 # Otherwise, create subtraction first
-                diff_node = AstNode(M_SUB, left_node, right_node)
-                return AstNode(opcode, diff_node, None)
+                diff_node = AstNode(ida_sub, left_node, right_node)
+                return AstNode(ida_opcode, diff_node, None)
             else:
-                return AstNode(opcode, left_node, right_node)
+                return AstNode(ida_opcode, left_node, right_node)
 
         if isinstance(constraint, EqualityConstraint):
             # x == y → SETZ(x - y)
             left_node = constraint.left.node
             right_node = constraint.right.node
+            ida_setz = d810_to_ida_opcode(M_SETZ)
+            ida_sub = d810_to_ida_opcode(M_SUB)
 
             # Check if comparing to zero
             if isinstance(constraint.right, SymbolicExpression) and constraint.right.is_constant() and constraint.right.value == 0:
-                return AstNode(M_SETZ, left_node, None)
+                return AstNode(ida_setz, left_node, None)
 
-            diff_node = AstNode(M_SUB, left_node, right_node)
-            return AstNode(M_SETZ, diff_node, None)
+            diff_node = AstNode(ida_sub, left_node, right_node)
+            return AstNode(ida_setz, diff_node, None)
 
         raise ValueError(f"Unsupported constraint type for IDA pattern: {type(constraint)}")
 
