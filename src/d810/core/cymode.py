@@ -1,7 +1,7 @@
 import dataclasses
 
-from d810.registry import survives_reload
-from d810.singleton import SingletonMeta
+from .registry import survives_reload
+from .singleton import SingletonMeta
 
 
 @survives_reload()

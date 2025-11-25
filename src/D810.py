@@ -8,7 +8,7 @@ import ida_kernwin
 import idaapi
 
 import d810
-import d810.typing as typing
+import d810.core.typing as typing
 import d810._vendor.ida_reloader as reloadable
 
 D810_VERSION = "0.1"
@@ -143,7 +143,7 @@ class D810Plugin(reloadable.ReloadablePluginBase, idaapi.action_handler_t):
         with self.plugin_setup_reload():
             reloadable.reload_package(
                 d810,
-                skip=[f"{self.base_package_name}.registry"],
+                skip=[f"{self.base_package_name}.core.registry"],
                 suppress_errors=self.suppress_reload_errors
             )
 

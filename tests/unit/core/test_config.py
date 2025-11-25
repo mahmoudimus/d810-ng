@@ -1,9 +1,61 @@
+"""Tests for D810 configuration system.
+
+These tests require mocking ida_diskio to control the IDA user directory.
+"""
+
+import importlib
 import json
 import logging
+import sys
+import tempfile
+import types
 import unittest
+from contextlib import contextmanager
 from pathlib import Path
 
-from .tutils import MockIdaDiskio, load_conf_classes, temp_ida_dir
+
+class MockIdaDiskio:
+    """Mock for ida_diskio module."""
+
+    _user_idadir: Path = Path("mock_idadir")
+
+    @classmethod
+    def get_user_idadir(cls) -> Path:
+        return cls._user_idadir
+
+
+@contextmanager
+def temp_ida_dir():
+    """Context manager providing a temporary IDA user directory."""
+    orig_dir = MockIdaDiskio._user_idadir
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        MockIdaDiskio._user_idadir = Path(tmp_dir)
+        try:
+            yield Path(tmp_dir)
+        finally:
+            MockIdaDiskio._user_idadir = orig_dir
+
+
+@contextmanager
+def load_conf_classes():
+    """Context manager that loads config classes with mocked ida_diskio."""
+    orig = sys.modules.get("ida_diskio")
+
+    dummy_mod = types.ModuleType("ida_diskio")
+    setattr(dummy_mod, "get_user_idadir", MockIdaDiskio.get_user_idadir)
+    sys.modules["ida_diskio"] = dummy_mod
+
+    try:
+        if "d810.core.config" in sys.modules:
+            module = importlib.reload(sys.modules["d810.core.config"])
+        else:
+            module = importlib.import_module("d810.core.config")
+        yield module.D810Configuration, module.ProjectConfiguration, module.RuleConfiguration
+    finally:
+        if orig is not None:
+            sys.modules["ida_diskio"] = orig
+        else:
+            sys.modules.pop("ida_diskio", None)
 
 
 class TestConfiguration(unittest.TestCase):
@@ -41,18 +93,18 @@ class TestConfiguration(unittest.TestCase):
             packaged_path.parent.mkdir(parents=True, exist_ok=True)
             packaged_path.write_text('{"template_key": "tmpl"}')
             with load_conf_classes() as (D810Configuration, _, _):
-                # Instance with no explicit path should read template but save to user dir
-                app_config = D810Configuration()
+                # Instance with explicit ida_user_dir should read template but save to user dir
+                app_config = D810Configuration(ida_user_dir=ida_dir)
                 # Value should initially be whatever is in config (template or pre-existing user copy)
                 self.assertIn(app_config.get("template_key"), ("tmpl", "user"))
                 # After save(), a user copy must exist
                 app_config.set("template_key", "user")
                 app_config.save()
                 self.assertTrue(app_config.config_file.exists())
-                # log_dir should use MockIdaDiskio path
+                # log_dir should use the provided ida_user_dir path
                 self.assertEqual(
                     str(app_config.log_dir),
-                    str(Path(MockIdaDiskio.get_user_idadir(), "logs")),
+                    str(ida_dir / "logs"),
                 )
 
     def test_project_configuration(self):
@@ -105,8 +157,8 @@ class TestConfiguration(unittest.TestCase):
                     '{"description": "User Override for Hodur"}'
                 )
 
-                # 2. Run discovery
-                config = D810Configuration()
+                # 2. Run discovery with explicit ida_user_dir
+                config = D810Configuration(ida_user_dir=ida_dir)
                 projects = config.discover_projects()
 
                 # 3. Verify results
@@ -133,7 +185,7 @@ class TestConfiguration(unittest.TestCase):
 
                 # Check that the list of configurations was saved back to options.json
                 config.save()
-                reloaded_config = D810Configuration(config.config_file)
+                reloaded_config = D810Configuration(config.config_file, ida_user_dir=ida_dir)
                 saved_configs = reloaded_config.get("configurations")
                 self.assertIn("my_user_project.json", saved_configs)
                 self.assertIn("hodur_deobfuscation.json", saved_configs)

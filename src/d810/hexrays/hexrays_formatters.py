@@ -23,7 +23,7 @@ except ImportError:
     class vd_printer_t:  # type: ignore
         pass
 
-from d810.conf.loggers import getLogger
+from d810.core import getLogger
 from d810.hexrays.hexrays_helpers import (
     MATURITY_TO_STRING_DICT,
     MOP_TYPE_TO_STRING_DICT,

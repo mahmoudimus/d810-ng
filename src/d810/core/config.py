@@ -1,31 +1,46 @@
 import dataclasses
 import json
+import os
 import pathlib
+import sys
 import typing
 
-# Try to import IDA modules, allow module to be imported for unit testing
-try:
-    import ida_diskio
-    IDA_AVAILABLE = True
-except ImportError:
-    # Mock for unit testing - use temp directory
-    IDA_AVAILABLE = False
-    class ida_diskio:  # type: ignore
-        @staticmethod
-        def get_user_idadir():
-            return str(pathlib.Path.home() / ".idapro")
-
-from .loggers import getLogger
+from .logging import getLogger
 
 logger = getLogger(__name__)
 
 
+def _get_default_ida_user_dir() -> pathlib.Path:
+    """Return the default IDA user directory based on platform.
+
+    Default locations:
+    - Windows: %APPDATA%/Hex-Rays/IDA Pro
+    - Linux/Mac: $HOME/.idapro
+    """
+    if sys.platform == "win32":
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            return pathlib.Path(appdata) / "Hex-Rays" / "IDA Pro"
+        # Fallback if APPDATA is not set
+        return pathlib.Path.home() / "AppData" / "Roaming" / "Hex-Rays" / "IDA Pro"
+    else:
+        # Linux and macOS
+        return pathlib.Path.home() / ".idapro"
+
+
+# Default fallback for IDA user directory (used in tests or headless mode)
+DEFAULT_IDA_USER_DIR = _get_default_ida_user_dir()
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class ConfigConstants:
-    DEFAULT_LOG_DIR: typing.ClassVar[pathlib.Path] = pathlib.Path(
-        ida_diskio.get_user_idadir(), "logs"
-    )
     OPTIONS_FILENAME: typing.ClassVar[str] = "options.json"
+
+    @staticmethod
+    def default_log_dir(ida_user_dir: pathlib.Path | None = None) -> pathlib.Path:
+        """Return the default log directory based on IDA user dir."""
+        base = ida_user_dir if ida_user_dir is not None else DEFAULT_IDA_USER_DIR
+        return base / "logs"
 
 
 @dataclasses.dataclass(slots=True)
@@ -141,7 +156,7 @@ class D810Configuration:
     >>> config = D810Configuration(config_path)
     >>> config["api_key"]
     '12345'
-    >>> str(config.log_dir) == str(ConfigConstants.DEFAULT_LOG_DIR)
+    >>> str(config.log_dir) == str(ConfigConstants.default_log_dir())
     True
     >>> config["log_dir"] = "/new/logs"
     >>> str(config.log_dir)
@@ -153,14 +168,26 @@ class D810Configuration:
     >>> temp_dir.cleanup()
     """
 
-    def __init__(self, config_path: pathlib.Path | str | None = None):
+    def __init__(
+        self,
+        config_path: pathlib.Path | str | None = None,
+        *,
+        ida_user_dir: pathlib.Path | str | None = None,
+    ):
         """
         Initializes and loads the configuration.
 
         Args:
             config_path: Path to the JSON config file. If None, defaults to
-                         'options.json' in the script's directory.
+                         'options.json' in the user's IDA directory.
+            ida_user_dir: Path to IDA's user directory (from ida_diskio.get_user_idadir()).
+                         If None, defaults to ~/.idapro.
         """
+        # Store IDA user directory for config_dir and log_dir properties
+        self._ida_user_dir = (
+            pathlib.Path(ida_user_dir) if ida_user_dir is not None else DEFAULT_IDA_USER_DIR
+        )
+
         if config_path is not None:
             # Caller explicitly provided a path - honor it verbatim.
             self.config_file = pathlib.Path(config_path)
@@ -223,8 +250,8 @@ class D810Configuration:
         Discover and load all project configurations from user and plugin directories.
         """
         user_dir = self.config_dir
-        # The plugin's conf directory is relative to this file's location.
-        plugin_dir = pathlib.Path(__file__).resolve().parent
+        # The plugin's conf directory is in d810/conf/, one level up from d810/core/
+        plugin_dir = pathlib.Path(__file__).resolve().parent.parent / "conf"
 
         user_configs = (
             {
@@ -284,20 +311,20 @@ class D810Configuration:
 
         The directory layout is:
 
-        ida_diskio.get_user_idadir() / "cfg" / "d810"
+        <ida_user_dir> / "cfg" / "d810"
 
         This location is **writable** by the user. Any project configuration JSON
         placed here will _override_ the read-only templates shipped with the
         plugin (located in the plugin package under ``d810/conf``).
         """
-        return pathlib.Path(ida_diskio.get_user_idadir()) / "cfg" / "d810"
+        return self._ida_user_dir / "cfg" / "d810"
 
     @property
     def log_dir(self) -> pathlib.Path:
         """Returns the configured log directory, or dynamically computes default if not set."""
         path_str = self._options.get("log_dir")
         if not path_str:
-            path_str = str(pathlib.Path(ida_diskio.get_user_idadir(), "logs"))
+            path_str = str(ConfigConstants.default_log_dir(self._ida_user_dir))
             self._options["log_dir"] = path_str
         return pathlib.Path(path_str)
 

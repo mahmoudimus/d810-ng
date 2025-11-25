@@ -23,7 +23,7 @@ except ImportError:
 
 import ida_kernwin
 
-from d810.conf.loggers import getLogger
+from d810.core import getLogger
 
 # Configure a logger for the script
 LOGGER = getLogger(__name__)

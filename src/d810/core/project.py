@@ -2,8 +2,8 @@ import dataclasses
 import functools
 import threading
 
-from d810.conf import D810Configuration, ProjectConfiguration
-from d810.conf.loggers import getLogger
+from .config import D810Configuration, ProjectConfiguration
+from .logging import getLogger
 
 logger = getLogger(__name__)
 

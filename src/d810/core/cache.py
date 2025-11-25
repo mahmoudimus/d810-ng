@@ -8,7 +8,7 @@ import time
 import typing
 import weakref
 
-from d810.conf.loggers import getLogger
+from .logging import getLogger
 
 logger = getLogger(__name__)
 
