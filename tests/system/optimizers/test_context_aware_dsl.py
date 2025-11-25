@@ -6,9 +6,9 @@ These tests verify that the context-aware DSL correctly handles:
 3. Destination updates (modifying the instruction destination)
 
 WHY THIS IS IN system/ TESTS:
-    These tests import from d810.optimizers.extensions which imports from
-    d810.expr.ast, which requires IDA modules to be available. The tests
-    themselves don't use IDA functionality directly.
+    The extensions module (d810.optimizers.extensions) directly imports from
+    ida_hexrays at module level, so it requires IDA Pro to be available.
+    These are IDA-specific helpers for pattern matching optimization rules.
 """
 
 import pytest

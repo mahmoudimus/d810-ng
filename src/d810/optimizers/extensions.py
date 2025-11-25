@@ -7,6 +7,9 @@ requiring direct manipulation of IDA's internal C++ API.
 The goal is to make complex rules accessible to users who understand the mathematics
 but not IDA's internals.
 
+NOTE: This module requires IDA Pro and should only be loaded in system tests,
+not unit tests. All IDA imports are at module level.
+
 Example usage:
     ```python
     from d810.mba.dsl import Var, Const
@@ -23,12 +26,12 @@ Example usage:
     ```
 """
 
-from __future__ import annotations
+from typing import Any, Dict, Optional
 
-from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
+from ida_hexrays import mop_r, mop_t, mop_a, mop_S, mop_v
 
-if TYPE_CHECKING:
-    from d810.expr.ast import AstLeaf
+from d810.expr.ast import AstLeaf
+from d810.hexrays.hexrays_formatters import format_mop_t
 
 
 class DestinationHelpers:
@@ -52,13 +55,6 @@ class DestinationHelpers:
         Returns:
             True if destination is a 2-byte register with "^2" in its name
         """
-        try:
-            from ida_hexrays import mop_r
-            from d810.hexrays.hexrays_formatters import format_mop_t
-        except ImportError:
-            # Running in test environment without IDA
-            return True
-
         candidate = ctx.get("_candidate")
         if not candidate:
             return False
@@ -87,11 +83,6 @@ class DestinationHelpers:
         Returns:
             True if destination is a register operand
         """
-        try:
-            from ida_hexrays import mop_r
-        except ImportError:
-            return True
-
         candidate = ctx.get("_candidate")
         if not candidate:
             return False
@@ -108,11 +99,6 @@ class DestinationHelpers:
         Returns:
             True if destination is a memory operand
         """
-        try:
-            from ida_hexrays import mop_a, mop_S, mop_v
-        except ImportError:
-            return True
-
         candidate = ctx.get("_candidate")
         if not candidate:
             return False
@@ -142,17 +128,6 @@ class ContextProviders:
         Returns:
             AstLeaf representing the parent register, or None if not applicable
         """
-        # Lazy import to avoid IDA dependency at module level
-        from d810.expr.ast import AstLeaf
-
-        try:
-            from ida_hexrays import mop_r, mop_t
-        except ImportError:
-            # Running in test environment - return a mock
-            leaf = AstLeaf("parent_reg")
-            leaf.mop = None
-            return leaf
-
         candidate = ctx.get("_candidate")
         if not candidate:
             return None
