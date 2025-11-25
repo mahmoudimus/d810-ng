@@ -1,7 +1,7 @@
 from ida_hexrays import *
 
-from d810.conf.loggers import getLogger
-from d810.expr.utils import unsigned_to_signed
+from d810.core import getLogger
+from d810.core.bits import unsigned_to_signed
 from d810.hexrays.cfg_utils import (
     duplicate_block,
     make_2way_block_goto,

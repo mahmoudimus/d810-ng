@@ -74,8 +74,8 @@ import ida_hexrays
 import ida_segment
 import idaapi
 
-import d810.typing as typing
-from d810.conf.loggers import getLogger
+import d810.core.typing as typing
+from d810.core import getLogger
 from d810.hexrays.hexrays_helpers import extract_literal_from_mop
 from d810.optimizers.microcode.instructions.peephole.handler import (
     PeepholeSimplificationRule,

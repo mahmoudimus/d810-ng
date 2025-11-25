@@ -33,7 +33,7 @@ import typing
 
 from ida_hexrays import *  # noqa: F401,F403
 
-from d810.conf.loggers import getLogger
+from d810.core import getLogger
 from d810.expr.ast import AstBase, AstConstant, AstLeaf, AstNode, minsn_to_ast
 from d810.hexrays.hexrays_formatters import format_minsn_t
 
@@ -54,7 +54,7 @@ from d810.optimizers.microcode.instructions.handler import (
 )
 
 if typing.TYPE_CHECKING:
-    from d810.stats import OptimizationStatistics
+    from d810.core import OptimizationStatistics
 
 # Reuse the same loggers as the original implementation.
 optimizer_logger = getLogger("D810.optimizer")

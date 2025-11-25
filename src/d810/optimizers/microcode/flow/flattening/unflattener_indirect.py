@@ -1,7 +1,7 @@
 import idaapi
 from ida_hexrays import *
 
-from d810.conf.loggers import getLogger
+from d810.core import getLogger
 from d810.hexrays.hexrays_helpers import AND_TABLE, append_mop_if_not_in_list
 from d810.hexrays.tracker import MopHistory, MopTracker
 from d810.optimizers.microcode.flow.flattening.generic import (

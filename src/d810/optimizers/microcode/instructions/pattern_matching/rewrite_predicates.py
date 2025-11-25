@@ -18,7 +18,7 @@ All rules are verified using Z3 SMT solver.
 
 from d810.hexrays.hexrays_helpers import AND_TABLE
 from d810.mba.dsl import Var, Const, DynamicConst, when, Zext
-from d810.optimizers.rules import VerifiableRule
+from d810.mba.rules import VerifiableRule
 
 # Define variables for pattern matching
 x, y = Var("x_0"), Var("x_1")
@@ -36,7 +36,7 @@ THREE = Const("3", 3)
 # ============================================================================
 
 
-class PredSetnz_1(VerifiableRule):
+class PredSetnzRule1(VerifiableRule):
     """Simplify: (x | c1) != c2 => 1 (when c1 | c2 != c2)
 
     If (c1 | c2) != c2, then c1 has bits set that are NOT in c2.
@@ -63,7 +63,7 @@ class PredSetnz_1(VerifiableRule):
     REFERENCE = "Predicate simplification"
 
 
-class PredSetnz_2(VerifiableRule):
+class PredSetnzRule2(VerifiableRule):
     """Simplify: (x & c1) != c2 => 1 (when c1 & c2 != c2)
 
     If (c1 & c2) != c2, then c2 needs bits that c1 doesn't have.
@@ -86,7 +86,7 @@ class PredSetnz_2(VerifiableRule):
     REFERENCE = "Predicate simplification"
 
 
-class PredSetnz_3(VerifiableRule):
+class PredSetnzRule3(VerifiableRule):
     """Simplify: (x | 2) + (x ^ 2) != 0 => 1
 
     This expression is always non-zero for any x:
@@ -105,7 +105,7 @@ class PredSetnz_3(VerifiableRule):
     REFERENCE = "Algebraic simplification"
 
 
-class PredSetnz_4(VerifiableRule):
+class PredSetnzRule4(VerifiableRule):
     """Simplify: (cst - x) ^ x != 0 => 1 (when cst is odd)
 
     When cst is odd:
@@ -132,7 +132,7 @@ class PredSetnz_4(VerifiableRule):
     REFERENCE = "Parity analysis"
 
 
-class PredSetnz_5(VerifiableRule):
+class PredSetnzRule5(VerifiableRule):
     """Simplify: -(~x & 1) != x => 1
 
     This is always true because:
@@ -153,7 +153,7 @@ class PredSetnz_5(VerifiableRule):
     REFERENCE = "Algebraic simplification"
 
 
-class PredSetnz_6(VerifiableRule):
+class PredSetnzRule6(VerifiableRule):
     """Simplify: ((x + c1) + ((x + c2) & 1)) != 0 => 1 (when (c2 - c1) is odd)
 
     When (c2 - c1) is odd:
@@ -179,7 +179,7 @@ class PredSetnz_6(VerifiableRule):
     REFERENCE = "Parity analysis"
 
 
-class PredSetnz_8(VerifiableRule):
+class PredSetnzRule8(VerifiableRule):
     """Simplify: ~(3 - x) ^ ~x != 0 => 1
 
     This is always non-zero:
@@ -207,7 +207,7 @@ class PredSetnz_8(VerifiableRule):
 # ============================================================================
 
 
-class PredSetz_1(VerifiableRule):
+class PredSetzRule1(VerifiableRule):
     """Simplify: (x | c1) == c2 => 0 (when c1 | c2 != c2)
 
     If (c1 | c2) != c2, then c1 has bits that c2 doesn't have.
@@ -232,7 +232,7 @@ class PredSetz_1(VerifiableRule):
     REFERENCE = "Predicate simplification"
 
 
-class PredSetz_2(VerifiableRule):
+class PredSetzRule2(VerifiableRule):
     """Simplify: (x & c1) == c2 => 0 (when c1 & c2 != c2)
 
     If (c1 & c2) != c2, then c2 needs bits that c1 doesn't have.
@@ -255,7 +255,7 @@ class PredSetz_2(VerifiableRule):
     REFERENCE = "Predicate simplification"
 
 
-class PredSetz_3(VerifiableRule):
+class PredSetzRule3(VerifiableRule):
     """Simplify: (x | 2) + (x ^ 2) == 0 => 0
 
     This expression is never zero (see PredSetnz3), so == 0 is always false.
@@ -275,7 +275,7 @@ class PredSetz_3(VerifiableRule):
 # ============================================================================
 
 
-class PredSetb_1(VerifiableRule):
+class PredSetbRule1(VerifiableRule):
     """Simplify: (x & c1) <u c2 => 1 (when c1 < c2)
 
     If c1 < c2, then (x & c1) is masked to at most c1.
@@ -443,7 +443,7 @@ class Pred0Rule7(VerifiableRule):
 # ============================================================================
 
 
-class PredFF_1(VerifiableRule):
+class PredFFRule1(VerifiableRule):
     """Simplify: x | ~x => 0xFF...FF
 
     A value OR its complement gives all bits set.
@@ -458,7 +458,7 @@ class PredFF_1(VerifiableRule):
     REFERENCE = "Boolean algebra"
 
 
-class PredFF_2(VerifiableRule):
+class PredFFRule2(VerifiableRule):
     """Simplify: (x ^ y) | (~x | y) => 0xFF...FF (when ~x is verified)
 
     Requires verification that bnot_x is actually ~x.
@@ -475,7 +475,7 @@ class PredFF_2(VerifiableRule):
     REFERENCE = "Boolean algebra with NOT verification"
 
 
-class PredFF_3(VerifiableRule):
+class PredFFRule3(VerifiableRule):
     """Simplify: x | ~(x & y) => 0xFF...FF
 
     Proof: x | ~(x & y) = x | (~x | ~y) [De Morgan]
@@ -493,7 +493,7 @@ class PredFF_3(VerifiableRule):
     REFERENCE = "Boolean algebra + De Morgan"
 
 
-class PredFF_4(VerifiableRule):
+class PredFFRule4(VerifiableRule):
     """Simplify: (x | y) | ~(x & y) => 0xFF...FF
 
     Proof: (x | y) | ~(x & y) = (x | y) | (~x | ~y) [De Morgan]
@@ -518,7 +518,7 @@ class PredFF_4(VerifiableRule):
 # ============================================================================
 
 
-class PredOr2_Rule1(VerifiableRule):
+class PredOr2_Rule_1(VerifiableRule):
     """Transform: ~(x * x) & 3 => (~x & 1) | 2
 
     This is a complex bit manipulation that factors the expression.
@@ -532,7 +532,7 @@ class PredOr2_Rule1(VerifiableRule):
     REFERENCE = "Modular arithmetic factoring"
 
 
-class PredOr1_Rule1(VerifiableRule):
+class PredOr1_Rule_1(VerifiableRule):
     """Transform: x ^ ((x & 1) + 1) => (x ^ (2 * (x & 1))) | 1
 
     This is another complex bit manipulation factoring.

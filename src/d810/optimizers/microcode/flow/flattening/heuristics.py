@@ -24,7 +24,7 @@ from typing import List, Optional, Set
 
 from ida_hexrays import *
 
-from d810.conf.loggers import getLogger
+from d810.core import getLogger
 
 logger = getLogger("D810.heuristics")
 

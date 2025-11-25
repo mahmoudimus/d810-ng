@@ -13,7 +13,7 @@ All rules are mathematically proven correct by Z3 SMT solver.
 """
 
 from d810.mba.dsl import Var, Const, when
-from d810.optimizers.rules import VerifiableRule
+from d810.mba.rules import VerifiableRule
 
 # Create symbolic variables
 x, y, z = Var("x_0"), Var("x_1"), Var("x_2")
@@ -39,7 +39,7 @@ class Or_HackersDelightRule_2(VerifiableRule):
     REFERENCE = "Hacker's Delight, Chapter 2"
 
 
-class Or_HackersDelight2_Variant1(VerifiableRule):
+class Or_HackersDelightRule_2_variant_1(VerifiableRule):
     """Simplify: (x - y) - (x & -y) => x | -y
 
     This is a variant of HackersDelight2 with negation.
@@ -57,7 +57,7 @@ class Or_HackersDelight2_Variant1(VerifiableRule):
     REFERENCE = "Hacker's Delight, variant"
 
 
-class Or_MBA_1(VerifiableRule):
+class Or_MbaRule_1(VerifiableRule):
     """Simplify: (x & y) + (x ^ y) => x | y
 
     This is the fundamental OR identity.
@@ -76,7 +76,7 @@ class Or_MBA_1(VerifiableRule):
     REFERENCE = "Mixed Boolean-Arithmetic, OR identity"
 
 
-class Or_MBA_2(VerifiableRule):
+class Or_MbaRule_2(VerifiableRule):
     """Simplify: ((x + y) + 1) + ~(x & y) => x | y
 
     This is an obfuscated OR pattern.
@@ -98,7 +98,7 @@ class Or_MBA_2(VerifiableRule):
     REFERENCE = "MBA obfuscation pattern"
 
 
-class Or_MBA_3(VerifiableRule):
+class Or_MbaRule_3(VerifiableRule):
     """Simplify: (x + (x ^ y)) - (x & ~y) => x | y
 
     Proof:
@@ -281,7 +281,7 @@ class Or_FactorRule_3(VerifiableRule):
     REFERENCE = "Absorption with double bnot constraint"
 
 
-class Or_OLLVM_1(VerifiableRule):
+class Or_OllvmRule_1(VerifiableRule):
     """Simplify: (x & y) | ~(~x ^ y) => x | y (when ~x is verified)
 
     OLLVM obfuscation pattern with bitwise NOT verification.

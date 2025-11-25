@@ -5,16 +5,16 @@ import typing
 
 import ida_hexrays
 
-from d810 import typing
-from d810.conf.loggers import getLogger
+from d810.core import typing
+from d810.core import getLogger
 from d810.errors import D810Exception
 from d810.expr.ast import AstNode, minsn_to_ast
 from d810.hexrays.hexrays_formatters import format_minsn_t, maturity_to_string
 from d810.optimizers.microcode.handler import OptimizationRule
-from d810.registry import Registrant
+from d810.core import Registrant
 
 if typing.TYPE_CHECKING:
-    from d810.stats import OptimizationStatistics
+    from d810.core import OptimizationStatistics
 
 d810_logger = getLogger("D810")
 optimizer_logger = getLogger("D810.optimizer")
@@ -159,13 +159,21 @@ class InstructionOptimizer(Registrant, typing.Generic[T_Rule]):
         self.stats = stats
 
     def add_rule(self, rule: T_Rule) -> bool:
+        """Add a rule to this optimizer if it matches RULE_CLASSES.
+
+        Rules must inherit from one of the classes in RULE_CLASSES to be accepted.
+        This ensures type safety and proper interface compliance.
+        """
+        # Check if rule inherits from one of RULE_CLASSES
         is_valid_rule_class = False
         for rule_class in self.RULE_CLASSES:
             if isinstance(rule, rule_class):
                 is_valid_rule_class = True
                 break
+
         if not is_valid_rule_class:
             return False
+
         if optimizer_logger.debug_on:
             optimizer_logger.debug("Adding rule %s", rule)
         if len(rule.maturities) == 0:
@@ -200,7 +208,12 @@ class InstructionOptimizer(Registrant, typing.Generic[T_Rule]):
                 new_ins = rule.check_and_replace(blk, ins)
                 if new_ins is not None:
                     if self.stats is not None:
-                        self.stats.record_instruction_rule_match(rule_name=rule.name)
+                        # Use new API with actual rule object
+                        self.stats.record_rule_fired(
+                            rule=rule,
+                            optimizer=self.name,
+                            maturity=self.cur_maturity,
+                        )
                     optimizer_logger.info(
                         "Rule %s matched in maturity %s:",
                         rule.name,
@@ -208,20 +221,6 @@ class InstructionOptimizer(Registrant, typing.Generic[T_Rule]):
                     )
                     optimizer_logger.info("  orig: %s", format_minsn_t(ins))
                     optimizer_logger.info("  new : %s", format_minsn_t(new_ins))
-
-                    # Record instrumentation if context is available
-                    from d810.optimizers.instrumentation import get_current_deobfuscation_context
-                    ctx = get_current_deobfuscation_context()
-                    if ctx is not None:
-                        # Determine rule type based on optimizer name
-                        rule_type = "pattern" if "Pattern" in self.name else "instruction"
-                        ctx.record_rule_execution(
-                            rule_name=rule.name,
-                            rule_type=rule_type,
-                            changes=1,  # One instruction replacement
-                            maturity=self.cur_maturity,
-                            metadata={"optimizer": self.name}
-                        )
 
                     return new_ins
             except RuntimeError as e:
@@ -247,3 +246,8 @@ class InstructionOptimizer(Registrant, typing.Generic[T_Rule]):
         if self.NAME is not None:
             return self.NAME
         return self.__class__.__name__
+
+
+# Note: VerifiableRule instances are registered in RULE_REGISTRY (d810.mba.rules)
+# and injected into PatternOptimizer at construction time by InstructionOptimizerManager.
+# This avoids duck typing and keeps the registration explicit.

@@ -2,7 +2,7 @@ import abc
 
 from ida_hexrays import *
 
-from d810.conf.loggers import getLogger
+from d810.core import getLogger
 from d810.hexrays.hexrays_formatters import format_minsn_t
 from d810.optimizers.microcode.instructions.handler import (
     InstructionOptimizationRule,

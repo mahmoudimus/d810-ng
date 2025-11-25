@@ -14,7 +14,7 @@ from typing import List
 
 from ida_hexrays import mblock_t
 
-from d810.conf.loggers import getLogger
+from d810.core import getLogger
 from d810.optimizers.core import OptimizationContext, OptimizationRule
 from d810.optimizers.microcode.flow.flattening.services import (
     CFGPatcher,
