@@ -7,12 +7,11 @@ These tests demonstrate the performance improvements from:
 """
 
 from unittest.mock import Mock
-import pytest
 
 from d810.optimizers.microcode.flow.flattening.heuristics import (
     BlockHeuristics,
-    DispatcherHeuristics,
     DefUseCache,
+    DispatcherHeuristics,
     EarlyExitOptimizer,
     apply_selective_scanning,
 )
@@ -28,7 +27,7 @@ class TestBlockHeuristics:
             has_switch_jump=True,
             has_comparison=True,
             small_block=True,
-            has_state_variable=True
+            has_state_variable=True,
         )
 
         assert heuristics.score >= 0.8  # High confidence
@@ -41,7 +40,7 @@ class TestBlockHeuristics:
             has_switch_jump=False,
             has_comparison=False,
             small_block=False,
-            has_state_variable=False
+            has_state_variable=False,
         )
 
         assert heuristics.score < 0.4  # Low confidence
@@ -55,7 +54,7 @@ class TestBlockHeuristics:
             has_switch_jump=False,
             has_comparison=False,
             small_block=True,
-            has_state_variable=False
+            has_state_variable=False,
         )
 
         # Should be around 0.5 (50/50)
@@ -67,9 +66,7 @@ class TestDispatcherHeuristics:
 
     def test_initialization(self):
         heuristics = DispatcherHeuristics(
-            min_predecessors=5,
-            max_block_size=15,
-            min_comparison_values=3
+            min_predecessors=5, max_block_size=15, min_comparison_values=3
         )
 
         assert heuristics.min_predecessors == 5
@@ -167,7 +164,7 @@ class TestDefUseCache:
         # Second access: cache hit
         use2, def2 = cache.get_def_use(mock_block)
         assert cache.misses == 1  # Still 1
-        assert cache.hits == 1    # Now 1
+        assert cache.hits == 1  # Now 1
 
         # Results should be same
         assert use1 is use2
@@ -273,7 +270,7 @@ class TestSelectiveScanning:
         # Should find ~3 candidates (those with many predecessors)
         # Exact number depends on other heuristics
         assert len(candidates) < 10  # Should skip some
-        assert len(candidates) > 0   # Should find some
+        assert len(candidates) > 0  # Should find some
 
     def test_selective_scanning_with_custom_heuristics(self):
         """Test that custom heuristics can be provided."""

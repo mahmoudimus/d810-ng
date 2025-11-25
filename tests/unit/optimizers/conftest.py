@@ -68,7 +68,7 @@ def load_all_rules():
                 skip_packages=True,  # Only load .py files, not __pycache__
             )
 
-            from d810.optimizers.rules import RULE_REGISTRY
+            from d810.mba.rules import RULE_REGISTRY
             print(f"\n[test setup] Loaded {len(RULE_REGISTRY)} rules via scanner")
         else:
             print(f"\n[test setup] Pattern matching path not found: {pattern_matching_path}")

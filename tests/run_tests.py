@@ -75,7 +75,7 @@ def test_dsl_imports():
 
 def test_rules_imports():
     """Test that rule modules can be imported."""
-    from d810.optimizers.rules import (
+    from d810.mba.rules import (
         VerifiableRule, SymbolicRule, RULE_REGISTRY
     )
     assert VerifiableRule is not None
@@ -191,7 +191,7 @@ def test_constrained_rules_structure():
 
 def test_rule_registry_populated():
     """Test that RULE_REGISTRY contains all rules."""
-    from d810.optimizers.rules import RULE_REGISTRY
+    from d810.mba.rules import RULE_REGISTRY
 
     # Import all refactored modules to populate registry
     try:
@@ -221,7 +221,7 @@ def test_rule_registry_populated():
 def test_check_runtime_constraints():
     """Test runtime constraint checking mechanism."""
     from d810.mba.dsl import Var, Const, when
-    from d810.optimizers.rules import VerifiableRule
+    from d810.mba.rules import VerifiableRule
     from unittest.mock import Mock
 
     # Create a test rule with constraints
