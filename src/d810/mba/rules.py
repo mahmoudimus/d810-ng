@@ -6,12 +6,28 @@ defined using the symbolic DSL can be mathematically proven to be correct.
 
 The key innovation is that each rule carries its own correctness proof,
 eliminating the need for manual test cases for every rule.
+
+Registry Architecture:
+    Rules are stored as CLASSES (not instances) in the registry. This avoids
+    triggering IDA imports at class definition time, enabling unit testing
+    without IDA. Instantiation happens lazily when rules are actually needed.
+
+    Usage:
+        # Unit testing (no IDA required):
+        for rule_cls in RULE_REGISTRY:
+            pattern = rule_cls._dsl_pattern
+            replacement = rule_cls._dsl_replacement
+            is_equiv, _ = prove_equivalence(pattern, replacement)
+
+        # IDA integration (instantiates rules):
+        instances = RULE_REGISTRY.instantiate_all()
 """
 
 from __future__ import annotations
 
 import abc
-from typing import Any, Dict, List, TYPE_CHECKING
+from inspect import isabstract
+from typing import Any, Dict, Iterator, List, Type, TYPE_CHECKING
 
 try:
     import z3
@@ -30,8 +46,118 @@ if TYPE_CHECKING:
 
 logger = getLogger(__name__)
 
-# Global registry of all verifiable rules for automated testing
-RULE_REGISTRY: List[VerifiableRule] = []
+
+class RuleRegistry:
+    """Injectable registry for optimization rule classes.
+
+    Stores rule CLASSES (not instances) to avoid triggering IDA imports at
+    class definition time. Rules are instantiated lazily when needed.
+
+    This enables:
+    - Unit testing of rules without IDA (access _dsl_pattern/_dsl_replacement)
+    - Multiple registries for different contexts
+    - Lazy instantiation when IDA is available
+
+    Example:
+        # Create a custom registry
+        my_registry = RuleRegistry()
+
+        # Define a rule that registers with it
+        class MyRule(VerifiableRule, registry=my_registry):
+            PATTERN = x + y
+            REPLACEMENT = y + x
+
+        # Unit test (no IDA):
+        for rule_cls in my_registry:
+            assert prove_equivalence(rule_cls._dsl_pattern, rule_cls._dsl_replacement)
+
+        # IDA integration:
+        instances = my_registry.instantiate_all()
+    """
+
+    def __init__(self, name: str = "default"):
+        self._name = name
+        self._rule_classes: List[Type[VerifiableRule]] = []
+        self._instances: List[VerifiableRule] | None = None
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    def register(self, rule_cls: Type[VerifiableRule]) -> None:
+        """Register a rule class (not instance).
+
+        Args:
+            rule_cls: The VerifiableRule subclass to register.
+        """
+        if rule_cls not in self._rule_classes:
+            self._rule_classes.append(rule_cls)
+            self._instances = None  # Invalidate cached instances
+            logger.debug(f"Registered {rule_cls.__name__} in {self._name} (total: {len(self._rule_classes)})")
+
+    def unregister(self, rule_cls: Type[VerifiableRule]) -> bool:
+        """Unregister a rule class.
+
+        Args:
+            rule_cls: The rule class to remove.
+
+        Returns:
+            True if the rule was found and removed, False otherwise.
+        """
+        if rule_cls in self._rule_classes:
+            self._rule_classes.remove(rule_cls)
+            self._instances = None
+            return True
+        return False
+
+    def clear(self) -> None:
+        """Remove all registered rules."""
+        self._rule_classes.clear()
+        self._instances = None
+
+    def instantiate_all(self) -> List[VerifiableRule]:
+        """Instantiate all registered rule classes.
+
+        This triggers IDA imports (via .node property access in __init__).
+        Call this only when IDA is available.
+
+        Returns:
+            List of VerifiableRule instances.
+
+        Raises:
+            Various exceptions if IDA is not available.
+        """
+        if self._instances is not None:
+            return self._instances
+
+        self._instances = []
+        for rule_cls in self._rule_classes:
+            try:
+                instance = rule_cls()
+                self._instances.append(instance)
+            except Exception as e:
+                logger.warning(f"Failed to instantiate {rule_cls.__name__}: {e}")
+
+        return self._instances
+
+    def __iter__(self) -> Iterator[Type[VerifiableRule]]:
+        """Iterate over rule CLASSES (not instances)."""
+        return iter(self._rule_classes)
+
+    def __len__(self) -> int:
+        """Return number of registered rule classes."""
+        return len(self._rule_classes)
+
+    def __contains__(self, rule_cls: Type[VerifiableRule]) -> bool:
+        """Check if a rule class is registered."""
+        return rule_cls in self._rule_classes
+
+    def __repr__(self) -> str:
+        return f"RuleRegistry({self._name!r}, {len(self._rule_classes)} rules)"
+
+
+# Global default registry for backward compatibility
+RULE_REGISTRY = RuleRegistry("global")
 
 
 class SymbolicRule(abc.ABC):
@@ -251,6 +377,8 @@ class VerifiableRule(SymbolicRule):
         Note: Registration with d810's PatternMatchingRule registry happens automatically
         via the Registrant metaclass since we inherit from PatternMatchingRule.
         """
+        # Pop registry kwarg before passing to super (to avoid TypeError)
+        registry = kwargs.pop('registry', RULE_REGISTRY)
         super().__init_subclass__(**kwargs)
 
         # Capture and convert DSL patterns to internal storage
@@ -268,19 +396,11 @@ class VerifiableRule(SymbolicRule):
             cls._dsl_replacement = cls.__dict__['REPLACEMENT']
             delattr(cls, 'REPLACEMENT')
 
-        # Only register concrete classes, not abstract ones
+        # Register CLASS (not instance) to avoid triggering IDA imports.
+        # Instantiation happens lazily via registry.instantiate_all() when IDA is available.
+        # This enables unit testing of rules without IDA.
         if not isabstract(cls):
-            try:
-                # Add to RULE_REGISTRY - InstructionOptimizerManager will inject
-                # these into PatternOptimizer at construction time
-                instance = cls()
-                RULE_REGISTRY.append(instance)
-                logger.debug(f"Registered {cls.__name__} (total: {len(RULE_REGISTRY)})")
-            except Exception as e:
-                logger.warning(
-                    f"Failed to register rule {cls.__name__}: {e}",
-                    exc_info=True
-                )
+            registry.register(cls)
 
     # Implement rule name property (required by OptimizationRule)
     @property
