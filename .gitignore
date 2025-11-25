@@ -26,6 +26,10 @@ GEMINI.md
 CLAUDE.md
 CODEX.md
 ANTHROPIC.md
+.context/
+
+# Backup files
+*.bak
 
 # Python
 *.egg-info/
