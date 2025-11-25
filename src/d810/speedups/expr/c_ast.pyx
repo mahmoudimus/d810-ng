@@ -13,7 +13,7 @@ import ida_hexrays
 import idaapi
 
 import d810._compat as _compat
-from d810.conf.loggers import getLogger
+from d810.core import getLogger
 from d810.errors import AstEvaluationException
 from d810.expr.utils import (
     MOP_CONSTANT_CACHE,
@@ -38,7 +38,7 @@ from d810.hexrays.hexrays_helpers import (
     structural_mop_hash,
 )
 from d810.expr._ast_evaluate import AstEvaluator
-from d810.registry import NOT_GIVEN
+from d810.core import NOT_GIVEN
 
 logger = getLogger(__name__)
 

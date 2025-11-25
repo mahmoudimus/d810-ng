@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import ida_hexrays
 
-from d810.conf.loggers import getLogger
+from d810.core import getLogger
 from d810.errors import AstEvaluationException
 from d810.expr.utils import (
     get_add_cf,
