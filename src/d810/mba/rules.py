@@ -256,12 +256,15 @@ class VerifiableRule(SymbolicRule):
         # Capture and convert DSL patterns to internal storage
         # Subclasses set PATTERN/REPLACEMENT as class vars (SymbolicExpression)
         # We move them to _dsl_pattern/_dsl_replacement so the properties work
-        if 'PATTERN' in cls.__dict__ and hasattr(cls.__dict__['PATTERN'], 'node'):
+        # IMPORTANT: Use isinstance() instead of hasattr(.., 'node') to avoid
+        # triggering IDA imports at class definition time. The .node property
+        # lazily imports IDA modules, which would break unit testing without IDA.
+        if 'PATTERN' in cls.__dict__ and isinstance(cls.__dict__['PATTERN'], SymbolicExpression):
             cls._dsl_pattern = cls.__dict__['PATTERN']
             # Remove the class variable so it doesn't shadow our property
             delattr(cls, 'PATTERN')
 
-        if 'REPLACEMENT' in cls.__dict__ and hasattr(cls.__dict__['REPLACEMENT'], 'node'):
+        if 'REPLACEMENT' in cls.__dict__ and isinstance(cls.__dict__['REPLACEMENT'], SymbolicExpression):
             cls._dsl_replacement = cls.__dict__['REPLACEMENT']
             delattr(cls, 'REPLACEMENT')
 
