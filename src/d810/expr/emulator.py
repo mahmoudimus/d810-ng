@@ -7,23 +7,27 @@ import typing
 import ida_hexrays
 import idaapi
 
-import d810.expr.utils as utils
-from d810.conf.loggers import getLogger
-from d810.speedups.cythxr._chexrays_api import get_stack_or_reg_name
-from d810.speedups.cythxr._chexrays_api import hash_mop as cy_hash_mop
-from d810.errors import (
-    EmulationException,
-    EmulationIndirectJumpException,
-    UnresolvedMopException,
-    WritableMemoryReadException,
-)
-from d810.expr.utils import (
+from d810.core import getLogger
+from d810.core.bits import (
     get_add_cf,
     get_add_of,
     get_parity_flag,
     get_sub_of,
     signed_to_unsigned,
     unsigned_to_signed,
+)
+
+try:
+    from d810.speedups.cythxr._chexrays_api import get_stack_or_reg_name
+    from d810.speedups.cythxr._chexrays_api import hash_mop as cy_hash_mop
+except ImportError:
+    get_stack_or_reg_name = None
+    cy_hash_mop = None
+from d810.errors import (
+    EmulationException,
+    EmulationIndirectJumpException,
+    UnresolvedMopException,
+    WritableMemoryReadException,
 )
 from d810.hexrays.cfg_utils import get_block_serials_by_address
 from d810.hexrays.hexrays_formatters import (

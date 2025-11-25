@@ -8,18 +8,20 @@ try:
         AstLeaf,
         AstNode,
         AstProxy,
+        get_constant_mop,
         minsn_to_ast,
         mop_to_ast,
     )
     _USING_CYTHON = True
 except ImportError:
     # Fall back to pure Python implementation
-    from d810.expr._slow_ast import (
+    from d810.expr.p_ast import (
         AstBase,
         AstConstant,
         AstLeaf,
         AstNode,
         AstProxy,
+        get_constant_mop,
         minsn_to_ast,
         mop_to_ast,
     )
@@ -31,6 +33,7 @@ __all__ = [
     "AstLeaf",
     "AstNode",
     "AstProxy",
+    "get_constant_mop",
     "minsn_to_ast",
     "mop_to_ast",
 ]

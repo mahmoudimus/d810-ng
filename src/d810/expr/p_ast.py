@@ -7,12 +7,10 @@ import typing
 import ida_hexrays
 import idaapi
 
-import d810.typing as typing
-from d810.conf.loggers import getLogger
+import d810.core.typing as typing
+from d810.core import getLogger
 from d810.errors import AstEvaluationException
-from d810.expr.utils import (
-    MOP_CONSTANT_CACHE,
-    MOP_TO_AST_CACHE,
+from d810.core.bits import (
     get_add_cf,
     get_add_of,
     get_parity_flag,
@@ -20,6 +18,7 @@ from d810.expr.utils import (
     signed_to_unsigned,
     unsigned_to_signed,
 )
+from d810.core import MOP_CONSTANT_CACHE, MOP_TO_AST_CACHE
 from d810.hexrays.hexrays_formatters import (
     format_minsn_t,
     format_mop_t,
@@ -37,7 +36,7 @@ from d810.hexrays.hexrays_helpers import (
     equal_mops_ignore_size,
     is_rotate_helper_call,
 )
-from d810.registry import NOT_GIVEN, NotGiven
+from d810.core import NOT_GIVEN, NotGiven
 
 logger = getLogger(__name__)
 
