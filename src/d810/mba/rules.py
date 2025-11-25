@@ -1,42 +1,37 @@
-"""Self-verifying optimization rules using symbolic expressions and Z3.
+"""Pure symbolic optimization rules with backend-agnostic definitions.
 
-This module provides base classes for creating optimization rules that can
-automatically verify their own correctness using Z3 theorem proving. Rules
-defined using the symbolic DSL can be mathematically proven to be correct.
+This module provides base classes for creating optimization rules using pure
+symbolic expressions. Rules are defined using the DSL (d810.mba.dsl) and are
+completely independent of any backend (Z3, IDA, etc.).
 
-The key innovation is that each rule carries its own correctness proof,
-eliminating the need for manual test cases for every rule.
+Verification and pattern matching are handled by backends:
+- d810.mba.backends.z3.verify_rule() - Z3-based verification
+- d810.mba.backends.ida.IDAPatternAdapter - IDA pattern matching
 
 Registry Architecture:
-    Rules are stored as CLASSES (not instances) in the registry. This avoids
+    Rules inherit from Registrant for automatic registration. This avoids
     triggering IDA imports at class definition time, enabling unit testing
     without IDA. Instantiation happens lazily when rules are actually needed.
 
     Usage:
-        # Unit testing (no IDA required):
-        for rule_cls in RULE_REGISTRY:
-            pattern = rule_cls._dsl_pattern
-            replacement = rule_cls._dsl_replacement
-            is_equiv, _ = prove_equivalence(pattern, replacement)
+        # Verification (requires Z3):
+        from d810.mba.backends.z3 import verify_rule
+        for rule_cls in VerifiableRule.registry.values():
+            verify_rule(rule_cls())
 
         # IDA integration (instantiates rules):
-        instances = RULE_REGISTRY.instantiate_all()
+        instances = VerifiableRule.instantiate_all()
 """
 
 from __future__ import annotations
 
 import abc
+import logging
 from inspect import isabstract
-from typing import Any, Dict, Iterator, List, Type, TYPE_CHECKING
-
-try:
-    import z3
-    Z3_AVAILABLE = True
-except ImportError:
-    Z3_AVAILABLE = False
+from typing import Any, ClassVar, Dict, Iterator, List, Type, TYPE_CHECKING, Self
 
 from d810.core import getLogger
-from d810.mba.visitors import prove_equivalence
+from d810.core.registry import Registrant
 from d810.mba.dsl import SymbolicExpression
 
 # Import types only for type checking to avoid circular imports and IDA dependencies
@@ -45,119 +40,6 @@ if TYPE_CHECKING:
     from d810.optimizers.microcode.instructions.pattern_matching.handler import PatternMatchingRule
 
 logger = getLogger(__name__)
-
-
-class RuleRegistry:
-    """Injectable registry for optimization rule classes.
-
-    Stores rule CLASSES (not instances) to avoid triggering IDA imports at
-    class definition time. Rules are instantiated lazily when needed.
-
-    This enables:
-    - Unit testing of rules without IDA (access _dsl_pattern/_dsl_replacement)
-    - Multiple registries for different contexts
-    - Lazy instantiation when IDA is available
-
-    Example:
-        # Create a custom registry
-        my_registry = RuleRegistry()
-
-        # Define a rule that registers with it
-        class MyRule(VerifiableRule, registry=my_registry):
-            PATTERN = x + y
-            REPLACEMENT = y + x
-
-        # Unit test (no IDA):
-        for rule_cls in my_registry:
-            assert prove_equivalence(rule_cls._dsl_pattern, rule_cls._dsl_replacement)
-
-        # IDA integration:
-        instances = my_registry.instantiate_all()
-    """
-
-    def __init__(self, name: str = "default"):
-        self._name = name
-        self._rule_classes: List[Type[VerifiableRule]] = []
-        self._instances: List[VerifiableRule] | None = None
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    def register(self, rule_cls: Type[VerifiableRule]) -> None:
-        """Register a rule class (not instance).
-
-        Args:
-            rule_cls: The VerifiableRule subclass to register.
-        """
-        if rule_cls not in self._rule_classes:
-            self._rule_classes.append(rule_cls)
-            self._instances = None  # Invalidate cached instances
-            logger.debug(f"Registered {rule_cls.__name__} in {self._name} (total: {len(self._rule_classes)})")
-
-    def unregister(self, rule_cls: Type[VerifiableRule]) -> bool:
-        """Unregister a rule class.
-
-        Args:
-            rule_cls: The rule class to remove.
-
-        Returns:
-            True if the rule was found and removed, False otherwise.
-        """
-        if rule_cls in self._rule_classes:
-            self._rule_classes.remove(rule_cls)
-            self._instances = None
-            return True
-        return False
-
-    def clear(self) -> None:
-        """Remove all registered rules."""
-        self._rule_classes.clear()
-        self._instances = None
-
-    def instantiate_all(self) -> List[VerifiableRule]:
-        """Instantiate all registered rule classes.
-
-        This triggers IDA imports (via .node property access in __init__).
-        Call this only when IDA is available.
-
-        Returns:
-            List of VerifiableRule instances.
-
-        Raises:
-            Various exceptions if IDA is not available.
-        """
-        if self._instances is not None:
-            return self._instances
-
-        self._instances = []
-        for rule_cls in self._rule_classes:
-            try:
-                instance = rule_cls()
-                self._instances.append(instance)
-            except Exception as e:
-                logger.warning(f"Failed to instantiate {rule_cls.__name__}: {e}")
-
-        return self._instances
-
-    def __iter__(self) -> Iterator[Type[VerifiableRule]]:
-        """Iterate over rule CLASSES (not instances)."""
-        return iter(self._rule_classes)
-
-    def __len__(self) -> int:
-        """Return number of registered rule classes."""
-        return len(self._rule_classes)
-
-    def __contains__(self, rule_cls: Type[VerifiableRule]) -> bool:
-        """Check if a rule class is registered."""
-        return rule_cls in self._rule_classes
-
-    def __repr__(self) -> str:
-        return f"RuleRegistry({self._name!r}, {len(self._rule_classes)} rules)"
-
-
-# Global default registry for backward compatibility
-RULE_REGISTRY = RuleRegistry("global")
 
 
 class SymbolicRule(abc.ABC):
@@ -204,47 +86,6 @@ class SymbolicRule(abc.ABC):
         """
         ...
 
-    def verify(self) -> bool:
-        """Proves that the pattern is equivalent to the replacement using Z3.
-
-        This method converts both the pattern and replacement to Z3 expressions
-        and attempts to prove they are semantically equivalent for all inputs.
-
-        Returns:
-            True if the rule is proven correct.
-
-        Raises:
-            AssertionError: If the patterns are not equivalent or Z3 is unavailable.
-        """
-        if not Z3_AVAILABLE:
-            raise AssertionError(
-                f"Cannot verify rule {self.name}: Z3 is not installed. "
-                "Install z3-solver to enable rule verification."
-            )
-
-        # Prove equivalence using pure SymbolicExpression (no .node needed!)
-        is_equivalent, counterexample = prove_equivalence(
-            self.pattern,
-            self.replacement
-        )
-
-        if not is_equivalent:
-            msg = (
-                f"\n--- VERIFICATION FAILED ---\n"
-                f"Rule:        {self.name}\n"
-                f"Description: {self.description}\n"
-                f"Identity:    {self.pattern} => {self.replacement}\n"
-            )
-            if counterexample:
-                msg += f"Counterexample: {counterexample}\n"
-            msg += (
-                "This rule does NOT preserve semantics and should not be used.\n"
-                "Please fix the pattern or replacement definition."
-            )
-            raise AssertionError(msg)
-
-        return True
-
     def apply(self, context: OptimizationContext, ins: "minsn_t") -> int:
         """Applies the symbolic rule to a single instruction.
 
@@ -264,14 +105,12 @@ class SymbolicRule(abc.ABC):
         )
 
 
-class VerifiableRule(SymbolicRule):
+class VerifiableRule(SymbolicRule, Registrant):
     """A symbolic rule that can verify its own correctness with constraints.
 
-    This class extends both SymbolicRule (for Z3 verification) and PatternMatchingRule
-    (for d810 integration). It provides a bridge between the declarative DSL approach
-    and d810's existing pattern matching infrastructure.
-
-    All subclasses are automatically registered via Registrant metaclass.
+    This class extends both SymbolicRule (for Z3 verification) and Registrant
+    (for automatic registration). All subclasses are automatically registered
+    via the Registrant metaclass.
 
     Class Variables:
         PATTERN: DSL-based pattern (SymbolicExpression from dsl module)
@@ -303,10 +142,6 @@ class VerifiableRule(SymbolicRule):
 
     BIT_WIDTH = 32  # Default bit-width for Z3 verification
 
-    # Override these in subclasses - DSL format
-    # These are class variables, not instance variables
-    # PATTERN: SymbolicExpression = None
-    # REPLACEMENT: SymbolicExpression = None
     CONSTRAINTS: List = []  # Runtime constraints (list of callables)
     DYNAMIC_CONSTS: Dict[str, Any] = {}  # Dynamic constant generators
     CONTEXT_VARS: Dict[str, Any] = {}  # Context providers (e.g., {"full_reg": context.dst.parent_register})
@@ -314,12 +149,43 @@ class VerifiableRule(SymbolicRule):
     KNOWN_INCORRECT: bool = False  # Set to True for rules that are mathematically incorrect
     SKIP_VERIFICATION: bool = False  # Set to True to skip Z3 verification (e.g., for size-dependent constraints)
 
+    @classmethod
+    def resolve_lazy_rules(cls) -> None:
+        """Force load all lazily registered rules into the main registry."""
+        for name in list(cls.lazy_registry.keys()):
+            try:
+                cls.get(name)
+                logger.debug(f"Lazily resolved rule: {name}")
+            except Exception as e:
+                logger.error(f"Failed to resolve lazy rule '{name}': {e}")
+
+    @classmethod
+    def instantiate_all(cls) -> List[Self]:
+        """Resolve lazy rules and instantiate all registered rules.
+
+        This acts as the replacement for RuleRegistry.instantiate_all().
+        It is safe to call even if IDA is not ready, provided the __init__ 
+        of the rules checks for environment availability.
+        """
+        cls.resolve_lazy_rules()
+
+        instances: List[Self] = []
+        for rule_cls in cls.registry.values():
+            try:
+                instance = rule_cls()
+                instances.append(instance)
+            except Exception as e:
+                logger.warning(
+                    f"Skipping rule {rule_cls.__name__} due to instantiation error: {e}"
+                )
+
+        return instances
+
     def __init__(self):
         """Initialize a VerifiableRule instance.
 
         Sets up instance attributes required by the d810 optimizer system.
-        Calls parent __init__ to properly initialize PatternMatchingRule/GenericPatternRule
-        when base injection has completed.
+        This initialization is IDA-independent - pattern conversion happens lazily.
         """
         # Call parent __init__ - this will initialize pattern_candidates etc.
         # when PatternMatchingRule is in our bases
@@ -335,9 +201,7 @@ class VerifiableRule(SymbolicRule):
             self.log_dir = None
         if not hasattr(self, 'dump_intermediate_microcode'):
             self.dump_intermediate_microcode = False
-        if not hasattr(self, 'pattern_candidates'):
-            # Initialize pattern_candidates from PATTERN property
-            self.pattern_candidates = [self.PATTERN] if self.PATTERN is not None else []
+        # Note: pattern_candidates is now a property, not set in __init__
 
     def configure(self, kwargs: Dict[str, Any]) -> None:
         """Configure this rule with options from a JSON config.
@@ -366,19 +230,15 @@ class VerifiableRule(SymbolicRule):
         self.log_dir = log_dir
 
     def __init_subclass__(cls, **kwargs):
-        """Automatically register any subclass and convert DSL patterns to AstNodes.
+        """Automatically convert DSL patterns to internal storage.
 
         This magic method is called whenever a class inherits from VerifiableRule.
         It:
         1. Renames PATTERN/REPLACEMENT to _dsl_pattern/_dsl_replacement (internal storage)
         2. Creates PATTERN/REPLACEMENT_PATTERN properties that return AstNodes
-        3. Instantiates and adds the rule to the global registry for testing
 
-        Note: Registration with d810's PatternMatchingRule registry happens automatically
-        via the Registrant metaclass since we inherit from PatternMatchingRule.
+        Note: Registration happens automatically via Registrant.__init_subclass__.
         """
-        # Pop registry kwarg before passing to super (to avoid TypeError)
-        registry = kwargs.pop('registry', RULE_REGISTRY)
         super().__init_subclass__(**kwargs)
 
         # Capture and convert DSL patterns to internal storage
@@ -395,12 +255,6 @@ class VerifiableRule(SymbolicRule):
         if 'REPLACEMENT' in cls.__dict__ and isinstance(cls.__dict__['REPLACEMENT'], SymbolicExpression):
             cls._dsl_replacement = cls.__dict__['REPLACEMENT']
             delattr(cls, 'REPLACEMENT')
-
-        # Register CLASS (not instance) to avoid triggering IDA imports.
-        # Instantiation happens lazily via registry.instantiate_all() when IDA is available.
-        # This enables unit testing of rules without IDA.
-        if not isabstract(cls):
-            registry.register(cls)
 
     # Implement rule name property (required by OptimizationRule)
     @property
@@ -444,26 +298,12 @@ class VerifiableRule(SymbolicRule):
                 return cls._dsl_replacement
         return None
 
-    # Implement PatternMatchingRule interface by converting DSL to AstNode
-    @property
-    def PATTERN(self):
-        """Get the pattern as an AstNode (PatternMatchingRule interface).
-
-        Converts from DSL SymbolicExpression to AstNode for d810.
-        """
-        if self.pattern is not None:
-            return self.pattern.node
-        return None
-
-    @property
-    def REPLACEMENT_PATTERN(self):
-        """Get the replacement as an AstNode (PatternMatchingRule interface).
-
-        Converts from DSL SymbolicExpression to AstNode for d810.
-        """
-        if self.replacement is not None:
-            return self.replacement.node
-        return None
+    # =========================================================================
+    # Constraint Checking Interface
+    # =========================================================================
+    # These methods implement constraint checking for pattern matching.
+    # They are called by IDAPatternAdapter when checking if a matched
+    # candidate satisfies the rule's constraints.
 
     def check_candidate(self, candidate) -> bool:
         """Check if a candidate AstNode matches this rule's constraints.
@@ -614,289 +454,6 @@ class VerifiableRule(SymbolicRule):
 
         return True
 
-    def get_constraints(self, z3_vars: Dict[str, Any]) -> List[Any]:
-        """Optional: Define Z3 constraints for this rule's validity.
-
-        Some rules are only valid under certain conditions. For example, a rule
-        might require that constant c2 equals ~c1. Override this method to
-        specify such constraints.
-
-        Note: For most rules, use the CONSTRAINTS class variable instead,
-        which is checked at runtime. This method is for Z3 verification only.
-
-        Args:
-            z3_vars: A dictionary mapping symbolic variable names to Z3 BitVec objects.
-
-        Returns:
-            A list of Z3 constraint expressions. Empty list means no constraints.
-
-        Example:
-            >>> def get_constraints(self, z3_vars):
-            ...     # This rule is only valid when c2 == ~c1
-            ...     return [z3_vars["c2"] == ~z3_vars["c1"]]
-        """
-        # Auto-convert DSL constraints to Z3 expressions
-        if not hasattr(self, 'CONSTRAINTS') or not self.CONSTRAINTS:
-            return []
-
-        z3_constraints = []
-
-        for constraint in self.CONSTRAINTS:
-            # Check if this is a ConstraintExpr (new declarative style)
-            from d810.mba.constraints import is_constraint_expr
-            if is_constraint_expr(constraint):
-                # Direct conversion to Z3
-                try:
-                    z3_constraint = constraint.to_z3(z3_vars)
-                    z3_constraints.append(z3_constraint)
-                    continue
-                except Exception as e:
-                    logger.debug(f"Could not convert ConstraintExpr to Z3: {e}")
-                    # Continue to try legacy constraint handling
-                    pass
-
-            # Check if constraint has _to_z3 attribute (new constraint helpers like when.or_inequality)
-            if callable(constraint) and hasattr(constraint, '_to_z3'):
-                try:
-                    z3_constraint = constraint._to_z3(z3_vars)
-                    if z3_constraint is not None:
-                        z3_constraints.append(z3_constraint)
-                        continue
-                except Exception as e:
-                    logger.debug(f"Could not convert constraint with _to_z3: {e}")
-                    # Fall through to other methods
-
-            # Legacy: Try to auto-convert callable constraints (when.is_bnot, etc.)
-            if callable(constraint) and hasattr(constraint, '__closure__') and constraint.__closure__:
-                # Extract variable names from closure (for when.is_bnot, when.equal_mops)
-                closure_vars = []
-                for cell in constraint.__closure__:
-                    content = cell.cell_contents
-                    if isinstance(content, str):
-                        closure_vars.append(content)
-
-                if len(closure_vars) >= 2:
-                    var1, var2 = closure_vars[0], closure_vars[1]
-
-                    # Check if both variables are in z3_vars
-                    if var1 in z3_vars and var2 in z3_vars:
-                        # Assume is_bnot (most common) - creates: var1 == ~var2
-                        # TODO: Detect constraint type more precisely
-                        z3_constraints.append(z3_vars[var1] == ~z3_vars[var2])
-                        continue
-
-            # For lambdas or unknown constraints, log warning
-            logger.debug(f"Could not auto-convert constraint for rule {self.name}")
-
-        return z3_constraints
-
-    # =========================================================================
-    # Pattern Matching Implementation
-    # =========================================================================
-    # These methods implement the pattern matching interface required by
-    # PatternOptimizer. They enable VerifiableRule to work without inheriting
-    # from GenericPatternRule. Rules are injected into PatternOptimizer at
-    # construction time via the verifiable_rules parameter.
-
-    def get_valid_candidates(self, instruction, stop_early: bool = True) -> list:
-        """Match the instruction against this rule's patterns.
-
-        Args:
-            instruction: The IDA minsn_t instruction to match.
-            stop_early: If True, return after first match.
-
-        Returns:
-            List of matched candidate AstNodes.
-        """
-        from d810.expr.ast import minsn_to_ast
-
-        valid_candidates = []
-        tmp = minsn_to_ast(instruction)
-        if tmp is None:
-            return []
-
-        for candidate_pattern in self.pattern_candidates:
-            if not candidate_pattern:
-                continue
-            # Use a read-only check first
-            if not candidate_pattern.check_pattern_and_copy_mops(tmp, read_only=True):
-                continue
-            if not self.check_candidate(candidate_pattern):
-                continue
-            # If the read-only check passes, create a mutable copy
-            mutable_candidate = candidate_pattern.clone()
-            if not mutable_candidate.check_pattern_and_copy_mops(tmp):
-                continue
-            valid_candidates.append(mutable_candidate)
-            if stop_early:
-                return valid_candidates
-        return []
-
-    def get_replacement(self, candidate):
-        """Create a replacement instruction from a matched candidate.
-
-        Args:
-            candidate: The matched AstNode candidate.
-
-        Returns:
-            A new minsn_t instruction, or None if replacement failed.
-        """
-        repl_pat = self.REPLACEMENT_PATTERN
-        if not repl_pat:
-            logger.debug(f"No replacement pattern for rule {self.name}")
-            return None
-
-        is_ok = repl_pat.update_leafs_mop(candidate)
-        if not is_ok:
-            logger.debug(f"Failed to update leaf mops for rule {self.name}")
-            return None
-
-        if not candidate.ea:
-            logger.debug(f"No EA for candidate in rule {self.name}")
-            return None
-
-        new_ins = repl_pat.create_minsn(candidate.ea, candidate.dst_mop)
-        return new_ins
-
-    def check_and_replace(self, blk, instruction):
-        """Check if this rule matches and return a replacement instruction.
-
-        This is the main entry point called by the optimizer system.
-
-        Args:
-            blk: The microcode block (mblock_t).
-            instruction: The instruction to check (minsn_t).
-
-        Returns:
-            A new minsn_t if the rule matched, None otherwise.
-        """
-        valid_candidates = self.get_valid_candidates(instruction, stop_early=True)
-        if len(valid_candidates) == 0:
-            return None
-        new_instruction = self.get_replacement(valid_candidates[0])
-        return new_instruction
-
-    def check_pattern_and_replace(self, candidate_pattern, test_ast):
-        """Check if this rule matches a pattern and return a replacement instruction.
-
-        This method is used by PatternOptimizer's pattern storage lookup system.
-        It's different from check_and_replace() which takes (blk, ins).
-
-        Args:
-            candidate_pattern: A candidate AstNode pattern from the pattern storage.
-            test_ast: The AstNode converted from the microcode instruction.
-
-        Returns:
-            A new minsn_t if the rule matched, None otherwise.
-        """
-        # First, check if the pattern matches the test AST
-        if not candidate_pattern.check_pattern_and_copy_mops(test_ast):
-            return None
-
-        # Then check candidate-level constraints
-        if not self.check_candidate(candidate_pattern):
-            return None
-
-        # Finally, create the replacement instruction
-        new_instruction = self.get_replacement(candidate_pattern)
-        return new_instruction
-
-    def verify(self) -> bool:
-        """Proves that pattern ≡ replacement under the defined constraints.
-
-        This enhanced verification:
-        1. Extracts all symbolic variables from both pattern and replacement
-        2. Creates Z3 BitVec variables for each
-        3. Applies any rule-specific constraints
-        4. Proves equivalence using Z3 SMT solver
-
-        Returns:
-            True if the rule is proven correct under its constraints.
-
-        Raises:
-            AssertionError: If verification fails with detailed error message.
-        """
-        if not Z3_AVAILABLE:
-            raise AssertionError(
-                f"Cannot verify rule {self.name}: Z3 is not installed. "
-                "Install z3-solver to enable rule verification."
-            )
-
-        # Find all unique variable and constant names from pure SymbolicExpression
-        # CRITICAL: Pattern-matching constants (e.g., Const("c_1") without value)
-        # must be treated as symbolic Z3 variables, not concrete values
-        def collect_names(expr: SymbolicExpression, var_names: set, const_names: set):
-            """Recursively collect variable and constant names from expression."""
-            if expr is None:
-                return  # Skip None (e.g., DynamicConst replacements)
-            if not isinstance(expr, SymbolicExpression):
-                return  # Skip non-SymbolicExpression (e.g., DynamicConst)
-
-            if expr.is_leaf():
-                if expr.name:  # Skip None names
-                    if expr.is_constant():
-                        # Concrete constant - Z3VerificationVisitor handles it
-                        pass
-                    else:
-                        # Variable or pattern-matching constant (value=None)
-                        if expr.value is None:
-                            # Pattern-matching: could be Var("x") or Const("c_1")
-                            # Both treated as symbolic variables
-                            var_names.add(expr.name)
-            else:
-                # Recurse into children
-                if expr.left:
-                    collect_names(expr.left, var_names, const_names)
-                if expr.right:
-                    collect_names(expr.right, var_names, const_names)
-
-        var_names = set()
-        const_names = set()
-        collect_names(self.pattern, var_names, const_names)
-        collect_names(self.replacement, var_names, const_names)
-
-        # Skip verification if replacement is DynamicConst (not SymbolicExpression)
-        if not isinstance(self.replacement, SymbolicExpression):
-            logger.debug(f"Skipping verification for {self.name}: replacement is {type(self.replacement).__name__}, not SymbolicExpression")
-            return True  # Can't verify DynamicConst with Z3
-
-        # Create Z3 BitVec variables for all symbolic variables/constants
-        z3_vars = {}
-        for name in sorted(var_names):
-            z3_vars[name] = z3.BitVec(name, self.BIT_WIDTH)
-
-        # Get rule-specific constraints (now has access to constant symbols)
-        constraints = self.get_constraints(z3_vars)
-
-        # Prove equivalence using pure SymbolicExpression (no .node needed!)
-        is_equivalent, counterexample = prove_equivalence(
-            self.pattern,
-            self.replacement,
-            z3_vars=z3_vars,
-            constraints=constraints,
-            bit_width=self.BIT_WIDTH
-        )
-
-        if not is_equivalent:
-            msg = (
-                f"\n--- VERIFICATION FAILED ---\n"
-                f"Rule:        {self.name}\n"
-                f"Description: {self.description}\n"
-                f"Identity:    {self.pattern} => {self.replacement}\n"
-            )
-            if counterexample:
-                msg += f"Counterexample: {counterexample}\n"
-            if constraints:
-                msg += f"Constraints were: {constraints}\n"
-            msg += (
-                "This rule does NOT preserve semantics and should not be used.\n"
-                "Please fix the pattern, replacement, or constraints."
-            )
-            raise AssertionError(msg)
-
-        logger.debug(f"Rule {self.name} verified successfully")
-        return True
-
 
 def isabstract(cls) -> bool:
     """Check if a class is abstract (has unimplemented abstract methods).
@@ -908,9 +465,4 @@ def isabstract(cls) -> bool:
         True if the class has any unimplemented abstract methods.
     """
     return bool(getattr(cls, "__abstractmethods__", None))
-
-
-# Note: VerifiableRule instances are registered in RULE_REGISTRY and injected
-# into PatternOptimizer at construction time via the verifiable_rules parameter.
-# This avoids duck typing and keeps the registration explicit.
 

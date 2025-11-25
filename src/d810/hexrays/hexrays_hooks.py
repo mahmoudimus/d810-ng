@@ -16,6 +16,8 @@ from d810.hexrays.hexrays_formatters import (
     maturity_to_string,
 )
 from d810.hexrays.hexrays_helpers import check_ins_mop_size_are_ok
+from d810.mba.rules import VerifiableRule
+from d810.mba.backends.ida import adapt_rules
 from d810.optimizers.microcode.flow.handler import FlowOptimizationRule
 from d810.optimizers.microcode.instructions.handler import (
     InstructionOptimizationRule,
@@ -49,6 +51,7 @@ DEFAULT_ANALYZER_MATURITIES = [MMAT_PREOPTIMIZED, MMAT_LOCOPT, MMAT_CALLS, MMAT_
 
 
 if typing.TYPE_CHECKING:
+    from d810.core import OptimizationStatistics
     from d810.optimizers.microcode.instructions.analysis.handler import (
         InstructionAnalyzer,
     )
@@ -61,7 +64,6 @@ if typing.TYPE_CHECKING:
         PeepholeOptimizer,
     )
     from d810.optimizers.microcode.instructions.z3.handler import Z3Optimizer
-    from d810.core import OptimizationStatistics
 
 
 class InstructionOptimizerManager(optinsn_t):
@@ -96,13 +98,11 @@ class InstructionOptimizerManager(optinsn_t):
         )
         Z3Optimizer: type[Z3Optimizer] = InstructionOptimizer.get("Z3Optimizer")
 
-        # Load verifiable rules from RULE_REGISTRY and inject into PatternOptimizer
-        # RULE_REGISTRY stores rule CLASSES - instantiate them now that IDA is available
-        try:
-            from d810.mba.rules import RULE_REGISTRY
-            verifiable_rules = RULE_REGISTRY.instantiate_all()
-        except ImportError:
-            verifiable_rules = []
+        # Load verifiable rules and wrap with IDA adapter for pattern matching
+        # Rules auto-register via VerifiableRule (Registrant-based)
+        # IDAPatternAdapter provides IDA-specific methods (check_and_replace, etc.)
+        rule_instances = VerifiableRule.instantiate_all()
+        verifiable_rules = adapt_rules(rule_instances)
 
         self.add_optimizer(
             PatternOptimizer(

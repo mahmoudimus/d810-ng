@@ -20,19 +20,32 @@ try:
         get_solver,
         z3_prove_equivalence,
         ast_to_z3_expression,
+        # Pure SymbolicExpression verification (no IDA needed)
+        verify_rule,
     )
     __all__ = [
         "Z3_INSTALLED",
         "get_solver",
         "z3_prove_equivalence",
         "ast_to_z3_expression",
+        "verify_rule",
     ]
 except ImportError:
     Z3_INSTALLED = False
     __all__ = ["Z3_INSTALLED"]
 
+# IDA backend (requires IDA Pro)
+# These imports are lazy (inside functions) so won't fail without IDA
+from d810.mba.backends.ida import (
+    IDANodeVisitor,
+    IDAPatternAdapter,
+    adapt_rules,
+)
+__all__.extend([
+    "IDANodeVisitor",
+    "IDAPatternAdapter",
+    "adapt_rules",
+])
+
 # Future: E-graph backend
 # from d810.mba.backends.egraph import EGraphSimplifier
-
-# Future: IDA backend (for minsn_t conversion)
-# from d810.mba.backends.ida import minsn_to_symbolic, symbolic_to_minsn

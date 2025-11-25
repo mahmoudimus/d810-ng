@@ -1,13 +1,13 @@
-"""Tests for micro‑code persistence and heuristics.
+"""Tests for micro-code persistence and heuristics.
 
 These tests exercise the helper functions provided in
 ``d810.optimizers.microcode.flow.flattening.cache`` as well as a small
 dispatcher collector stub that mimics the behaviour of the real
-``GenericDispatcherCollector``.  Because the full Hex‑Rays environment is
+``GenericDispatcherCollector``.  Because the full Hex-Rays environment is
 not available during unit testing, we avoid importing the actual
 collector and instead implement a simplified version that uses the same
 algorithms for computing block hashes, consulting a persistent cache,
-applying an entry‑opcode heuristic and caching the outcome.
+applying an entry-opcode heuristic and caching the outcome.
 
 The goal of these tests is twofold:
 
@@ -16,32 +16,20 @@ The goal of these tests is twofold:
   identity, and falls back to the block serial when no instructions are
   present.
 * Ensure that ``PersistentMicrocodeCache`` can store and retrieve JSON
-  serialisable dictionaries and that it can be used by a collector to
-  avoid re‑exploring the same block across invocations.  The stub
+  serializable dictionaries and that it can be used by a collector to
+  avoid re-exploring the same block across invocations.  The stub
   collector demonstrates the intended usage pattern of computing a
   block hash, consulting the cache, deciding whether to skip
   exploration and updating the cache with either a skip sentinel or
   dispatcher metadata.
 
-These tests do not depend on IDA Pro or Hex‑Rays and therefore can run
+These tests do not depend on IDA Pro or Hex-Rays and therefore can run
 in isolation with the standard Python interpreter.
 """
 
 import os
-import sys
 import tempfile
-import unittest
 from typing import Any, Dict, List, Optional
-
-# Ensure that the d810 package can be imported when running tests directly.
-# The repository places its source code under a top‑level ``src`` directory.
-# Compute the path relative to this test file and insert it into sys.path
-from pathlib import Path
-
-_repo_root = Path(__file__).resolve().parents[4]
-_src_path = _repo_root / "src"
-if str(_src_path) not in sys.path:
-    sys.path.insert(0, str(_src_path))
 
 from d810.optimizers.microcode.flow.flattening.cache import (
     PersistentMicrocodeCache,
@@ -51,7 +39,7 @@ from d810.optimizers.microcode.flow.flattening.cache import (
 
 
 class DummyInsn:
-    """A minimal micro‑code instruction for hashing.
+    """A minimal micro-code instruction for hashing.
 
     Each instruction exposes an ``opcode`` and a reference to the next
     instruction in the block.  Additional attributes are ignored by
@@ -60,11 +48,11 @@ class DummyInsn:
 
     def __init__(self, opcode: int, next_insn: Optional["DummyInsn"] = None) -> None:
         self.opcode = opcode
-        self.next: Optional[DummyInsn] = next_insn
+        self.next: Optional["DummyInsn"] = next_insn
 
 
 class DummyBlock:
-    """A minimal micro‑code block used for testing.
+    """A minimal micro-code block used for testing.
 
     A block has a ``serial`` identifier and a linked list of instructions
     via the ``head`` attribute.  No other attributes are needed for
@@ -124,8 +112,8 @@ class StubDispatcherCollector:
     """A simplified dispatcher collector used for testing.
 
     This collector demonstrates the intended use of the persistent
-    micro‑code cache and entry‑opcode heuristic without depending on the
-    Hex‑Rays SDK.  It mimics the logic of
+    micro-code cache and entry-opcode heuristic without depending on the
+    Hex-Rays SDK.  It mimics the logic of
     ``GenericDispatcherCollector.visit_minsn`` from the production code:
 
     * It maintains a list of discovered dispatchers and a set of visited
@@ -135,18 +123,23 @@ class StubDispatcherCollector:
     * It computes a stable hash for each block via ``compute_block_hash``
       and consults a ``PersistentMicrocodeCache`` for previously stored
       results.  The cache stores either a ``{"skip": True}`` sentinel or
-      a serialised dispatcher dictionary.  Cached dispatchers are
+      a serialized dispatcher dictionary.  Cached dispatchers are
       reconstructed lazily by invoking ``StubDispatcherInfo``.
     * When a block is determined to be a dispatcher, its information is
-      serialised with ``dump_dispatcher_info`` and stored back into the
-      cache.  Non‑dispatcher blocks are cached with ``{"skip": True}``.
+      serialized with ``dump_dispatcher_info`` and stored back into the
+      cache.  Non-dispatcher blocks are cached with ``{"skip": True}``.
     """
 
     # Define the set of opcodes that qualify a block as a candidate
     # dispatcher entry.  In production this comes from CFF_ENTRY_OPCODES.
     candidate_opcodes: set[int] = {1, 2, 3}
 
-    def __init__(self, microcode_cache: Optional[PersistentMicrocodeCache] = None, *, skip_non_entry_blocks: bool = True) -> None:
+    def __init__(
+        self,
+        microcode_cache: Optional[PersistentMicrocodeCache] = None,
+        *,
+        skip_non_entry_blocks: bool = True,
+    ) -> None:
         self.microcode_cache = microcode_cache
         self.skip_non_entry_blocks = skip_non_entry_blocks
         self.dispatcher_list: List[StubDispatcherInfo] = []
@@ -165,7 +158,7 @@ class StubDispatcherCollector:
 
         This method mirrors the logic of ``visit_minsn`` in the
         production collector.  It uses block hashes, a persistent cache
-        and an entry‑opcode heuristic to decide whether to explore the
+        and an entry-opcode heuristic to decide whether to explore the
         block and whether to cache the outcome.
         """
         if blk.serial in self.explored:
@@ -186,7 +179,7 @@ class StubDispatcherCollector:
                 self.dispatcher_list.append(disp)
                 return
 
-        # Entry‑opcode heuristic
+        # Entry-opcode heuristic
         if self.skip_non_entry_blocks:
             cur = blk.head
             has_entry = False
@@ -221,82 +214,81 @@ class StubDispatcherCollector:
             self.microcode_cache.set(block_hash, data)
 
 
-class TestMicrocodePersistence(unittest.TestCase):
-    """Tests for micro‑code hashing, caching and stub dispatcher collector."""
-
-    def test_compute_block_hash_stable(self) -> None:
-        """Hashes should be stable and identical for identical instruction streams."""
-        blk1 = DummyBlock(serial=1, opcodes=[1, 2, 3, 4])
-        blk2 = DummyBlock(serial=2, opcodes=[1, 2, 3, 4])
-        blk3 = DummyBlock(serial=3, opcodes=[4, 3, 2, 1])
-        digest1 = compute_block_hash(blk1)
-        digest2 = compute_block_hash(blk2)
-        digest3 = compute_block_hash(blk3)
-        # Blocks with identical opcodes should have identical hashes, regardless of serial
-        self.assertEqual(digest1, digest2)
-        # Reordering opcodes should result in a different hash
-        self.assertNotEqual(digest1, digest3)
-        # Blocks with no instructions fall back to hashing the serial
-        empty_blk = DummyBlock(serial=42)
-        digest_empty = compute_block_hash(empty_blk)
-        digest_empty_again = compute_block_hash(empty_blk)
-        self.assertEqual(digest_empty, digest_empty_again)
-        # Changing the serial produces a different hash when no instructions are present
-        empty_blk2 = DummyBlock(serial=99)
-        self.assertNotEqual(digest_empty, compute_block_hash(empty_blk2))
-
-    def test_persistent_microcode_cache_set_get(self) -> None:
-        """The cache should store and retrieve JSON data correctly."""
-        # Use a temporary file so that the database is cleaned up after the test
-        with tempfile.NamedTemporaryFile(delete=False) as tmp:
-            db_path = tmp.name
-        try:
-            cache = PersistentMicrocodeCache(db_path)
-            payload = {"key": "value", "list": [1, 2, 3]}
-            h = "deadbeef"
-            self.assertIsNone(cache.get(h))
-            cache.set(h, payload)
-            retrieved = cache.get(h)
-            self.assertEqual(retrieved, payload)
-            # Overwrite existing entry
-            payload2 = {"k": 1}
-            cache.set(h, payload2)
-            self.assertEqual(cache.get(h), payload2)
-            cache.close()
-        finally:
-            os.unlink(db_path)
-
-    def test_stub_dispatcher_collector_with_cache_and_heuristics(self) -> None:
-        """The stub collector should use the cache and heuristic to avoid redundant work."""
-        # Use an in‑memory cache for convenience
-        cache = PersistentMicrocodeCache(":memory:")
-        collector = StubDispatcherCollector(microcode_cache=cache, skip_non_entry_blocks=True)
-        # Block without candidate opcodes should be skipped and cached as skip
-        blk_skip = DummyBlock(serial=10, opcodes=[100, 200, 300])
-        collector.visit_block(blk_skip)
-        # The cache should contain a skip entry
-        h_skip = compute_block_hash(blk_skip)
-        self.assertEqual(cache.get(h_skip), {"skip": True})
-        # Visiting again should immediately return without exploring or modifying dispatcher_list
-        before_count = len(collector.dispatcher_list)
-        collector.visit_block(blk_skip)
-        self.assertEqual(len(collector.dispatcher_list), before_count)
-        # Block with a candidate opcode should be treated as a dispatcher and cached accordingly
-        blk_disp = DummyBlock(serial=20, opcodes=[10, 1, 20])  # opcode 1 is in candidate_opcodes
-        collector.visit_block(blk_disp)
-        h_disp = compute_block_hash(blk_disp)
-        cached_disp = cache.get(h_disp)
-        # The cached dispatcher info should be a dictionary with expected keys
-        self.assertIsInstance(cached_disp, dict)
-        self.assertIn("entry_block_serial", cached_disp)
-        self.assertEqual(cached_disp["entry_block_serial"], blk_disp.serial)
-        # The collector should have recorded one dispatcher
-        self.assertEqual(len(collector.dispatcher_list), 1)
-        # Visiting the same dispatcher again should reuse the cache and not duplicate
-        collector.visit_block(blk_disp)
-        # Dispatcher list size should remain the same
-        self.assertEqual(len(collector.dispatcher_list), 1)
+def test_compute_block_hash_stable():
+    """Hashes should be stable and identical for identical instruction streams."""
+    blk1 = DummyBlock(serial=1, opcodes=[1, 2, 3, 4])
+    blk2 = DummyBlock(serial=2, opcodes=[1, 2, 3, 4])
+    blk3 = DummyBlock(serial=3, opcodes=[4, 3, 2, 1])
+    digest1 = compute_block_hash(blk1)
+    digest2 = compute_block_hash(blk2)
+    digest3 = compute_block_hash(blk3)
+    # Blocks with identical opcodes should have identical hashes, regardless of serial
+    assert digest1 == digest2
+    # Reordering opcodes should result in a different hash
+    assert digest1 != digest3
+    # Blocks with no instructions fall back to hashing the serial
+    empty_blk = DummyBlock(serial=42)
+    digest_empty = compute_block_hash(empty_blk)
+    digest_empty_again = compute_block_hash(empty_blk)
+    assert digest_empty == digest_empty_again
+    # Changing the serial produces a different hash when no instructions are present
+    empty_blk2 = DummyBlock(serial=99)
+    assert digest_empty != compute_block_hash(empty_blk2)
 
 
-if __name__ == "__main__":  # pragma: no cover
-    unittest.main()
+def test_persistent_microcode_cache_set_get():
+    """The cache should store and retrieve JSON data correctly."""
+    # Use a temporary file so that the database is cleaned up after the test
+    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+        db_path = tmp.name
+    try:
+        cache = PersistentMicrocodeCache(db_path)
+        payload = {"key": "value", "list": [1, 2, 3]}
+        h = "deadbeef"
+        assert cache.get(h) is None
+        cache.set(h, payload)
+        retrieved = cache.get(h)
+        assert retrieved == payload
+        # Overwrite existing entry
+        payload2 = {"k": 1}
+        cache.set(h, payload2)
+        assert cache.get(h) == payload2
+        cache.close()
+    finally:
+        os.unlink(db_path)
+
+
+def test_stub_dispatcher_collector_with_cache_and_heuristics():
+    """The stub collector should use the cache and heuristic to avoid redundant work."""
+    # Use an in-memory cache for convenience
+    cache = PersistentMicrocodeCache(":memory:")
+    collector = StubDispatcherCollector(
+        microcode_cache=cache, skip_non_entry_blocks=True
+    )
+    # Block without candidate opcodes should be skipped and cached as skip
+    blk_skip = DummyBlock(serial=10, opcodes=[100, 200, 300])
+    collector.visit_block(blk_skip)
+    # The cache should contain a skip entry
+    h_skip = compute_block_hash(blk_skip)
+    assert cache.get(h_skip) == {"skip": True}
+    # Visiting again should immediately return without exploring or modifying dispatcher_list
+    before_count = len(collector.dispatcher_list)
+    collector.visit_block(blk_skip)
+    assert len(collector.dispatcher_list) == before_count
+    # Block with a candidate opcode should be treated as a dispatcher and cached accordingly
+    blk_disp = DummyBlock(
+        serial=20, opcodes=[10, 1, 20]
+    )  # opcode 1 is in candidate_opcodes
+    collector.visit_block(blk_disp)
+    h_disp = compute_block_hash(blk_disp)
+    cached_disp = cache.get(h_disp)
+    # The cached dispatcher info should be a dictionary with expected keys
+    assert isinstance(cached_disp, dict)
+    assert "entry_block_serial" in cached_disp
+    assert cached_disp["entry_block_serial"] == blk_disp.serial
+    # The collector should have recorded one dispatcher
+    assert len(collector.dispatcher_list) == 1
+    # Visiting the same dispatcher again should reuse the cache and not duplicate
+    collector.visit_block(blk_disp)
+    # Dispatcher list size should remain the same
+    assert len(collector.dispatcher_list) == 1

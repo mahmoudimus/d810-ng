@@ -1,219 +1,138 @@
-"""Unit tests for RuleRegistry class.
+"""Unit tests for VerifiableRule Registrant-based registration.
 
-Tests the injectable registry system that enables:
+Tests the automatic registration system that enables:
 - Unit testing without IDA (store classes, not instances)
-- Custom registries for different contexts
+- Automatic discovery via Registrant metaclass
 - Lazy instantiation when IDA is available
 """
 
 import pytest
 
 from d810.mba.dsl import Var
-from d810.mba.rules import RuleRegistry, VerifiableRule, RULE_REGISTRY
+from d810.mba.rules import VerifiableRule
+from d810.core.registry import Registrant
 
 
 # Test variables
 x, y = Var("x"), Var("y")
 
 
-class TestRuleRegistry:
-    """Tests for RuleRegistry class."""
+class TestVerifiableRuleRegistrant:
+    """Tests for VerifiableRule Registrant-based registration."""
 
-    def test_registry_creation(self):
-        """Test creating a new registry."""
-        reg = RuleRegistry("test")
-        assert reg.name == "test"
-        assert len(reg) == 0
+    def test_verifiable_rule_has_registry(self):
+        """Test that VerifiableRule has its own registry."""
+        assert hasattr(VerifiableRule, 'registry')
+        assert isinstance(VerifiableRule.registry, dict)
 
-    def test_global_registry_exists(self):
-        """Test that RULE_REGISTRY is a RuleRegistry instance."""
-        assert isinstance(RULE_REGISTRY, RuleRegistry)
-        assert RULE_REGISTRY.name == "global"
+    def test_automatic_registration(self):
+        """Test that subclasses automatically register."""
+        # Create a unique test hierarchy to avoid pollution
+        class TestBase(VerifiableRule, Registrant):
+            pass
 
-    def test_register_class_not_instance(self):
-        """Test that registry stores classes, not instances."""
-        reg = RuleRegistry("test")
+        initial_count = len(TestBase.registry)
 
-        class TestRule(VerifiableRule, registry=reg):
+        class TestRule(TestBase):
             PATTERN = x + y
             REPLACEMENT = y + x
             DESCRIPTION = "Test"
 
-        # Class should be registered
-        assert TestRule in reg
-        assert len(reg) == 1
+        # Class should be automatically registered in TestBase
+        assert len(TestBase.registry) == initial_count + 1
+        assert TestRule in TestBase.registry.values()
 
-        # Should be the class itself, not an instance
-        for cls in reg:
-            assert cls is TestRule
-            assert isinstance(cls, type)
-
-    def test_custom_registry_isolation(self):
-        """Test that custom registry doesn't pollute global registry."""
-        initial_global_count = len(RULE_REGISTRY)
-        reg = RuleRegistry("isolated")
-
-        class IsolatedRule(VerifiableRule, registry=reg):
-            PATTERN = x - y
-            REPLACEMENT = x + (-y)
-            DESCRIPTION = "Isolated"
-
-        # Should be in custom registry
-        assert IsolatedRule in reg
-        assert len(reg) == 1
-
-        # Should NOT be in global registry
-        assert IsolatedRule not in RULE_REGISTRY
-        # Global registry count should be unchanged
-        assert len(RULE_REGISTRY) == initial_global_count
-
-    def test_unregister(self):
-        """Test unregistering a rule class."""
-        reg = RuleRegistry("test")
-
-        class ToRemove(VerifiableRule, registry=reg):
-            PATTERN = x ^ y
-            REPLACEMENT = y ^ x
-            DESCRIPTION = "To remove"
-
-        assert ToRemove in reg
-        assert reg.unregister(ToRemove) is True
-        assert ToRemove not in reg
-        assert len(reg) == 0
-
-    def test_unregister_nonexistent(self):
-        """Test unregistering a class that's not in registry."""
-        reg = RuleRegistry("test")
-
-        class NotRegistered(VerifiableRule, registry=RuleRegistry("other")):
-            PATTERN = x & y
-            REPLACEMENT = y & x
-            DESCRIPTION = "Not registered"
-
-        assert reg.unregister(NotRegistered) is False
-
-    def test_clear(self):
-        """Test clearing all rules from registry."""
-        reg = RuleRegistry("test")
-
-        class Rule1(VerifiableRule, registry=reg):
-            PATTERN = x + y
-            REPLACEMENT = y + x
-            DESCRIPTION = "Rule 1"
-
-        class Rule2(VerifiableRule, registry=reg):
-            PATTERN = x - y
-            REPLACEMENT = x + (-y)
-            DESCRIPTION = "Rule 2"
-
-        assert len(reg) == 2
-        reg.clear()
-        assert len(reg) == 0
-
-    def test_iteration(self):
+    def test_iteration_over_registry(self):
         """Test iterating over registry yields classes."""
-        reg = RuleRegistry("test")
+        # Create isolated hierarchy
+        class IterTestBase(VerifiableRule, Registrant):
+            pass
 
-        class IterRule1(VerifiableRule, registry=reg):
+        class IterRule1(IterTestBase):
             PATTERN = x | y
             REPLACEMENT = y | x
             DESCRIPTION = "Iter 1"
 
-        class IterRule2(VerifiableRule, registry=reg):
+        class IterRule2(IterTestBase):
             PATTERN = x & y
             REPLACEMENT = y & x
             DESCRIPTION = "Iter 2"
 
-        classes = list(reg)
-        assert len(classes) == 2
+        classes = list(IterTestBase.registry.values())
         assert IterRule1 in classes
         assert IterRule2 in classes
 
-    def test_no_duplicate_registration(self):
-        """Test that registering same class twice doesn't duplicate."""
-        reg = RuleRegistry("test")
+    def test_contains_check(self):
+        """Test 'in' operator for registry values."""
+        class ContainsTestBase(VerifiableRule, Registrant):
+            pass
 
-        class NoDupeRule(VerifiableRule, registry=reg):
+        class ContainsRule(ContainsTestBase):
             PATTERN = x ^ y
             REPLACEMENT = y ^ x
-            DESCRIPTION = "No dupe"
+            DESCRIPTION = "Contains test"
 
-        initial_count = len(reg)
+        assert ContainsRule in ContainsTestBase.registry.values()
 
-        # Try to register again
-        reg.register(NoDupeRule)
-        reg.register(NoDupeRule)
+    def test_registry_len(self):
+        """Test len() on registry."""
+        class LenTestBase(VerifiableRule, Registrant):
+            pass
 
-        assert len(reg) == initial_count
-
-    def test_repr(self):
-        """Test string representation."""
-        reg = RuleRegistry("my_registry")
-
-        class ReprRule(VerifiableRule, registry=reg):
+        initial_count = len(LenTestBase.registry)
+        
+        class LenRule(LenTestBase):
             PATTERN = x + y
             REPLACEMENT = y + x
-            DESCRIPTION = "Repr test"
+            DESCRIPTION = "Len test"
 
-        s = repr(reg)
-        assert "my_registry" in s
-        assert "1 rules" in s
+        assert len(LenTestBase.registry) == initial_count + 1
+
+    def test_hierarchical_scoping(self):
+        """Test that intermediate base classes that inherit from Registrant get their own registries."""
+        # These must ALSO inherit from Registrant to get separate registries
+        class ArmRule(VerifiableRule, Registrant):
+            """Base for ARM-specific rules."""
+            pass
+
+        class X86Rule(VerifiableRule, Registrant):
+            """Base for X86-specific rules."""
+            pass
+
+        class ArmAdd(ArmRule):
+            PATTERN = x + y
+            REPLACEMENT = y + x
+            DESCRIPTION = "ARM add"
+
+        class X86Add(X86Rule):
+            PATTERN = x - y  
+            REPLACEMENT = x + (-y)
+            DESCRIPTION = "X86 add"
+
+        # Each hierarchy should have its own registry
+        arm_rules = list(ArmRule.registry.values())
+        x86_rules = list(X86Rule.registry.values())
+
+        assert ArmAdd in arm_rules
+        assert X86Add in x86_rules
+        assert ArmAdd not in x86_rules
+        assert X86Add not in arm_rules
 
 
 class TestInstantiateAll:
     """Tests for lazy instantiation."""
 
     def test_instantiate_returns_list(self):
-        """Test instantiate_all returns list of instances."""
-        # Note: This test may fail without IDA, but that's expected
-        # The purpose is to test the API, not the actual instantiation
-        reg = RuleRegistry("test")
-
-        class InstRule(VerifiableRule, registry=reg):
-            PATTERN = x + y
-            REPLACEMENT = y + x
-            DESCRIPTION = "Inst test"
-
-        # Without IDA, instantiation will fail but should return empty list
-        # (due to exception handling in instantiate_all)
-        instances = reg.instantiate_all()
+        """Test instantiate_all returns list."""
+        # Note: Without IDA, instantiation will fail but should return empty list
+        # The API test is still valid - we're testing that it returns a list
+        instances = VerifiableRule.instantiate_all()
         assert isinstance(instances, list)
 
-    def test_instantiate_caches_result(self):
-        """Test that instantiate_all caches its result."""
-        reg = RuleRegistry("test")
+    def test_instantiate_on_custom_hierarchy(self):
+        """Test instantiate_all works on custom hierarchies."""
+        class CustomBase(VerifiableRule, Registrant):
+            pass
 
-        class CacheRule(VerifiableRule, registry=reg):
-            PATTERN = x - y
-            REPLACEMENT = x + (-y)
-            DESCRIPTION = "Cache test"
-
-        # First call
-        result1 = reg.instantiate_all()
-        # Second call should return same list
-        result2 = reg.instantiate_all()
-
-        assert result1 is result2  # Same object (cached)
-
-    def test_register_invalidates_cache(self):
-        """Test that registering a new class invalidates the cache."""
-        reg = RuleRegistry("test")
-
-        class First(VerifiableRule, registry=reg):
-            PATTERN = x + y
-            REPLACEMENT = y + x
-            DESCRIPTION = "First"
-
-        # Populate cache
-        result1 = reg.instantiate_all()
-
-        class Second(VerifiableRule, registry=reg):
-            PATTERN = x - y
-            REPLACEMENT = x + (-y)
-            DESCRIPTION = "Second"
-
-        # Cache should be invalidated
-        result2 = reg.instantiate_all()
-
-        # Results should be different objects
-        assert result1 is not result2
+        instances = CustomBase.instantiate_all()
+        assert isinstance(instances, list)

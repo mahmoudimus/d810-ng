@@ -1,39 +1,47 @@
+"""Z3 backend for MBA expression verification and equivalence checking.
+
+This module provides two types of functionality:
+
+1. Pure SymbolicExpression verification (NO IDA DEPENDENCY):
+   - verify_rule() - Verify rule correctness using Z3
+   - Works with d810.mba.dsl.SymbolicExpression
+
+2. AstNode-based verification (IDA INTEGRATION):
+   - z3_prove_equivalence() - Prove AST equivalence
+   - ast_to_z3_expression() - Convert AST to Z3
+   - Requires IDA for minsn_t/mop_t conversion
+
+The pure functions can be imported and used without IDA installed.
+"""
+
+from __future__ import annotations
+
 import functools
 import typing
-from typing import Dict, Tuple
+from typing import Dict, Tuple, TYPE_CHECKING
 
 # Use platform-independent opcodes (no IDA dependency!)
 # Import as module to use qualified names in match statements
 import d810.opcodes as opc
 
-# Check if IDA is available (for interfacing, not for Z3 verification)
-try:
-    import ida_hexrays
-    IDA_AVAILABLE = True
-except ImportError:
-    IDA_AVAILABLE = False
-    # Mock IDA types for function signatures only
-    class mop_t:  # type: ignore
-        pass
-    class minsn_t:  # type: ignore
-        pass
-    class _MockIDAHexrays:  # type: ignore
-        mop_t = mop_t
-        minsn_t = minsn_t
-    ida_hexrays = _MockIDAHexrays()
-
 from d810.core import getLogger
 from d810.errors import D810Z3Exception
-from d810.expr.ast import AstLeaf, AstNode, minsn_to_ast, mop_to_ast
-from d810.hexrays.hexrays_formatters import (
-    format_minsn_t,
-    format_mop_t,
-    opcode_to_string,
-)
-from d810.hexrays.hexrays_helpers import get_mop_index, structural_mop_hash
 
 logger = getLogger(__name__)
 z3_file_logger = getLogger("D810.z3_test")
+
+# Type hints for IDA types (only used for type checking, not runtime)
+if TYPE_CHECKING:
+    import ida_hexrays
+    from d810.expr.ast import AstLeaf, AstNode
+
+# Check if IDA is available (for AstNode-based functions)
+try:
+    import ida_hexrays as _ida_hexrays
+    IDA_AVAILABLE = True
+except ImportError:
+    IDA_AVAILABLE = False
+    _ida_hexrays = None  # type: ignore
 
 try:
     import z3
@@ -52,6 +60,27 @@ try:
 except ImportError:
     logger.info("Z3 features disabled. Install Z3 to enable them")
     Z3_INSTALLED = False
+
+
+def _get_ida_imports():
+    """Lazily import IDA-dependent modules. Returns tuple of (ida_hexrays, AstLeaf, AstNode, etc.)."""
+    if not IDA_AVAILABLE:
+        raise ImportError("IDA is not available. AstNode-based functions require IDA.")
+    from d810.expr.ast import AstLeaf, AstNode, minsn_to_ast, mop_to_ast
+    from d810.hexrays.hexrays_formatters import format_minsn_t, format_mop_t, opcode_to_string
+    from d810.hexrays.hexrays_helpers import get_mop_index, structural_mop_hash
+    return {
+        'ida_hexrays': _ida_hexrays,
+        'AstLeaf': AstLeaf,
+        'AstNode': AstNode,
+        'minsn_to_ast': minsn_to_ast,
+        'mop_to_ast': mop_to_ast,
+        'format_minsn_t': format_minsn_t,
+        'format_mop_t': format_mop_t,
+        'opcode_to_string': opcode_to_string,
+        'get_mop_index': get_mop_index,
+        'structural_mop_hash': structural_mop_hash,
+    }
 
 
 @functools.lru_cache(maxsize=1)
@@ -450,6 +479,228 @@ def log_z3_instructions(
     removed_xdu = "{0}".format(new_mba_tree).replace("xdu", "")
     z3_file_logger.info("new_expr = {0}".format(removed_xdu))
     z3_file_logger.info("prove(original_expr == new_expr)\n")
+
+
+# =============================================================================
+# Pure SymbolicExpression Verification (NO IDA DEPENDENCY)
+# =============================================================================
+# These functions work with pure SymbolicExpression trees from d810.mba.dsl
+# and do not require IDA Pro to be installed.
+
+
+def verify_rule(
+    rule,
+    bit_width: int = 32,
+) -> bool:
+    """Verify that a rule's pattern is equivalent to its replacement using Z3.
+
+    This function takes a VerifiableRule (or any object with pattern/replacement
+    SymbolicExpression attributes) and proves mathematical equivalence using Z3.
+
+    This is the ONLY entry point for rule verification - rules should NOT contain
+    Z3-specific code themselves. All Z3 logic is encapsulated here.
+
+    Args:
+        rule: A rule object with:
+            - pattern: SymbolicExpression (the pattern to match)
+            - replacement: SymbolicExpression (the replacement)
+            - CONSTRAINTS: Optional list of constraint predicates
+            - SKIP_VERIFICATION: Optional bool to skip verification
+            - KNOWN_INCORRECT: Optional bool for known-incorrect rules
+            - name: Optional str for error messages
+        bit_width: Bit width for Z3 BitVec variables (default 32).
+
+    Returns:
+        True if the rule is proven correct.
+
+    Raises:
+        AssertionError: If verification fails with detailed error message.
+        ImportError: If Z3 is not installed.
+
+    Example:
+        >>> from d810.mba.backends.z3 import verify_rule
+        >>> from d810.mba.dsl import Var
+        >>> x, y = Var("x"), Var("y")
+        >>>
+        >>> class MyRule:
+        ...     pattern = (x | y) - (x & y)
+        ...     replacement = x ^ y
+        ...     name = "XorFromOrAnd"
+        ...
+        >>> assert verify_rule(MyRule())  # Proves equivalence
+    """
+    if not Z3_INSTALLED:
+        raise ImportError(
+            f"Cannot verify rule {getattr(rule, 'name', 'unknown')}: Z3 is not installed. "
+            "Install z3-solver to enable rule verification."
+        )
+
+    # Check if rule should skip verification
+    if getattr(rule, 'SKIP_VERIFICATION', False):
+        logger.debug(f"Skipping verification for {getattr(rule, 'name', 'unknown')}: SKIP_VERIFICATION=True")
+        return True
+
+    # Import here to avoid circular imports
+    from d810.mba.dsl import SymbolicExpression
+    from d810.mba.visitors import Z3VerificationVisitor
+
+    pattern = rule.pattern
+    replacement = rule.replacement
+    rule_name = getattr(rule, 'name', rule.__class__.__name__)
+
+    # Validate inputs
+    if pattern is None:
+        logger.debug(f"Skipping verification for {rule_name}: pattern is None")
+        return True
+
+    if not isinstance(replacement, SymbolicExpression):
+        logger.debug(f"Skipping verification for {rule_name}: replacement is {type(replacement).__name__}, not SymbolicExpression")
+        return True
+
+    # Collect all variable/constant names from both expressions
+    var_names = set()
+    _collect_symbolic_names(pattern, var_names)
+    _collect_symbolic_names(replacement, var_names)
+
+    # Create Z3 variables for all symbolic names
+    z3_vars = {name: z3.BitVec(name, bit_width) for name in sorted(var_names)}
+
+    # Get rule-specific constraints and convert to Z3
+    constraints = _extract_constraints(rule, z3_vars)
+
+    # Create visitor and convert expressions to Z3
+    visitor = Z3VerificationVisitor(bit_width=bit_width, var_map=z3_vars)
+
+    try:
+        pattern_z3 = visitor.visit(pattern)
+        replacement_z3 = visitor.visit(replacement)
+    except Exception as e:
+        logger.warning(f"Failed to convert {rule_name} to Z3: {e}")
+        return False
+
+    # Create solver and add constraints
+    solver = z3.Solver()
+    for constraint in constraints:
+        solver.add(constraint)
+
+    # Prove equivalence: check if pattern != replacement is unsatisfiable
+    solver.add(pattern_z3 != replacement_z3)
+    result = solver.check()
+
+    if result == z3.unsat:
+        # Patterns are equivalent
+        logger.debug(f"Rule {rule_name} verified successfully")
+        return True
+
+    # Verification failed - build detailed error message
+    counterexample = {}
+    if result == z3.sat:
+        model = solver.model()
+        for name, z3_var in z3_vars.items():
+            value = model.eval(z3_var, model_completion=True)
+            if hasattr(value, 'as_long'):
+                counterexample[name] = value.as_long()
+
+    msg = (
+        f"\n--- VERIFICATION FAILED ---\n"
+        f"Rule:        {rule_name}\n"
+        f"Description: {getattr(rule, 'description', 'No description')}\n"
+        f"Identity:    {pattern} => {replacement}\n"
+    )
+    if counterexample:
+        msg += f"Counterexample: {counterexample}\n"
+    if constraints:
+        msg += f"Constraints were: {constraints}\n"
+    msg += (
+        "This rule does NOT preserve semantics and should not be used.\n"
+        "Please fix the pattern, replacement, or constraints."
+    )
+    raise AssertionError(msg)
+
+
+def _collect_symbolic_names(expr, names: set) -> None:
+    """Recursively collect variable and constant names from a SymbolicExpression.
+
+    Args:
+        expr: A SymbolicExpression to traverse.
+        names: Set to add discovered names to.
+    """
+    from d810.mba.dsl import SymbolicExpression
+
+    if expr is None or not isinstance(expr, SymbolicExpression):
+        return
+
+    if expr.is_leaf():
+        if expr.name and expr.value is None:
+            # Variable or pattern-matching constant (no concrete value)
+            names.add(expr.name)
+    else:
+        _collect_symbolic_names(expr.left, names)
+        _collect_symbolic_names(expr.right, names)
+
+
+def _extract_constraints(rule, z3_vars: dict) -> list:
+    """Extract and convert rule constraints to Z3 expressions.
+
+    Args:
+        rule: The rule object with optional CONSTRAINTS attribute.
+        z3_vars: Dictionary mapping variable names to Z3 BitVec objects.
+
+    Returns:
+        List of Z3 constraint expressions.
+    """
+    constraints_attr = getattr(rule, 'CONSTRAINTS', None)
+    if not constraints_attr:
+        return []
+
+    z3_constraints = []
+
+    for constraint in constraints_attr:
+        # Check if this is a ConstraintExpr (declarative style)
+        try:
+            from d810.mba.constraints import is_constraint_expr
+            if is_constraint_expr(constraint):
+                z3_constraint = constraint.to_z3(z3_vars)
+                z3_constraints.append(z3_constraint)
+                continue
+        except Exception:
+            pass
+
+        # Check if constraint has _to_z3 method (constraint helpers)
+        if callable(constraint) and hasattr(constraint, '_to_z3'):
+            try:
+                z3_constraint = constraint._to_z3(z3_vars)
+                if z3_constraint is not None:
+                    z3_constraints.append(z3_constraint)
+                    continue
+            except Exception:
+                pass
+
+        # Legacy callable constraints - try to auto-detect pattern
+        if callable(constraint) and hasattr(constraint, '__closure__') and constraint.__closure__:
+            closure_vars = []
+            for cell in constraint.__closure__:
+                content = cell.cell_contents
+                if isinstance(content, str):
+                    closure_vars.append(content)
+
+            if len(closure_vars) >= 2:
+                var1, var2 = closure_vars[0], closure_vars[1]
+                if var1 in z3_vars and var2 in z3_vars:
+                    # Assume is_bnot pattern (most common)
+                    z3_constraints.append(z3_vars[var1] == ~z3_vars[var2])
+                    continue
+
+        logger.debug(f"Could not convert constraint to Z3 for rule {getattr(rule, 'name', 'unknown')}")
+
+    return z3_constraints
+
+
+# =============================================================================
+# AstNode-based Verification (IDA INTEGRATION)
+# =============================================================================
+# These functions work with AstNode trees from d810.expr.ast and may require
+# IDA Pro for full functionality (e.g., mop_to_ast conversion).
 
 
 @requires_z3_installed

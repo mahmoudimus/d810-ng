@@ -12,8 +12,9 @@ try:
         minsn_to_ast,
         mop_to_ast,
     )
+
     _USING_CYTHON = True
-except ImportError:
+except (ModuleNotFoundError, ImportError):
     # Fall back to pure Python implementation
     from d810.expr.p_ast import (
         AstBase,
@@ -25,6 +26,7 @@ except ImportError:
         minsn_to_ast,
         mop_to_ast,
     )
+
     _USING_CYTHON = False
 
 __all__ = [
