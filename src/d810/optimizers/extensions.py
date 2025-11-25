@@ -23,9 +23,12 @@ Example usage:
     ```
 """
 
-from typing import Any, Callable, Dict, Optional
+from __future__ import annotations
 
-from d810.expr.ast import AstLeaf
+from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from d810.expr.ast import AstLeaf
 
 
 class DestinationHelpers:
@@ -139,6 +142,9 @@ class ContextProviders:
         Returns:
             AstLeaf representing the parent register, or None if not applicable
         """
+        # Lazy import to avoid IDA dependency at module level
+        from d810.expr.ast import AstLeaf
+
         try:
             from ida_hexrays import mop_r, mop_t
         except ImportError:
