@@ -17,7 +17,7 @@ print("Testing infrastructure imports...")
 modules_to_test = [
     "d810.optimizers.dsl",
     "d810.optimizers.core",
-    "d810.optimizers.rules",
+    "d810.mba.rules",
     "d810.optimizers.instrumentation",
     "d810.optimizers.caching",
     "d810.optimizers.profiling",
@@ -73,7 +73,7 @@ except Exception as e:
 
 print("\nChecking VerifiableRule registry...")
 try:
-    from d810.optimizers.rules import RULE_REGISTRY
+    from d810.mba.rules import RULE_REGISTRY
     print(f"Total rules in RULE_REGISTRY: {len(RULE_REGISTRY)}")
     if RULE_REGISTRY[:5]:
         print("Sample rules:")

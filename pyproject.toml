@@ -14,7 +14,13 @@ description = "This is a next generation version of D-810, an IDA Pro plugin whi
 dependencies = ["z3-solver", "typing-extensions"]
 
 [project.optional-dependencies]
-dev = ["coverage[toml]", "pytest", "pytest-cov", "Cython>=3.0.0", "vendoring>=1.2.0"]
+dev = [
+    "coverage[toml]",
+    "pytest",
+    "pytest-cov",
+    "Cython>=3.0.0",
+    "vendoring>=1.2.0",
+]
 ci = ["coverage[toml]", "pytest", "pytest-cov", "Cython>=3.0.0"]
 profiling = ["pyinstrument>=5.0.0,<6.0.0"]
 speedups = ["Cython>=3.0.0"]
@@ -29,16 +35,16 @@ where = ["src"]
 # Include Cython source files in the distribution
 # This allows users to rebuild extensions if needed
 "*" = [
-    "*.pyx",    # Cython implementation source
-    "*.pxd",    # Cython header files
-    "*.c",      # Cythonized C files (for source distributions)
-    "*.cpp",    # Cythonized C++ files
-    "*.h",      # C header files
-    "*.hpp",    # C++ header files
+    "*.pyx", # Cython implementation source
+    "*.pxd", # Cython header files
+    "*.c",   # Cythonized C files (for source distributions)
+    "*.cpp", # Cythonized C++ files
+    "*.h",   # C header files
+    "*.hpp", # C++ header files
 ]
 
 [tool.cyright]
-include = ["*.py", "src/", "include/"]
+include = ["*.py", "src/"]
 exclude = ["build/", "docs/", "scripts/", "samples/", "tests/"]
 
 reportGeneralTypeIssues = true
@@ -61,7 +67,7 @@ omit = [
     "*/tests/*",
     "*/test_*",
     "*/__pycache__/*",
-    "*/d810/_vendor/*",  # Exclude vendored dependencies
+    "*/d810/_vendor/*", # Exclude vendored dependencies
 ]
 
 [tool.coverage.report]
@@ -87,11 +93,11 @@ patches-dir = "tools/vendoring/patches"
 [tool.vendoring.transformations]
 # Exclude unnecessary files to reduce repository size
 drop = [
-    "*.c",              # C extension source (we don't compile vendored packages)
-    "*.so",             # Compiled extensions
-    "*.dylib",          # macOS shared libraries
-    "*.dll",            # Windows DLLs
-    "test/",            # Tests
+    "*.c",          # C extension source (we don't compile vendored packages)
+    "*.so",         # Compiled extensions
+    "*.dylib",      # macOS shared libraries
+    "*.dll",        # Windows DLLs
+    "test/",        # Tests
     "tests/",
     "testing/",
     "example/",
