@@ -22,7 +22,7 @@ except ImportError:
         minsn_t = minsn_t
     ida_hexrays = _MockIDAHexrays()
 
-from d810.conf.loggers import getLogger
+from d810.core import getLogger
 from d810.errors import D810Z3Exception
 from d810.expr.ast import AstLeaf, AstNode, minsn_to_ast, mop_to_ast
 from d810.hexrays.hexrays_formatters import (
