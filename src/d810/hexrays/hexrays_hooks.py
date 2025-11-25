@@ -97,9 +97,10 @@ class InstructionOptimizerManager(optinsn_t):
         Z3Optimizer: type[Z3Optimizer] = InstructionOptimizer.get("Z3Optimizer")
 
         # Load verifiable rules from RULE_REGISTRY and inject into PatternOptimizer
+        # RULE_REGISTRY stores rule CLASSES - instantiate them now that IDA is available
         try:
             from d810.mba.rules import RULE_REGISTRY
-            verifiable_rules = list(RULE_REGISTRY)
+            verifiable_rules = RULE_REGISTRY.instantiate_all()
         except ImportError:
             verifiable_rules = []
 

@@ -37,6 +37,7 @@ from d810.mba.verifier import (
     verify_transformation,
 )
 from d810.mba.rules import (
+    RuleRegistry,
     SymbolicRule,
     VerifiableRule,
     RULE_REGISTRY,
@@ -72,6 +73,7 @@ __all__ = [
     "verify_transformation",
 
     # Rules
+    "RuleRegistry",
     "SymbolicRule",
     "VerifiableRule",
     "RULE_REGISTRY",
