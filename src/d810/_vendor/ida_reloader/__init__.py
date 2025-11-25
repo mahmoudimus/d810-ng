@@ -10,6 +10,7 @@ from . import ida_reloader as _ida_reloader
 __version__ = _ida_reloader.__version__
 DependencyGraph = _ida_reloader.DependencyGraph
 Reloader = _ida_reloader.Reloader
+Scanner = _ida_reloader.Scanner
 reload_package = _ida_reloader.reload_package
 Plugin = _ida_reloader.Plugin
 LateInitPlugin = _ida_reloader.LateInitPlugin
@@ -19,6 +20,7 @@ __all__ = [
     "__version__",
     "DependencyGraph",
     "Reloader",
+    "Scanner",
     "reload_package",
     "Plugin",
     "LateInitPlugin",

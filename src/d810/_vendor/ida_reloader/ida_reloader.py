@@ -468,7 +468,7 @@ class DependencyGraph:
             del self._reverse_dependencies[module_name]
 
 
-class _Scanner:
+class Scanner:
     """Module scanner that loads and discovers all modules in a package."""
 
     @classmethod
@@ -566,7 +566,7 @@ def _reload_package_with_graph(
         if file_path := getattr(module, "__file__", None):
             dg.update_dependencies(file_path, module.__name__)
 
-    _Scanner.scan(
+    Scanner.scan(
         pkg_path,
         base_package + ".",
         callback=update_deps,
@@ -713,7 +713,7 @@ class Reloader:
         self.priority = tuple(priority_prefixes)
         self.suppress = suppress_errors
         self._dg = DependencyGraph(base_package + ".")
-        self._scanner = _Scanner
+        self._scanner = Scanner
 
     def scan(self):
         """Scan all modules in the package and update dependency graph."""
