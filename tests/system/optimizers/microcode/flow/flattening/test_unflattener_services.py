@@ -13,9 +13,7 @@ Key improvements:
 """
 
 import logging
-from unittest.mock import Mock, call
-
-import pytest
+from unittest.mock import Mock
 
 from d810.optimizers.core import OptimizationContext
 from d810.optimizers.microcode.flow.flattening.services import (
@@ -80,7 +78,9 @@ class TestUnflattenerRuleComposition:
         mock_patcher = Mock(spec=CFGPatcher)
 
         # Create a mock dispatcher
-        mock_dispatcher_entry = Mock(serial=10, predset=[5])  # One predecessor at serial 5
+        mock_dispatcher_entry = Mock(
+            serial=10, predset=[5]
+        )  # One predecessor at serial 5
         mock_dispatcher = Dispatcher(
             entry_block=mock_dispatcher_entry,
             state_variable=Mock(),
@@ -201,7 +201,9 @@ class TestUnflattenerRuleComposition:
         # Assert: Only one predecessor was successfully unflattened
         assert changes == 1
         assert mock_emulator.resolve_target.call_count == 2
-        assert mock_patcher.redirect_edge.call_count == 1  # Only called for successful resolution
+        assert (
+            mock_patcher.redirect_edge.call_count == 1
+        )  # Only called for successful resolution
 
 
 class TestCompositionBenefits:
