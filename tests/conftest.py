@@ -236,6 +236,25 @@ class CodeComparator:
     def _normalize_spelling(self, spelling: str) -> str:
         return spelling.strip()
 
+    def _get_literal_value(self, cursor: Cursor) -> str | None:
+        """Extract the literal value from a cursor using its tokens."""
+        # Literal kinds that need token-based value extraction
+        literal_kinds = (
+            CursorKind.INTEGER_LITERAL,
+            CursorKind.FLOATING_LITERAL,
+            CursorKind.CHARACTER_LITERAL,
+            CursorKind.STRING_LITERAL,
+        )
+        if cursor.kind not in literal_kinds:
+            return None
+        try:
+            tokens = list(cursor.get_tokens())
+            if tokens:
+                return tokens[0].spelling
+        except Exception:
+            pass
+        return None
+
     def _cursors_equal(
         self, c1: Cursor, c2: Cursor, ignore_comments: bool = True
     ) -> bool:
@@ -249,6 +268,14 @@ class CodeComparator:
         if c1.kind != c2.kind:
             logger.debug("Kind mismatch: %s vs %s", c1.kind, c2.kind)
             return False
+
+        # Compare literal values using tokens (spelling is empty for literals)
+        lit1 = self._get_literal_value(c1)
+        lit2 = self._get_literal_value(c2)
+        if lit1 is not None or lit2 is not None:
+            if lit1 != lit2:
+                logger.debug("Literal value mismatch: '%s' vs '%s'", lit1, lit2)
+                return False
 
         spell1 = self._normalize_spelling(c1.spelling)
         spell2 = self._normalize_spelling(c2.spelling)
