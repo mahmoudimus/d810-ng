@@ -6,9 +6,8 @@ import typing
 
 import ida_hexrays
 
-from d810 import typing
-from d810.conf.loggers import getLogger
-from d810.expr import utils
+from d810.core import typing
+from d810.core import getLogger
 from d810.hexrays.hexrays_formatters import format_mop_t, opcode_to_string, sanitize_ea
 from d810.hexrays.hexrays_helpers import AND_TABLE  # already maps size→mask
 from d810.hexrays.hexrays_helpers import extract_literal_from_mop, is_rotate_helper_call

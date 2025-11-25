@@ -13,8 +13,8 @@ function-wide and therefore safe at control-flow merge points.
 """
 import ida_hexrays
 
-from d810 import typing
-from d810.conf.loggers import getLogger
+from d810.core import typing
+from d810.core import getLogger
 from d810.hexrays.cfg_utils import (
     extract_base_and_offset,
     get_stack_var_name,

@@ -5,7 +5,7 @@ import typing
 
 from ida_hexrays import *
 
-from d810.conf.loggers import getLogger
+from d810.core import getLogger
 from d810.expr.ast import AstBase, AstNode, minsn_to_ast
 from d810.hexrays.hexrays_formatters import format_minsn_t
 from d810.optimizers.microcode.instructions.handler import (
@@ -18,7 +18,7 @@ optimizer_logger = getLogger("D810.optimizer")
 pattern_search_logger = getLogger("D810.pattern_search")
 
 if typing.TYPE_CHECKING:
-    from d810.stats import OptimizationStatistics
+    from d810.core import OptimizationStatistics
 
 
 class PatternMatchingRule(GenericPatternRule):
@@ -249,7 +249,13 @@ class PatternOptimizer(InstructionOptimizer):
 
     RULE_CLASSES = [PatternMatchingRule]
 
-    def __init__(self, maturities, stats: "OptimizationStatistics", log_dir=None):
+    def __init__(
+        self,
+        maturities,
+        stats: "OptimizationStatistics",
+        log_dir=None,
+        verifiable_rules: list | None = None,
+    ):
         super().__init__(maturities, stats, log_dir=log_dir)
         self.pattern_storage = PatternStorage(depth=1)
         # Fast-path filter: restrict AST building to instructions whose opcode
@@ -258,10 +264,53 @@ class PatternOptimizer(InstructionOptimizer):
         # incompatible instructions.
         self._allowed_root_opcodes: set[int] = set()
 
+        # Register verifiable rules passed at construction time.
+        # These rules (from RULE_REGISTRY) implement check_pattern_and_replace
+        # and pattern_candidates, bypassing the normal RULE_CLASSES check.
+        if verifiable_rules:
+            for rule in verifiable_rules:
+                self._add_rule_internal(rule)
+
+    def _add_rule_internal(self, rule) -> bool:
+        """Add a rule to this optimizer (internal helper).
+
+        This method adds the rule and registers its patterns without
+        performing any type checking. Used for both traditional rules
+        (after RULE_CLASSES check) and verifiable rules (injected at init).
+        """
+        if optimizer_logger.debug_on:
+            optimizer_logger.debug("Adding rule %s", rule.name)
+        if len(rule.maturities) == 0:
+            rule.maturities = self.maturities
+        self.rules.add(rule)
+
+        # Register patterns if the rule has them
+        if not hasattr(rule, 'pattern_candidates'):
+            return True
+        for pattern in rule.pattern_candidates:
+            if optimizer_logger.debug_on:
+                optimizer_logger.debug(
+                    "[PatternOptimizer] Adding pattern: %s",
+                    str(pattern),
+                )
+            self.pattern_storage.add_pattern_for_rule(pattern, rule)
+            # Collect root opcode for quick opcode pre-filtering
+            try:
+                if isinstance(pattern, AstNode) and pattern.opcode is not None:
+                    self._allowed_root_opcodes.add(int(pattern.opcode))
+            except Exception:
+                pass
+        return True
+
     def add_rule(self, rule: PatternMatchingRule):
+        """Add a traditional PatternMatchingRule to this optimizer."""
+        # Only accept rules that inherit from RULE_CLASSES
         is_ok = super().add_rule(rule)
         if not is_ok:
             return False
+        # Register patterns (rule already added to self.rules by super())
+        if not hasattr(rule, 'pattern_candidates'):
+            return True
         for pattern in rule.pattern_candidates:
             if optimizer_logger.debug_on:
                 optimizer_logger.debug(
@@ -269,14 +318,10 @@ class PatternOptimizer(InstructionOptimizer):
                     str(pattern),
                 )
             self.pattern_storage.add_pattern_for_rule(pattern, rule)
-            # Collect root opcode for quick opcode pre-filtering
             try:
-                # Only AstNode instances have an opcode. Guarding with isinstance
-                # keeps static type-checkers happy.
                 if isinstance(pattern, AstNode) and pattern.opcode is not None:
                     self._allowed_root_opcodes.add(int(pattern.opcode))
             except Exception:
-                # Be permissive: failure to extract opcode just means we won't pre-filter it
                 pass
         return True
 
@@ -340,8 +385,11 @@ class PatternOptimizer(InstructionOptimizer):
                             format_minsn_t(new_ins),
                         )
                     if self.stats is not None:
-                        self.stats.record_instruction_rule_match(
-                            rule_name=rule_pattern_info.rule.name
+                        # Use new API with actual rule object
+                        self.stats.record_rule_fired(
+                            rule=rule_pattern_info.rule,
+                            optimizer=self.name,
+                            maturity=self.cur_maturity,
                         )
 
                     return new_ins

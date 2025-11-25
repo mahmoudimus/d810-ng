@@ -13,7 +13,7 @@ All rules are verified using Z3 SMT solver.
 
 from d810.hexrays.hexrays_helpers import AND_TABLE
 from d810.mba.dsl import Var, Const, DynamicConst, when
-from d810.optimizers.rules import VerifiableRule
+from d810.mba.rules import VerifiableRule
 
 # Define variables for pattern matching
 x, y, z = Var("x_0"), Var("x_1"), Var("x_2")

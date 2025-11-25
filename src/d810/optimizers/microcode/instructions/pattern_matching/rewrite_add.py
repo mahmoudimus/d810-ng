@@ -13,7 +13,7 @@ All rules are mathematically proven correct by Z3 SMT solver.
 """
 
 from d810.mba.dsl import Var, Const, NEGATIVE_ONE, NEGATIVE_TWO
-from d810.optimizers.rules import VerifiableRule
+from d810.mba.rules import VerifiableRule
 
 # Create symbolic variables
 x, y, z = Var("x"), Var("y"), Var("z")

@@ -12,7 +12,7 @@ Rules are organized by category:
 """
 
 from d810.mba.dsl import Var, Const, when, NEGATIVE_ONE
-from d810.optimizers.rules import VerifiableRule
+from d810.mba.rules import VerifiableRule
 
 # Define variables for pattern matching
 x, y = Var("x_0"), Var("x_1")
@@ -56,7 +56,7 @@ class Bnot_HackersDelightRule_2(VerifiableRule):
     REFERENCE = "Hacker's Delight"
 
 
-class Bnot_MBA_1(VerifiableRule):
+class Bnot_MbaRule_1(VerifiableRule):
     """Simplify: (x - 1) - 2*x => ~x
 
     This is an MBA (Mixed Boolean-Arithmetic) obfuscation pattern.
@@ -297,7 +297,7 @@ class BnotAnd_FactorRule_4(VerifiableRule):
     REFERENCE = "Factoring with NOT"
 
 
-class BnotAdd_MBA_1(VerifiableRule):
+class BnotAdd_MbaRule_1(VerifiableRule):
     """Simplify: (x ^ ~y) - 2*(x & y) => ~(x + y)
 
     This is an MBA obfuscation of NOT(x + y).

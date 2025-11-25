@@ -6,9 +6,9 @@ subtraction operations, primarily from Hacker's Delight identities and MBA patte
 All rules are verified using Z3 SMT solver.
 """
 
-from d810.mba.constants import SUB_TABLE
+from d810.core.bits import SUB_TABLE
 from d810.mba.dsl import Var, Const, when
-from d810.optimizers.rules import VerifiableRule
+from d810.mba.rules import VerifiableRule
 
 # Define variables for pattern matching
 x, y = Var("x_0"), Var("x_1")
@@ -105,7 +105,7 @@ class Sub_HackersDelightRule_4(VerifiableRule):
 # ============================================================================
 
 
-class Sub1_Factor1(VerifiableRule):
+class Sub1_FactorRule_1(VerifiableRule):
     """Simplify: (-x - 1) - (c_minus_2 * x) => x - 1
 
     where c_minus_2 is exactly -2 for the operand size.
@@ -126,7 +126,7 @@ class Sub1_Factor1(VerifiableRule):
     REFERENCE = "Constant validation with SUB_TABLE"
 
 
-class Sub1_Factor2(VerifiableRule):
+class Sub1_FactorRule_2(VerifiableRule):
     """Simplify: 2*x + ~x => x - 1
 
     Proof:
@@ -141,7 +141,7 @@ class Sub1_Factor2(VerifiableRule):
     REFERENCE = "Two's complement algebra"
 
 
-class Sub1Add_HackersDelight1(VerifiableRule):
+class Sub1Add_HackersDelightRule_1(VerifiableRule):
     """Simplify: 2*(x | y) + (x ^ ~y) => (x + y) - 1 (with bnot verification)
 
     Requires verification that bnot_y == ~y.
@@ -159,7 +159,7 @@ class Sub1Add_HackersDelight1(VerifiableRule):
     REFERENCE = "Hacker's Delight MBA with bnot verification"
 
 
-class Sub1And_HackersDelight1(VerifiableRule):
+class Sub1And_HackersDelightRule_1(VerifiableRule):
     """Simplify: (x | ~y) + y => (x & y) - 1 (with bnot verification)
 
     Requires verification that bnot_y == ~y.
@@ -180,7 +180,7 @@ class Sub1And_HackersDelight1(VerifiableRule):
     REFERENCE = "Hacker's Delight with bnot verification"
 
 
-class Sub1Or_MBA1(VerifiableRule):
+class Sub1Or_MbaRule_1(VerifiableRule):
     """Simplify: (x + y) + ~(x & y) => (x | y) - 1
 
     MBA obfuscation pattern.
@@ -199,7 +199,7 @@ class Sub1Or_MBA1(VerifiableRule):
     REFERENCE = "MBA OR obfuscation"
 
 
-class Sub1And1_MBA1(VerifiableRule):
+class Sub1And1_MbaRule_1(VerifiableRule):
     """Simplify: (~x | 1) + x => (x & 1) - 1
 
     MBA pattern producing (x & 1) - 1.

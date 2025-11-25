@@ -13,7 +13,7 @@ All rules are mathematically proven correct by Z3 SMT solver.
 """
 
 from d810.mba.dsl import Var, Const, DynamicConst, when
-from d810.optimizers.rules import VerifiableRule
+from d810.mba.rules import VerifiableRule
 
 # Create symbolic variables
 x, y, z = Var("x_0"), Var("x_1"), Var("x_2")
@@ -77,7 +77,7 @@ class And_HackersDelightRule_4(VerifiableRule):
     REFERENCE = "Hacker's Delight, OR-XOR identity"
 
 
-class And_OLLVM_1(VerifiableRule):
+class And_OllvmRule_1(VerifiableRule):
     """Simplify: (x | y) & ~(x ^ y) => x & y
 
     Proof:
@@ -96,7 +96,7 @@ class And_OLLVM_1(VerifiableRule):
     REFERENCE = "OLLVM obfuscation, pattern 1"
 
 
-class And_OLLVM_3(VerifiableRule):
+class And_OllvmRule_3(VerifiableRule):
     """Simplify: (x & y) & ~(x ^ y) => x & y
 
     This is a trivial identity: (x & y) & anything_that_includes_(x & y) => x & y
@@ -299,7 +299,7 @@ class And_HackersDelightRule_2(VerifiableRule):
     REFERENCE = "Hacker's Delight with bnot constraint"
 
 
-class And_OLLVM_2(VerifiableRule):
+class And_OllvmRule_2(VerifiableRule):
     """Simplify: (x | y) & (x ^ ~y) => x & y (when ~y is verified)
 
     OLLVM obfuscation pattern requiring verification of bitwise NOT.
@@ -363,7 +363,7 @@ class AndBnot_FactorRule_4(VerifiableRule):
     REFERENCE = "Complex factoring with bnot constraint"
 
 
-class And1_MBA1(VerifiableRule):
+class And1_MbaRule_1(VerifiableRule):
     """Simplify: (x * x) & 3 => x & 1
 
     MBA (Mixed Boolean-Arithmetic) pattern where squaring modulo 4

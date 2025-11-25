@@ -7,9 +7,9 @@ and identities from Hacker's Delight.
 All rules are verified using Z3 SMT solver.
 """
 
-from d810.mba.constants import SUB_TABLE
+from d810.core.bits import SUB_TABLE
 from d810.mba.dsl import Var, Const, when
-from d810.optimizers.rules import VerifiableRule
+from d810.mba.rules import VerifiableRule
 
 # Define variables for pattern matching
 x, y, z = Var("x_0"), Var("x_1"), Var("x_2")

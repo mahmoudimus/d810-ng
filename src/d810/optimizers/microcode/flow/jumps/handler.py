@@ -2,7 +2,7 @@ from typing import Union
 
 from ida_hexrays import *
 
-from d810.conf.loggers import getLogger
+from d810.core import getLogger
 from d810.expr.ast import AstNode, mop_to_ast
 from d810.hexrays.cfg_utils import (
     change_2way_block_conditional_successor,
@@ -18,7 +18,7 @@ from d810.optimizers.microcode.flow.handler import FlowOptimizationRule
 from d810.optimizers.microcode.instructions.pattern_matching.handler import (
     ast_generator,
 )
-from d810.registry import Registrant
+from d810.core import Registrant
 
 logger = getLogger("D810.branch_fixer")
 optimizer_logger = getLogger("D810.optimizer")

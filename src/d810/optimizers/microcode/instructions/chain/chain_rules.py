@@ -2,11 +2,10 @@ from functools import reduce
 
 from ida_hexrays import *
 
-from d810.conf.loggers import getLogger
+from d810.core import getLogger
 from d810.hexrays.hexrays_formatters import format_minsn_t
+from d810.core.bits import AND_TABLE, SUB_TABLE
 from d810.hexrays.hexrays_helpers import (
-    AND_TABLE,
-    SUB_TABLE,
     equal_bnot_mop,
     equal_mops_ignore_size,
 )

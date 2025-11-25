@@ -1,16 +1,14 @@
 from __future__ import annotations
 
 import functools
-import typing
 
 import ida_hexrays
 
-from d810 import typing
-from d810.cache import CacheImpl
-from d810.conf.loggers import getLogger
-from d810.expr import utils
+from d810.core import typing
+from d810.core import CacheImpl
+from d810.core import getLogger
+from d810.core.bits import get_parity_flag
 from d810.expr.ast import AstBase, AstLeaf, AstNode, mop_to_ast
-from d810.expr.utils import get_parity_flag
 from d810.hexrays.hexrays_formatters import (  # noqa: F401 - debug only
     format_mop_t,
     mop_type_to_string,

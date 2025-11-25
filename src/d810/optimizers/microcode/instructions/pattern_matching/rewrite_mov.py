@@ -9,7 +9,7 @@ All rules are verified using Z3 SMT solver.
 """
 
 from d810.mba.dsl import Var, when
-from d810.optimizers.rules import VerifiableRule
+from d810.mba.rules import VerifiableRule
 
 # Define variables for pattern matching
 x, y = Var("x_0"), Var("x_1")
@@ -21,7 +21,7 @@ bnot_y = Var("bnot_x_1")
 # ============================================================================
 
 
-class GetIdent_1(VerifiableRule):
+class GetIdentRule1(VerifiableRule):
     """Simplify: (x & y) + (x & ~y) => x (with bnot verification)
 
     Boolean identity: x distributed over (y + ~y) = x * 1 = x.
@@ -46,7 +46,7 @@ class GetIdent_1(VerifiableRule):
     REFERENCE = "Boolean algebra distributive identity"
 
 
-class GetIdent_2(VerifiableRule):
+class GetIdentRule2(VerifiableRule):
     """Simplify: (x & y) ^ (x & ~y) => x (with bnot verification)
 
     Boolean identity using XOR instead of addition.
@@ -68,7 +68,7 @@ class GetIdent_2(VerifiableRule):
     REFERENCE = "Boolean algebra XOR identity"
 
 
-class GetIdent_3(VerifiableRule):
+class GetIdentRule3(VerifiableRule):
     """Simplify: x & (x | y) => x
 
     Absorption law from Boolean algebra.

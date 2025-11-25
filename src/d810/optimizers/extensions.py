@@ -10,7 +10,7 @@ but not IDA's internals.
 Example usage:
     ```python
     from d810.mba.dsl import Var, Const
-    from d810.optimizers.rules import VerifiableRule
+    from d810.mba.rules import VerifiableRule
     from d810.optimizers.extensions import when, context
 
     class FixHighMov(VerifiableRule):
