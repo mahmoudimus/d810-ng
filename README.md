@@ -564,16 +564,68 @@ Then import your module in `tests/unit/optimizers/test_verifiable_rules.py`:
 import d810.optimizers.microcode.instructions.pattern_matching.rewrite_add
 ```
 
-### Automatic Verification
+### Unit Testing Without IDA (TDD Workflow)
 
-**Every rule is automatically verified with Z3!** The test suite proves mathematical correctness:
+**New!** Rules can now be developed and verified **without IDA Pro** using the pure DSL and Z3:
 
 ```bash
-# Test all 170 verified rules (takes ~12 seconds)
-pytest tests/unit/optimizers/test_verifiable_rules.py -v
+# Run all MBA unit tests (no IDA required!) - ~0.4 seconds
+PYTHONPATH="src" python -m pytest tests/unit/mba/ -v
+
+# Test specific rule verification
+PYTHONPATH="src" python -m pytest tests/unit/mba/test_verifiable_rules.py -v
+```
+
+**TDD Workflow for New Rules:**
+
+1. **Define your rule** in `tests/unit/mba/test_verifiable_rules.py` using pure DSL:
+
+```python
+from d810.mba.dsl import Var, Const, ONE, ZERO
+from d810.mba.rules import VerifiableRule
+
+x, y = Var("x"), Var("y")
+
+class MyNewRule(VerifiableRule):
+    """Simplify: (x | y) ^ (x & y) => x ^ y"""
+    DESCRIPTION = "XOR identity using OR and AND"
+    PATTERN = (x | y) ^ (x & y)
+    REPLACEMENT = x ^ y
+```
+
+2. **Add to local registry** at the bottom of the test file:
+
+```python
+LOCAL_RULE_REGISTRY = [
+    # ... existing rules ...
+    MyNewRule,
+]
+```
+
+3. **Run verification** (no IDA needed!):
+
+```bash
+PYTHONPATH="src" python -m pytest tests/unit/mba/test_verifiable_rules.py::test_rule_is_correct[MyNewRule] -v
+```
+
+4. **If verification passes**, copy your rule to the appropriate `rewrite_*.py` file for IDA integration.
+
+**Benefits of Unit Testing:**
+- ⚡ **Fast feedback** - 49 rules verified in 0.4 seconds (vs ~12s with IDA)
+- 🔓 **No license needed** - CI can run without IDA Pro
+- 🧪 **True TDD** - Verify mathematical correctness before IDA integration
+- 📦 **Isolated testing** - Test rules independently of IDA's microcode
+
+### Automatic Verification (With IDA)
+
+**Every rule is automatically verified with Z3!** The system test suite proves mathematical correctness:
+
+```bash
+# Test all 170 verified rules (requires IDA, takes ~12 seconds)
+pytest tests/system/optimizers/test_verifiable_rules.py -v
 
 # Test a specific rule
-pytest tests/unit/optimizers/test_verifiable_rules.py::TestVerifiableRules::test_rule_is_correct[MySimpleRule] -v
+pytest tests/system/optimizers/test_verifiable_rules.py::test_rule_is_correct[MySimpleRule] -v
 ```
 
 **How verification works:**
