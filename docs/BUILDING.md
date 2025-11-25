@@ -25,7 +25,7 @@ The plugin works out-of-the-box without building Cython extensions:
 pip install -e .
 ```
 
-The `CythonMode` class automatically detects if Cython extensions are available and falls back to pure Python implementations in `_slow_ast.py`.
+The `CythonMode` class automatically detects if Cython extensions are available and falls back to pure Python implementations in `pure_python_ast.py`.
 
 #### 2. Cython Extensions (Performance Build)
 
@@ -105,7 +105,7 @@ The distribution includes:
 - **Source files**: `.pyx`, `.pxd` files for Cython
 - **Headers**: `.h`, `.hpp` files from `include/`
 - **Cythonized C**: `.c`, `.cpp` intermediate files (sdist only)
-- **Pure Python fallback**: `_slow_ast.py`
+- **Pure Python fallback**: `pure_python_ast.py`
 
 ### Installation Options
 
@@ -173,7 +173,7 @@ src/d810/
 ├── expr/
 │   ├── ast.py              # Dispatcher (Cython or Python)
 │   ├── _ast.pyx            # Cython implementation
-│   ├── _slow_ast.py        # Pure Python fallback
+│   ├── pure_python_ast.py        # Pure Python fallback
 │   ├── ast.pxd             # Cython header
 │   └── _ast_evaluate.pyx   # Fast AST evaluator
 ├── cythxr/
@@ -192,7 +192,7 @@ src/d810/
 
 1. `ast.py` checks `CythonMode().is_enabled()`
 2. If Cython available: imports from `_ast.pyx`
-3. If not available: imports from `_slow_ast.py`
+3. If not available: imports from `pure_python_ast.py`
 4. No code changes needed - transparent fallback
 
 ## Platform-Specific Notes

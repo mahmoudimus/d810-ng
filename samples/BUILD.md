@@ -34,6 +34,7 @@ Output: `bins/libobfuscated.dll`
 ### Option 1: Visual Studio (MSVC) - Recommended
 
 **Prerequisites:**
+
 - Visual Studio 2019 or later (Community Edition works)
 - "Desktop development with C++" workload
 
@@ -42,6 +43,7 @@ Output: `bins/libobfuscated.dll`
 1. Open **Developer Command Prompt for VS** (or **x64 Native Tools Command Prompt**)
 
 2. Build:
+
    ```cmd
    cd samples
    nmake clean
@@ -49,11 +51,13 @@ Output: `bins/libobfuscated.dll`
    ```
 
 3. Verify exports:
+
    ```cmd
    dumpbin /EXPORTS bins\libobfuscated.dll
    ```
 
 You should see:
+
 ```
 ordinal hint RVA      name
       1    0 00001000 test_and
@@ -67,6 +71,7 @@ ordinal hint RVA      name
 ### Option 2: MinGW-w64 (GCC)
 
 **Prerequisites:**
+
 - MinGW-w64 ([download](https://winlibs.com/) or install via MSYS2/Cygwin)
 - Make for Windows
 
@@ -75,6 +80,7 @@ ordinal hint RVA      name
 1. Add MinGW to PATH or use MSYS2 shell
 
 2. Build:
+
    ```bash
    cd samples
    make clean
@@ -82,6 +88,7 @@ ordinal hint RVA      name
    ```
 
 3. Verify:
+
    ```bash
    objdump -p bins/libobfuscated.dll | grep "test_"
    ```
@@ -91,12 +98,14 @@ ordinal hint RVA      name
 ### Option 3: Clang (LLVM)
 
 **Prerequisites:**
+
 - LLVM for Windows ([download](https://releases.llvm.org/))
 - Make for Windows
 
 **Steps:**
 
 1. Build:
+
    ```bash
    cd samples
    make clean
@@ -116,6 +125,7 @@ TARGET_OS=native make
 ```
 
 This creates:
+
 - **Linux**: `bins/libobfuscated.so`
 - **macOS**: `bins/libobfuscated.dylib`
 
@@ -128,6 +138,7 @@ Note: Tests expect the Windows DLL, so this is mainly for development/testing.
 ### "nmake: command not found"
 
 You're not in a Visual Studio Developer Command Prompt. Either:
+
 - Use **Start Menu → Visual Studio → Developer Command Prompt**
 - Or use `make` instead of `nmake` (requires MinGW/Git Bash)
 
@@ -142,6 +153,7 @@ Install MinGW-w64 or use MSVC instead.
 ### Build succeeds but tests still fail
 
 1. Verify exports:
+
    ```cmd
    dumpbin /EXPORTS bins\libobfuscated.dll | findstr test_
    ```
@@ -176,6 +188,7 @@ The updated Makefile now:
 1. **Verify the DLL** has proper exports (see commands above)
 
 2. **Commit the rebuilt DLL:**
+
    ```bash
    git add samples/bins/libobfuscated.dll
    git commit -m "rebuild: add function name exports to libobfuscated.dll"

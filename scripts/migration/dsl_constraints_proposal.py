@@ -6,7 +6,7 @@ using the existing DSL operator overloading.
 """
 
 from d810.optimizers.dsl import Var, Const, when
-from d810.optimizers.rules import VerifiableRule
+from d810.mba.rules import VerifiableRule
 
 x, y, z = Var("x"), Var("y"), Var("z")
 ONE = Const("ONE", 1)

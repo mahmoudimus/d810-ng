@@ -139,7 +139,7 @@ if not IDA_SDK.exists():
 
 include_dirs = [
     IDA_SDK / "include",
-    pathlib.Path(__file__).parent / "include",
+    pathlib.Path(__file__).parent / "src" / "include",
 ]
 library_dirs = [
     IDA_SDK / "lib",
