@@ -12,7 +12,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Dict, Protocol
 
-from ida_hexrays import mba_t, mblock_t, minsn_t
+import ida_hexrays
 
 
 @dataclass(frozen=True)
@@ -30,7 +30,7 @@ class OptimizationContext:
         logger: Logger instance for the optimization pass.
         log_dir: Directory path for debug logs and artifacts.
     """
-    mba: mba_t
+    mba: ida_hexrays.mba_t
     maturity: int
     config: Dict[str, Any]
     logger: logging.Logger
@@ -124,7 +124,7 @@ class PatternMatchingRule(abc.ABC):
         """
         ...
 
-    def apply(self, context: OptimizationContext, ins: minsn_t) -> int:
+    def apply(self, context: OptimizationContext, ins: ida_hexrays.minsn_t) -> int:
         """Applies the pattern matching rule to a single instruction.
 
         This method implements the common pattern matching and replacement logic

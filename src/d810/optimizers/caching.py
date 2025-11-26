@@ -36,19 +36,15 @@ import hashlib
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-from ida_hexrays import mba_t, mblock_t
+import ida_hexrays
 
-from d810.core import getLogger
+from d810.core import MOP_CONSTANT_CACHE, MOP_TO_AST_CACHE, getLogger
 from d810.core.persistence import (
     CachedResult,
     FunctionFingerprint,
     FunctionRuleConfig,
     OptimizationStorage,
 )
-
-# Re-export MOP caches from d810.core for backwards compatibility.
-# These were moved to d810.core to break circular imports with d810.expr.p_ast.
-from d810.core import MOP_CONSTANT_CACHE, MOP_TO_AST_CACHE
 
 logger = getLogger("D810.caching")
 
@@ -93,9 +89,7 @@ class OptimizationCache:
         return self._storage.db_path
 
     def compute_function_fingerprint(
-        self,
-        mba: mba_t,
-        function_addr: Optional[int] = None
+        self, mba: ida_hexrays.mba_t, function_addr: Optional[int] = None
     ) -> FunctionFingerprint:
         """Compute a fingerprint for a function using IDA's microcode.
 
@@ -112,7 +106,7 @@ class OptimizationCache:
         """
         # Build fingerprint data from microcode structure
         # In a real implementation, you might also hash the actual bytes
-        function_data = f"{mba.qty}:{mba.maturity}".encode('utf-8')
+        function_data = f"{mba.qty}:{mba.maturity}".encode("utf-8")
         bytes_hash = hashlib.sha256(function_data).hexdigest()
 
         # Count instructions across all blocks
@@ -127,17 +121,17 @@ class OptimizationCache:
 
         # Try to get function address from mba if not provided
         if function_addr is None:
-            function_addr = getattr(mba, 'entry_ea', 0)
+            function_addr = getattr(mba, "entry_ea", 0)
 
         return FunctionFingerprint(
             address=function_addr,
             size=0,  # TODO: Get from IDA's function info
             bytes_hash=bytes_hash,
             block_count=mba.qty,
-            instruction_count=instruction_count
+            instruction_count=instruction_count,
         )
 
-    def has_valid_cache(self, function_addr: int, mba: mba_t) -> bool:
+    def has_valid_cache(self, function_addr: int, mba: ida_hexrays.mba_t) -> bool:
         """Check if we have a valid cache entry for a function.
 
         Validates that the cached fingerprint matches the current function.
@@ -155,10 +149,10 @@ class OptimizationCache:
     def save_optimization_result(
         self,
         function_addr: int,
-        mba: mba_t,
+        mba: ida_hexrays.mba_t,
         maturity: int,
         changes: int,
-        patches: List[Dict[str, Any]]
+        patches: List[Dict[str, Any]],
     ) -> None:
         """Save optimization result to cache.
 
@@ -175,13 +169,11 @@ class OptimizationCache:
             fingerprint=fingerprint,
             maturity=maturity,
             changes=changes,
-            patches=patches
+            patches=patches,
         )
 
     def load_optimization_result(
-        self,
-        function_addr: int,
-        maturity: int
+        self, function_addr: int, maturity: int
     ) -> Optional[CachedResult]:
         """Load cached optimization result.
 
@@ -199,7 +191,7 @@ class OptimizationCache:
         function_addr: int,
         enabled_rules: Optional[Set[str]] = None,
         disabled_rules: Optional[Set[str]] = None,
-        notes: str = ""
+        notes: str = "",
     ) -> None:
         """Configure which rules should run on a specific function.
 
@@ -213,7 +205,7 @@ class OptimizationCache:
             function_addr=function_addr,
             enabled_rules=enabled_rules,
             disabled_rules=disabled_rules,
-            notes=notes
+            notes=notes,
         )
 
     def get_function_rules(self, function_addr: int) -> Optional[FunctionRuleConfig]:
