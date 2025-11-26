@@ -1,47 +1,74 @@
-"""Z3 backend for MBA expression verification and equivalence checking.
+"""Z3 backend for pure SymbolicExpression verification.
 
-This module provides two types of functionality:
+WARNING: This module must remain IDA-INDEPENDENT. Do not add imports from:
+    - ida_hexrays, idaapi, idautils, idc
+    - d810.expr.ast (AstNode is IDA-coupled)
+    - d810.hexrays.*
+    - d810.optimizers.*
 
-1. Pure SymbolicExpression verification (NO IDA DEPENDENCY):
-   - verify_rule() - Verify rule correctness using Z3
-   - Works with d810.mba.dsl.SymbolicExpression
+=============================================================================
+ARCHITECTURE: Two Z3 Modules in d810
+=============================================================================
 
-2. AstNode-based verification (IDA INTEGRATION):
-   - z3_prove_equivalence() - Prove AST equivalence
-   - ast_to_z3_expression() - Convert AST to Z3
-   - Requires IDA for minsn_t/mop_t conversion
+There are TWO separate Z3 utility modules in d810, serving different purposes:
 
-The pure functions can be imported and used without IDA installed.
+1. THIS FILE: d810.mba.backends.z3 (PURE - no IDA)
+   ------------------------------------------------
+   Purpose: Verify optimization rules using pure symbolic expressions.
+   Input:   d810.mba.dsl.SymbolicExpression (platform-independent DSL)
+   Use:     Unit tests, CI, TDD rule development, mathematical verification
+
+   Key exports:
+   - Z3VerificationVisitor: Converts SymbolicExpression → Z3 BitVec
+   - prove_equivalence(): Prove two SymbolicExpressions are equivalent
+   - verify_rule(): Verify a rule's PATTERN equals its REPLACEMENT
+
+   Example:
+       from d810.mba.dsl import Var
+       from d810.mba.backends.z3 import prove_equivalence
+
+       x, y = Var("x"), Var("y")
+       assert prove_equivalence((x | y) - (x & y), x ^ y)  # XOR identity
+
+2. d810.expr.z3_utils (IDA-SPECIFIC)
+   ----------------------------------
+   Purpose: Z3 verification of actual IDA microcode during deobfuscation.
+   Input:   d810.expr.ast.AstNode (wraps IDA mop_t/minsn_t)
+   Use:     Runtime verification inside IDA Pro plugin
+
+   Key exports:
+   - ast_to_z3_expression(): Converts AstNode → Z3 BitVec
+   - z3_check_mop_equality(): Check if two mop_t are equivalent
+   - z3_prove_equivalence(): Prove AstNode equivalence with mop_t context
+
+=============================================================================
+WHY TWO MODULES?
+=============================================================================
+
+The separation enables:
+1. Unit testing rules WITHOUT IDA Pro license
+2. CI/CD pipeline verification (GitHub Actions)
+3. TDD workflow: write rule → verify with Z3 → integrate with IDA
+4. Clear dependency boundaries (mba/ never imports IDA modules)
+
+The d810.mba package is designed to be reusable outside of IDA Pro entirely.
+=============================================================================
 """
 
 from __future__ import annotations
 
 import functools
 import typing
-from typing import Dict, Tuple, TYPE_CHECKING
-
-# Use platform-independent opcodes (no IDA dependency!)
-# Import as module to use qualified names in match statements
-import d810.opcodes as opc
+from typing import TYPE_CHECKING, Any, Dict
 
 from d810.core import getLogger
 from d810.errors import D810Z3Exception
 
 logger = getLogger(__name__)
-z3_file_logger = getLogger("D810.z3_test")
 
-# Type hints for IDA types (only used for type checking, not runtime)
 if TYPE_CHECKING:
-    import ida_hexrays
-    from d810.expr.ast import AstLeaf, AstNode
-
-# Check if IDA is available (for AstNode-based functions)
-try:
-    import ida_hexrays as _ida_hexrays
-    IDA_AVAILABLE = True
-except ImportError:
-    IDA_AVAILABLE = False
-    _ida_hexrays = None  # type: ignore
+    from d810.mba.dsl import SymbolicExpression
+    from d810.mba.verifier import VerificationOptions
 
 try:
     import z3
@@ -62,27 +89,6 @@ except ImportError:
     Z3_INSTALLED = False
 
 
-def _get_ida_imports():
-    """Lazily import IDA-dependent modules. Returns tuple of (ida_hexrays, AstLeaf, AstNode, etc.)."""
-    if not IDA_AVAILABLE:
-        raise ImportError("IDA is not available. AstNode-based functions require IDA.")
-    from d810.expr.ast import AstLeaf, AstNode, minsn_to_ast, mop_to_ast
-    from d810.hexrays.hexrays_formatters import format_minsn_t, format_mop_t, opcode_to_string
-    from d810.hexrays.hexrays_helpers import get_mop_index, structural_mop_hash
-    return {
-        'ida_hexrays': _ida_hexrays,
-        'AstLeaf': AstLeaf,
-        'AstNode': AstNode,
-        'minsn_to_ast': minsn_to_ast,
-        'mop_to_ast': mop_to_ast,
-        'format_minsn_t': format_minsn_t,
-        'format_mop_t': format_mop_t,
-        'opcode_to_string': opcode_to_string,
-        'get_mop_index': get_mop_index,
-        'structural_mop_hash': structural_mop_hash,
-    }
-
-
 @functools.lru_cache(maxsize=1)
 def requires_z3_installed(func: typing.Callable[..., typing.Any]):
     @functools.wraps(func)
@@ -94,403 +100,558 @@ def requires_z3_installed(func: typing.Callable[..., typing.Any]):
     return wrapper
 
 
-@requires_z3_installed
-@functools.lru_cache(maxsize=1)
-def get_solver() -> z3.Solver:
-    s = z3.Solver()
-    # Bound solver work to prevent pathological slowdowns in hot paths.
-    # 50ms per query is generally enough for our simple equalities and keeps
-    # total time bounded in large functions.
+# =============================================================================
+# Z3VerificationEngine - Implements VerificationEngine protocol
+# =============================================================================
+
+
+class Z3VerificationEngine:
+    """Z3 implementation of the VerificationEngine protocol.
+
+    This class provides Z3-based verification for MBA rules. It implements
+    the VerificationEngine protocol defined in d810.mba.verifier.
+
+    Usage:
+        >>> from d810.mba.backends.z3 import Z3VerificationEngine
+        >>> from d810.mba.dsl import Var
+        >>> engine = Z3VerificationEngine()
+        >>> x, y = Var("x"), Var("y")
+        >>> is_eq, _ = engine.prove_equivalence((x | y) - (x & y), x ^ y)
+        >>> assert is_eq
+    """
+
+    def __init__(self):
+        """Initialize the Z3 verification engine.
+
+        Raises:
+            ImportError: If Z3 is not installed.
+        """
+        if not Z3_INSTALLED:
+            raise ImportError(
+                "Z3 is not installed. Install z3-solver to use Z3VerificationEngine."
+            )
+
+    def create_variables(
+        self,
+        var_names: set[str],
+        options: "VerificationOptions | None" = None
+    ) -> Dict[str, z3.BitVecRef]:
+        """Create Z3 BitVec variables for the given names.
+
+        Args:
+            var_names: Set of variable names to create.
+            options: Verification options (uses bit_width).
+
+        Returns:
+            Dictionary mapping variable names to Z3 BitVec objects.
+        """
+        bit_width = options.bit_width if options else 32
+        return create_z3_variables(var_names, bit_width)
+
+    def prove_equivalence(
+        self,
+        pattern: "SymbolicExpression",
+        replacement: "SymbolicExpression",
+        variables: Dict[str, Any] | None = None,
+        constraints: list[Any] | None = None,
+        options: "VerificationOptions | None" = None,
+    ) -> tuple[bool, Dict[str, int] | None]:
+        """Prove that pattern is semantically equivalent to replacement using Z3.
+
+        Args:
+            pattern: The original expression.
+            replacement: The simplified expression.
+            variables: Optional pre-created Z3 variables (z3_vars).
+            constraints: Optional list of constraints.
+            options: Verification options (bit_width, timeout, etc.).
+
+        Returns:
+            Tuple of (is_equivalent, counterexample).
+        """
+        bit_width = options.bit_width if options else 32
+        timeout_ms = options.timeout_ms if options else 0
+
+        # Apply timeout if specified
+        if timeout_ms > 0:
+            z3.set_option("timeout", timeout_ms)
+
+        # Delegate to the module-level function
+        return prove_equivalence(
+            pattern,
+            replacement,
+            z3_vars=variables,
+            constraints=constraints,
+            bit_width=bit_width
+        )
+
+
+# =============================================================================
+# Z3VerificationVisitor - Converts SymbolicExpression to Z3
+# =============================================================================
+
+
+class Z3VerificationVisitor:
+    """Visitor that converts SymbolicExpression to Z3 for verification/proving.
+
+    This visitor walks a pure SymbolicExpression tree and builds equivalent
+    Z3 symbolic expressions for theorem proving. It has NO dependencies on
+    IDA Pro - it works entirely with platform-independent symbolic expressions.
+
+    Example:
+        >>> from d810.mba.dsl import Var
+        >>> x, y = Var("x"), Var("y")
+        >>> pattern = (x | y) - (x & y)  # Pure SymbolicExpression
+        >>>
+        >>> visitor = Z3VerificationVisitor()
+        >>> z3_expr = visitor.visit(pattern)  # Convert to Z3
+        >>> # z3_expr is now a z3.BitVecRef representing (x | y) - (x & y)
+    """
+
+    def __init__(self, bit_width: int = 32, var_map: dict[str, z3.BitVecRef] | None = None):
+        """Initialize the Z3 verification visitor.
+
+        Args:
+            bit_width: Bit width for Z3 BitVec variables (default 32).
+            var_map: Optional pre-created Z3 variables. If provided, the visitor
+                    will use these instead of creating new ones. Useful when you
+                    need to share variables across multiple expressions.
+        """
+        if not Z3_INSTALLED:
+            raise ImportError("Z3 is not installed. Install z3-solver to use Z3VerificationVisitor.")
+
+        self.bit_width = bit_width
+        self.var_map: dict[str, z3.BitVecRef] = var_map if var_map is not None else {}
+
+    def visit(self, expr: SymbolicExpression) -> z3.BitVecRef:
+        """Visit a SymbolicExpression and return the equivalent Z3 expression.
+
+        Args:
+            expr: The SymbolicExpression to visit.
+
+        Returns:
+            A Z3 BitVecRef representing the expression.
+
+        Raises:
+            ValueError: If the expression is None or invalid.
+        """
+        if expr is None:
+            raise ValueError("Cannot visit None expression")
+
+        if expr.is_leaf():
+            return self._visit_leaf(expr)
+
+        return self._visit_operation(expr)
+
+    def _visit_leaf(self, expr: SymbolicExpression) -> z3.BitVecRef:
+        """Visit a leaf node (variable or constant).
+
+        Args:
+            expr: The leaf SymbolicExpression.
+
+        Returns:
+            Z3 BitVec for variables, Z3 BitVecVal for concrete constants.
+        """
+        if expr.is_constant():
+            # Concrete constant like Const("ONE", 1)
+            return z3.BitVecVal(expr.value, self.bit_width)
+
+        # Variable or pattern-matching constant like Var("x") or Const("c_1")
+        if expr.name not in self.var_map:
+            self.var_map[expr.name] = z3.BitVec(expr.name, self.bit_width)
+
+        return self.var_map[expr.name]
+
+    def _visit_operation(self, expr: SymbolicExpression) -> z3.BitVecRef | z3.BoolRef:
+        """Visit an operation node (binary/unary operation).
+
+        Args:
+            expr: The operation SymbolicExpression.
+
+        Returns:
+            Z3 expression representing the operation.
+
+        Raises:
+            ValueError: If the operation is unsupported.
+        """
+        # Handle bool_to_int specially - it has a constraint instead of left/right
+        if expr.operation == "bool_to_int":
+            return self._visit_bool_to_int(expr)
+
+        # Recursively visit children
+        left = self.visit(expr.left) if expr.left else None
+        right = self.visit(expr.right) if expr.right else None
+
+        # Map operation strings to Z3 operations
+        match expr.operation:
+            # Unary operations
+            case "neg":
+                return -left
+
+            case "lnot":
+                # Logical NOT: returns 1 if operand is 0, else 0
+                return z3.If(
+                    left == z3.BitVecVal(0, self.bit_width),
+                    z3.BitVecVal(1, self.bit_width),
+                    z3.BitVecVal(0, self.bit_width),
+                )
+
+            case "bnot":
+                return ~left
+
+            # Binary arithmetic operations
+            case "add":
+                return left + right
+
+            case "sub":
+                return left - right
+
+            case "mul":
+                return left * right
+
+            case "udiv":
+                return z3.UDiv(left, right)
+
+            case "sdiv":
+                return left / right
+
+            case "umod":
+                return z3.URem(left, right)
+
+            case "smod":
+                return left % right
+
+            # Binary bitwise operations
+            case "or":
+                return left | right
+
+            case "and":
+                return left & right
+
+            case "xor":
+                return left ^ right
+
+            # Shift operations
+            case "shl":
+                return left << right
+
+            case "shr":
+                return z3.LShR(left, right)  # Logical shift right
+
+            case "sar":
+                return left >> right  # Arithmetic shift right
+
+            # Extension operations
+            case "zext":
+                # Zero-extend to target width
+                # expr.value contains target_width, left contains the expression
+                target_width = expr.value
+                if target_width > self.bit_width:
+                    # Extending beyond current bit_width - add zeros at the top
+                    extend_bits = target_width - self.bit_width
+                    return z3.ZeroExt(extend_bits, left)
+                elif target_width == self.bit_width:
+                    # Already at target width, no extension needed
+                    return left
+                else:
+                    # Target width smaller than current - this shouldn't happen in practice
+                    # but handle it by extracting the low bits
+                    return z3.Extract(target_width - 1, 0, left)
+
+            # Comparison operations (return 0 or 1)
+            case "setnz":
+                return z3.If(
+                    left != z3.BitVecVal(0, self.bit_width),
+                    z3.BitVecVal(1, self.bit_width),
+                    z3.BitVecVal(0, self.bit_width),
+                )
+
+            case "setz":
+                return z3.If(
+                    left == z3.BitVecVal(0, self.bit_width),
+                    z3.BitVecVal(1, self.bit_width),
+                    z3.BitVecVal(0, self.bit_width),
+                )
+
+            case "setae":
+                return z3.If(
+                    z3.UGE(left, right),
+                    z3.BitVecVal(1, self.bit_width),
+                    z3.BitVecVal(0, self.bit_width),
+                )
+
+            case "setb":
+                return z3.If(
+                    z3.ULT(left, right),
+                    z3.BitVecVal(1, self.bit_width),
+                    z3.BitVecVal(0, self.bit_width),
+                )
+
+            case "seta":
+                return z3.If(
+                    z3.UGT(left, right),
+                    z3.BitVecVal(1, self.bit_width),
+                    z3.BitVecVal(0, self.bit_width),
+                )
+
+            case "setbe":
+                return z3.If(
+                    z3.ULE(left, right),
+                    z3.BitVecVal(1, self.bit_width),
+                    z3.BitVecVal(0, self.bit_width),
+                )
+
+            case "setg":
+                return z3.If(
+                    left > right,
+                    z3.BitVecVal(1, self.bit_width),
+                    z3.BitVecVal(0, self.bit_width),
+                )
+
+            case "setge":
+                return z3.If(
+                    left >= right,
+                    z3.BitVecVal(1, self.bit_width),
+                    z3.BitVecVal(0, self.bit_width),
+                )
+
+            case "setl":
+                return z3.If(
+                    left < right,
+                    z3.BitVecVal(1, self.bit_width),
+                    z3.BitVecVal(0, self.bit_width),
+                )
+
+            case "setle":
+                return z3.If(
+                    left <= right,
+                    z3.BitVecVal(1, self.bit_width),
+                    z3.BitVecVal(0, self.bit_width),
+                )
+
+            case _:
+                raise ValueError(
+                    f"Unsupported operation in Z3VerificationVisitor: {expr.operation}. "
+                    f"Add support for this operation in backends/z3.py"
+                )
+
+    def _visit_bool_to_int(self, expr: SymbolicExpression) -> z3.BitVecRef:
+        """Visit a bool_to_int operation: converts ConstraintExpr to 0 or 1.
+
+        This is the bridge between boolean formulas (ConstraintExpr) and arithmetic
+        terms (SymbolicExpression). It implements the C-like behavior where comparison
+        results can be used as integers.
+
+        Args:
+            expr: SymbolicExpression with operation="bool_to_int" and constraint set.
+
+        Returns:
+            Z3 If-expression: If(constraint, 1, 0)
+
+        Example:
+            constraint = x != 0  # ConstraintExpr
+            expr = constraint.to_int()  # SymbolicExpression(operation="bool_to_int")
+            z3_expr = visitor._visit_bool_to_int(expr)  # If(x != 0, 1, 0)
+        """
+        if expr.constraint is None:
+            raise ValueError("bool_to_int operation requires a constraint")
+
+        # Convert the ConstraintExpr to a Z3 boolean
+        bool_expr = self._constraint_to_z3(expr.constraint)
+
+        # Wrap in If: returns 1 if true, 0 if false
+        return z3.If(
+            bool_expr,
+            z3.BitVecVal(1, self.bit_width),
+            z3.BitVecVal(0, self.bit_width),
+        )
+
+    def _constraint_to_z3(self, constraint) -> z3.BoolRef:
+        """Convert a ConstraintExpr to a Z3 boolean expression.
+
+        Args:
+            constraint: ConstraintExpr (EqualityConstraint, ComparisonConstraint, etc.)
+
+        Returns:
+            Z3 BoolRef representing the constraint
+
+        Raises:
+            ValueError: If constraint type is unsupported
+        """
+        from d810.mba.constraints import (
+            AndConstraint,
+            ComparisonConstraint,
+            EqualityConstraint,
+            NotConstraint,
+            OrConstraint,
+        )
+
+        if isinstance(constraint, EqualityConstraint):
+            left_z3 = self._expr_to_z3_helper(constraint.left)
+            right_z3 = self._expr_to_z3_helper(constraint.right)
+            return left_z3 == right_z3
+
+        if isinstance(constraint, ComparisonConstraint):
+            left_z3 = self._expr_to_z3_helper(constraint.left)
+            right_z3 = self._expr_to_z3_helper(constraint.right)
+
+            match constraint.op_name:
+                case "ne":
+                    return left_z3 != right_z3
+                case "lt":
+                    return z3.ULT(left_z3, right_z3)
+                case "le":
+                    return z3.ULE(left_z3, right_z3)
+                case "gt":
+                    return z3.UGT(left_z3, right_z3)
+                case "ge":
+                    return z3.UGE(left_z3, right_z3)
+                case _:
+                    raise ValueError(f"Unsupported comparison operator: {constraint.op_name}")
+
+        if isinstance(constraint, AndConstraint):
+            left_bool = self._constraint_to_z3(constraint.left)
+            right_bool = self._constraint_to_z3(constraint.right)
+            return z3.And(left_bool, right_bool)
+
+        if isinstance(constraint, OrConstraint):
+            left_bool = self._constraint_to_z3(constraint.left)
+            right_bool = self._constraint_to_z3(constraint.right)
+            return z3.Or(left_bool, right_bool)
+
+        if isinstance(constraint, NotConstraint):
+            inner_bool = self._constraint_to_z3(constraint.constraint)
+            return z3.Not(inner_bool)
+
+        raise ValueError(f"Unsupported constraint type: {type(constraint)}")
+
+    def _expr_to_z3_helper(self, expr):
+        """Helper to convert expression (SymbolicExpression or value) to Z3.
+
+        Args:
+            expr: Can be SymbolicExpression, int, or other value
+
+        Returns:
+            Z3 BitVecRef
+        """
+        from d810.mba.dsl import SymbolicExpression
+
+        if isinstance(expr, SymbolicExpression):
+            return self.visit(expr)
+
+        # Handle raw integer values (from constraint evaluation)
+        if isinstance(expr, int):
+            return z3.BitVecVal(expr, self.bit_width)
+
+        # Fallback - try to visit as SymbolicExpression
+        return self.visit(expr)
+
+    def get_variables(self) -> dict[str, z3.BitVecRef]:
+        """Get all Z3 variables created during visitation.
+
+        Returns:
+            Dictionary mapping variable names to Z3 BitVecRef objects.
+            Useful for adding constraints to the solver.
+        """
+        return self.var_map.copy()
+
+
+# =============================================================================
+# prove_equivalence - Prove two SymbolicExpressions are equivalent
+# =============================================================================
+
+
+def prove_equivalence(
+    pattern: SymbolicExpression,
+    replacement: SymbolicExpression,
+    z3_vars: dict[str, z3.BitVecRef] | None = None,
+    constraints: list[Any] | None = None,
+    bit_width: int = 32,
+) -> tuple[bool, dict[str, int] | None]:
+    """Prove that two SymbolicExpressions are semantically equivalent using Z3.
+
+    This function uses the Z3VerificationVisitor to convert both expressions
+    to Z3, then attempts to prove they are equivalent for all possible variable
+    values (subject to any constraints).
+
+    Args:
+        pattern: The first SymbolicExpression (typically the pattern to match).
+        replacement: The second SymbolicExpression (typically the replacement).
+        z3_vars: Optional pre-created Z3 variables. If provided, these will be
+                used for pattern constants and variables. If None, variables
+                will be created automatically.
+        constraints: Optional list of Z3 constraint expressions (BoolRef objects).
+                    These constraints must hold for the equivalence to be valid.
+        bit_width: Bit width for Z3 variables (default 32).
+
+    Returns:
+        A tuple of (is_equivalent, counterexample):
+        - is_equivalent: True if proven equivalent, False otherwise.
+        - counterexample: If not equivalent, a dict mapping variable names to
+                         values that demonstrate the difference. None if equivalent.
+
+    Example:
+        >>> from d810.mba.dsl import Var
+        >>> x, y = Var("x"), Var("y")
+        >>> pattern = (x | y) - (x & y)
+        >>> replacement = x ^ y
+        >>> is_equiv, _ = prove_equivalence(pattern, replacement)
+        >>> assert is_equiv  # These are mathematically equivalent
+    """
+    if not Z3_INSTALLED:
+        raise ImportError("Z3 is not installed. Install z3-solver to prove equivalence.")
+
+    # Create visitor with optional pre-created variables
+    visitor = Z3VerificationVisitor(bit_width=bit_width, var_map=z3_vars)
+
     try:
-        p = z3.ParamsRef()
-        p.set("timeout", 50)  # milliseconds
-        s.set(params=p)
-    except Exception:
-        # Older z3 versions or API quirks – ignore and keep default settings.
-        pass
-    return s
+        pattern_z3 = visitor.visit(pattern)
+        replacement_z3 = visitor.visit(replacement)
+    except Exception as e:
+        # Conversion failed - expressions are invalid or contain unsupported operations
+        return False, None
 
+    # Create solver and add constraints
+    solver = z3.Solver()
 
-@requires_z3_installed
-def create_z3_vars(leaf_list: list[AstLeaf]):
-    known_leaf_list = []
-    known_leaf_z3_var_list = []
-    for leaf in leaf_list:
-        if leaf.is_constant() or leaf.mop is None:
-            continue
-        leaf_index = get_mop_index(leaf.mop, known_leaf_list)
-        if leaf_index == -1:
-            known_leaf_list.append(leaf.mop)
-            leaf_index = len(known_leaf_list) - 1
-            if leaf.mop.size in [1, 2, 4, 8]:
-                # Normally, we should create variable based on their size
-                # but for now it can cause issue when instructions like XDU are used, hence this ugly fix
-                # known_leaf_z3_var_list.append(z3.BitVec("x_{0}".format(leaf_index), 8 * leaf.mop.size))
-                known_leaf_z3_var_list.append(z3.BitVec("x_{0}".format(leaf_index), 32))
-                pass
+    if constraints:
+        for constraint in constraints:
+            solver.add(constraint)
+
+    # Prove equivalence by checking if inequality is unsatisfiable
+    # If pattern != replacement has no solution, they are equivalent
+    solver.add(pattern_z3 != replacement_z3)
+    result = solver.check()
+
+    if result == z3.unsat:
+        # No counterexample exists - patterns are equivalent!
+        return True, None
+
+    if result == z3.sat:
+        # Found a counterexample - patterns are NOT equivalent
+        model = solver.model()
+        counterexample = {}
+
+        for name, z3_var in visitor.get_variables().items():
+            value = model.eval(z3_var, model_completion=True)
+            if hasattr(value, 'as_long'):
+                counterexample[name] = value.as_long()
             else:
-                known_leaf_z3_var_list.append(z3.BitVec("x_{0}".format(leaf_index), 32))
-        leaf.z3_var = known_leaf_z3_var_list[leaf_index]
-        leaf.z3_var_name = "x_{0}".format(leaf_index)
-    return known_leaf_z3_var_list
+                counterexample[name] = str(value)
 
+        return False, counterexample
 
-@requires_z3_installed
-def ast_to_z3_expression(ast: AstNode | AstLeaf | None, use_bitvecval=False):
-    if ast is None:
-        raise ValueError("ast is None")
-
-    if ast.is_leaf():
-        ast = typing.cast(AstLeaf, ast)
-        if ast.is_constant():
-            # Check if this is a pattern-matching constant with z3_var assigned
-            # (e.g., Const("c_1") without concrete value)
-            if hasattr(ast, 'z3_var') and ast.z3_var is not None:
-                return ast.z3_var  # Use symbolic Z3 variable
-            # Concrete constant (e.g., Const("ONE", 1))
-            return z3.BitVecVal(ast.value, 32)
-        return ast.z3_var
-
-    ast = typing.cast(AstNode, ast)
-    left = ast_to_z3_expression(ast.left, use_bitvecval)
-    right = ast_to_z3_expression(ast.right, use_bitvecval) if ast.right else None
-
-    match ast.opcode:
-        case opc.M_NEG:
-            return -left
-        case opc.M_LNOT:
-            # Logical NOT (!) returns 1 when the operand is zero, otherwise 0.
-            # Implemented via a 32-bit conditional expression to avoid casting the
-            # symbolic BitVec to a Python bool (which would raise a Z3 exception).
-            return z3.If(
-                left == z3.BitVecVal(0, 32),
-                z3.BitVecVal(1, 32),
-                z3.BitVecVal(0, 32),
-            )
-        case opc.M_BNOT:
-            return ~left
-        case opc.M_ADD:
-            return left + right
-        case opc.M_SUB:
-            return left - right
-        case opc.M_MUL:
-            return left * right
-        case opc.M_UDIV:
-            return z3.UDiv(
-                ast_to_z3_expression(ast.left, use_bitvecval=True),
-                ast_to_z3_expression(ast.right, use_bitvecval=True),
-            )
-        case opc.M_SDIV:
-            return left / right
-        case opc.M_UMOD:
-            return z3.URem(left, right)
-        case opc.M_SMOD:
-            return left % right
-        case opc.M_OR:
-            return left | right
-        case opc.M_AND:
-            return left & right
-        case opc.M_XOR:
-            return left ^ right
-        case opc.M_SHL:
-            return left << right
-        case opc.M_SHR:
-            return z3.LShR(left, right)
-        case opc.M_SAR:
-            return left >> right
-        case opc.M_SETNZ:
-            return z3.If(
-                left != z3.BitVecVal(0, 32), z3.BitVecVal(1, 32), z3.BitVecVal(0, 32)
-            )
-        case opc.M_SETZ:
-            return z3.If(
-                left == z3.BitVecVal(0, 32), z3.BitVecVal(1, 32), z3.BitVecVal(0, 32)
-            )
-        case opc.M_SETAE:
-            return z3.If(z3.UGE(left, right), z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case opc.M_SETB:
-            return z3.If(z3.ULT(left, right), z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case opc.M_SETA:
-            return z3.If(z3.UGT(left, right), z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case opc.M_SETBE:
-            return z3.If(z3.ULE(left, right), z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case opc.M_SETG:
-            return z3.If(left > right, z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case opc.M_SETGE:
-            return z3.If(left >= right, z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case opc.M_SETL:
-            return z3.If(left < right, z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case opc.M_SETLE:
-            return z3.If(left <= right, z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case opc.M_SETP:
-            # 1) isolate the low byte
-            lo_byte = typing.cast(z3.BitVecRef, z3.Extract(7, 0, left))
-            # 2) XOR-reduce the eight single-bit slices to get 1 → odd, 0 → even
-            bit0 = typing.cast(z3.BitVecRef, z3.Extract(0, 0, lo_byte))
-            parity_bv = bit0  # 1-bit BitVec
-            for i in range(1, 8):
-                parity_bv = parity_bv ^ z3.Extract(i, i, lo_byte)
-            # 3) PF is set (==1) when the parity is EVEN, i.e. parity_bv == 0
-            pf_is_set = parity_bv == z3.BitVecVal(0, 1)  # Bool
-            # 4) widen to 32-bit {1,0}
-            return z3.If(pf_is_set, z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case opc.M_SETS:
-            val = left  # BitVec(32)
-            is_negative = val < z3.BitVecVal(
-                0, 32
-            )  # ordinary "<" is signed-less-than in Z3Py
-            return z3.If(is_negative, z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case opc.M_XDU | opc.M_XDS:
-            # Extend or keep the same width; in our simplified model we just forward.
-            return left
-        case opc.M_LOW:
-            # Extract the lower half (dest_size) bits of the operand.
-            dest_bits = (ast.dest_size or 4) * 8  # default 32-bit
-            # Ensure we do not attempt to extract beyond the source width
-            high_bit = min(dest_bits - 1, left.size() - 1)
-            extracted = typing.cast(z3.BitVecRef, z3.Extract(high_bit, 0, left))
-            # Zero-extend to 32-bit so subsequent operations (which assume 32-bit) do not
-            # trigger sort-mismatch errors when combined with other 32-bit expressions.
-            if extracted.size() < 32:
-                extracted = typing.cast(
-                    z3.BitVecRef, z3.ZeroExt(32 - extracted.size(), extracted)
-                )
-            return extracted
-        case opc.M_HIGH:
-            # Extract the upper half of the operand by shifting right by dest_bits
-            dest_bits = (ast.dest_size or 4) * 8  # default 32-bit
-            shifted = z3.LShR(left, dest_bits)
-            high_bit = min(dest_bits - 1, shifted.size() - 1)
-            extracted = typing.cast(z3.BitVecRef, z3.Extract(high_bit, 0, shifted))
-            # Zero-extend to 32-bit for consistency with the rest of the engine.
-            if extracted.size() < 32:
-                extracted = typing.cast(
-                    z3.BitVecRef, z3.ZeroExt(32 - extracted.size(), extracted)
-                )
-            return extracted
-        case _:
-            # Gracefully fail on unknown opcode; avoid type issues in logging
-            op = getattr(ast, "opcode", None)
-            op_str = opcode_to_string(int(op)) if isinstance(op, int) else str(op)
-            raise D810Z3Exception(f"Z3 evaluation: Unknown opcode {op_str} for {ast}")
-
-
-@requires_z3_installed
-def mop_list_to_z3_expression_list(mop_list: list[ida_hexrays.mop_t]):
-    if logger.debug_on:
-        logger.debug(
-            "mop_list_to_z3_expression_list: mop_list: %s",
-            [format_mop_t(mop) for mop in mop_list],
-        )
-    ast_list = [mop_to_ast(mop) for mop in mop_list]
-    ast_leaf_list = []
-    for ast in ast_list:
-        if ast is None:
-            continue
-        ast_leaf_list += ast.get_leaf_list()
-    _ = create_z3_vars(ast_leaf_list)
-    if logger.debug_on:
-        logger.debug(
-            "mop_list_to_z3_expression_list: ast_leaf_list: %s",
-            ast_leaf_list,
-        )
-    return [ast_to_z3_expression(ast) for ast in ast_list]
-
-
-# Module-level memoization for Z3 checks
-_Z3_EQ_CACHE: Dict[Tuple[Tuple[int, int, int|str], Tuple[int, int, int|str]], bool] = {}
-
-
-@requires_z3_installed
-def z3_check_mop_equality(
-    mop1: ida_hexrays.mop_t | None,
-    mop2: ida_hexrays.mop_t | None,
-    solver: z3.Solver | None = None,
-) -> bool:
-    if mop1 is None or mop2 is None:
-        return False
-    # TODO(w00tzenheimer): should we use this?
-    # # Quick positives when both operands share type/size.
-    # if mop1.t == mop2.t and mop1.size == mop2.size:
-    #     if mop1.t == mop_n:
-    #         return mop1.nnn.value == mop2.nnn.value
-    #     if mop1.t == mop_r:
-    #         return mop1.r == mop2.r
-    #     if mop1.t == mop_S:
-    #         # Direct comparison of stack var refs suffices.
-    #         return mop1.s == mop2.s
-    #     if mop1.t == mop_v:
-    #         return mop1.g == mop2.g
-    #     if mop1.t == mop_d:
-    #         return mop1.dstr() == mop2.dstr()
-    # If quick checks didn't decide, fall back to Z3 even when types differ.
-    if logger.debug_on:
-        logger.debug(
-            "z3_check_mop_equality: mop1: %s, mop2: %s",
-            format_mop_t(mop1),
-            format_mop_t(mop2),
-        )
-        logger.debug(
-            "z3_check_mop_equality:\n\tmop1.dstr(): %s\n\tmop2.dstr(): %s\n\thashes: %016X vs %016X",
-            mop1.dstr(),
-            mop2.dstr(),
-            structural_mop_hash(mop1, 0),
-            structural_mop_hash(mop2, 0),
-        )
-    # If pre-filters don't apply, fall back to Z3 with a memoized check keyed by
-    # a cheap representation of the operands.
-    try:
-        k1 = (int(mop1.t), int(mop1.size), structural_mop_hash(mop1, 0))
-        k2 = (int(mop2.t), int(mop2.size), structural_mop_hash(mop2, 0))
-    except Exception:
-        k1 = (int(mop1.t), int(mop1.size), mop1.dstr())
-        k2 = (int(mop2.t), int(mop2.size), mop2.dstr())
-    if k2 < k1:
-        k1, k2 = k2, k1
-    cache_key = (k1, k2)
-    cached = _Z3_EQ_CACHE.get(cache_key)
-    if cached is not None:
-        return cached
-    exprs = mop_list_to_z3_expression_list([mop1, mop2])
-    if len(exprs) != 2:
-        return False
-    z3_mop1, z3_mop2 = exprs
-    _solver = solver if solver is not None else get_solver()
-    _solver.push()
-    _solver.add(z3.Not(z3_mop1 == z3_mop2))
-    is_equal = _solver.check() == z3.unsat
-    _solver.pop()
-    _Z3_EQ_CACHE[cache_key] = is_equal
-    return is_equal
-
-
-_Z3_NEQ_CACHE: Dict[Tuple[Tuple[int, int, int|str], Tuple[int, int, int|str]], bool] = {}
-
-
-@requires_z3_installed
-def z3_check_mop_inequality(
-    mop1: ida_hexrays.mop_t | None,
-    mop2: ida_hexrays.mop_t | None,
-    solver: z3.Solver | None = None,
-) -> bool:
-    if mop1 is None or mop2 is None:
-        return True
-    # TODO(w00tzenheimer): should we use this?
-    # if mop1.t == mop2.t and mop1.size == mop2.size:
-    #     # Quick negatives when structure same.
-    #     if mop1.t == mop_n:
-    #         return mop1.nnn.value != mop2.nnn.value
-    #     if mop1.t == mop_r:
-    #         return mop1.r != mop2.r
-    #     if mop1.t == mop_S:
-    #         return mop1.s != mop2.s
-    #     if mop1.t == mop_v:
-    #         return mop1.g != mop2.g
-    #     if mop1.t == mop_d:
-    #         return mop1.dstr() != mop2.dstr()
-    # Otherwise fall back to Z3 (also handles differing types).
-    if logger.debug_on:
-        logger.debug(
-            "z3_check_mop_inequality: mop1: %s, mop2: %s",
-            format_mop_t(mop1),
-            format_mop_t(mop2),
-        )
-        logger.debug(
-            "z3_check_mop_inequality:\n\tmop1.dstr(): %s\n\tmop2.dstr(): %s\n\thashes: %016X vs %016X",
-            mop1.dstr(),
-            mop2.dstr(),
-            structural_mop_hash(mop1, 0),
-            structural_mop_hash(mop2, 0),
-        )
-    # If pre-filters don't apply, fall back to Z3 with a memoized check keyed by
-    # a cheap representation of the operands.
-    try:
-        k1 = (int(mop1.t), int(mop1.size), structural_mop_hash(mop1, 0))
-        k2 = (int(mop2.t), int(mop2.size), structural_mop_hash(mop2, 0))
-    except Exception:
-        k1 = (int(mop1.t), int(mop1.size), mop1.dstr())
-        k2 = (int(mop2.t), int(mop2.size), mop2.dstr())
-    if k2 < k1:
-        k1, k2 = k2, k1
-    if k2 < k1:
-        k1, k2 = k2, k1
-    cache_key = (k1, k2)
-    cached = _Z3_NEQ_CACHE.get(cache_key)
-    if cached is not None:
-        return cached
-    exprs = mop_list_to_z3_expression_list([mop1, mop2])
-    if len(exprs) != 2:
-        return True
-    z3_mop1, z3_mop2 = exprs
-    _solver = solver if solver is not None else get_solver()
-    _solver.push()
-    _solver.add(z3_mop1 == z3_mop2)
-    is_unequal = _solver.check() == z3.unsat
-    _solver.pop()
-    _Z3_NEQ_CACHE[cache_key] = is_unequal
-    return is_unequal
-
-
-@requires_z3_installed
-def rename_leafs(leaf_list: list[AstLeaf]) -> list[str]:
-    known_leaf_list = []
-    for leaf in leaf_list:
-        if leaf.is_constant() or leaf.mop is None:
-            continue
-
-        if leaf.mop.t == ida_hexrays.mop_z:
-            continue
-
-        leaf_index = get_mop_index(leaf.mop, known_leaf_list)
-        if leaf_index == -1:
-            known_leaf_list.append(leaf.mop)
-            leaf_index = len(known_leaf_list) - 1
-        leaf.z3_var_name = "x_{0}".format(leaf_index)
-
-    return [
-        "x_{0} = BitVec('x_{0}', {1})".format(i, 8 * leaf.size)
-        for i, leaf in enumerate(known_leaf_list)
-    ]
-
-
-@requires_z3_installed
-def log_z3_instructions(
-    original_ins: ida_hexrays.minsn_t, new_ins: ida_hexrays.minsn_t
-):
-    orig_mba_tree = minsn_to_ast(original_ins)
-    new_mba_tree = minsn_to_ast(new_ins)
-    if orig_mba_tree is None or new_mba_tree is None:
-        return None
-    orig_leaf_list = orig_mba_tree.get_leaf_list()
-    new_leaf_list = new_mba_tree.get_leaf_list()
-
-    var_def_list = rename_leafs(orig_leaf_list + new_leaf_list)
-
-    z3_file_logger.info(
-        "print('Testing: {0} == {1}')".format(
-            format_minsn_t(original_ins), format_minsn_t(new_ins)
-        )
-    )
-    for var_def in var_def_list:
-        z3_file_logger.info("{0}".format(var_def))
-
-    removed_xdu = "{0}".format(orig_mba_tree).replace("xdu", "")
-    z3_file_logger.info("original_expr = {0}".format(removed_xdu))
-    removed_xdu = "{0}".format(new_mba_tree).replace("xdu", "")
-    z3_file_logger.info("new_expr = {0}".format(removed_xdu))
-    z3_file_logger.info("prove(original_expr == new_expr)\n")
+    # Z3 returned unknown - cannot prove either way
+    return False, None
 
 
 # =============================================================================
-# Pure SymbolicExpression Verification (NO IDA DEPENDENCY)
+# verify_rule - Verify a rule's pattern equals its replacement
 # =============================================================================
-# These functions work with pure SymbolicExpression trees from d810.mba.dsl
-# and do not require IDA Pro to be installed.
 
 
 def verify_rule(
     rule,
-    bit_width: int = 32,
+    bit_width: int | None = None,
 ) -> bool:
     """Verify that a rule's pattern is equivalent to its replacement using Z3.
 
@@ -507,8 +668,10 @@ def verify_rule(
             - CONSTRAINTS: Optional list of constraint predicates
             - SKIP_VERIFICATION: Optional bool to skip verification
             - KNOWN_INCORRECT: Optional bool for known-incorrect rules
+            - BIT_WIDTH: Optional int for rule-specific bit width (default 32)
             - name: Optional str for error messages
-        bit_width: Bit width for Z3 BitVec variables (default 32).
+        bit_width: Bit width for Z3 BitVec variables. If None, uses rule.BIT_WIDTH
+                   or defaults to 32.
 
     Returns:
         True if the rule is proven correct.
@@ -540,9 +703,13 @@ def verify_rule(
         logger.debug(f"Skipping verification for {getattr(rule, 'name', 'unknown')}: SKIP_VERIFICATION=True")
         return True
 
+    # Resolve bit_width: parameter > rule.BIT_WIDTH > default 32
+    if bit_width is None:
+        bit_width = getattr(rule, 'BIT_WIDTH', 32)
+    logger.debug(f"Verifying {getattr(rule, 'name', 'unknown')} with bit_width={bit_width}")
+
     # Import here to avoid circular imports
     from d810.mba.dsl import SymbolicExpression
-    from d810.mba.visitors import Z3VerificationVisitor
 
     pattern = rule.pattern
     replacement = rule.replacement
@@ -618,6 +785,130 @@ def verify_rule(
     raise AssertionError(msg)
 
 
+# =============================================================================
+# Z3 Variable Creation
+# =============================================================================
+
+
+def create_z3_variables(var_names: set[str], bit_width: int = 32) -> dict[str, z3.BitVecRef]:
+    """Create Z3 BitVec variables for a set of variable names.
+
+    This helper keeps Z3-specific code in the backend, allowing other modules
+    to remain backend-agnostic.
+
+    Args:
+        var_names: Set of variable names to create Z3 variables for.
+        bit_width: Bit width for Z3 BitVec variables (default 32).
+
+    Returns:
+        Dictionary mapping variable names to Z3 BitVec objects.
+
+    Example:
+        >>> var_names = {"x", "y", "c1"}
+        >>> z3_vars = create_z3_variables(var_names, bit_width=32)
+        >>> # z3_vars = {"c1": BitVec("c1", 32), "x": BitVec("x", 32), "y": BitVec("y", 32)}
+    """
+    return {name: z3.BitVec(name, bit_width) for name in sorted(var_names)}
+
+
+# =============================================================================
+# Constraint to Z3 Conversion
+# =============================================================================
+
+
+def constraint_to_z3(constraint, z3_vars: dict[str, z3.BitVecRef]) -> z3.BoolRef:
+    """Convert a ConstraintExpr to a Z3 boolean expression.
+
+    This is the Z3-backend-specific visitor for constraint expressions.
+    The constraint classes themselves are backend-agnostic data structures.
+
+    Args:
+        constraint: A ConstraintExpr instance (EqualityConstraint, ComparisonConstraint, etc.)
+        z3_vars: Dictionary mapping variable names to Z3 BitVec objects.
+
+    Returns:
+        Z3 boolean expression representing the constraint.
+
+    Example:
+        >>> from d810.mba.dsl import Var, Const
+        >>> from d810.mba.constraints import EqualityConstraint
+        >>> x = Var("x")
+        >>> c = Const("c")
+        >>> constraint = EqualityConstraint(c, x + Const("1", 1))
+        >>> z3_vars = {"x": z3.BitVec("x", 32), "c": z3.BitVec("c", 32)}
+        >>> z3_bool = constraint_to_z3(constraint, z3_vars)
+    """
+    from d810.mba.constraints import (
+        EqualityConstraint,
+        ComparisonConstraint,
+        AndConstraint,
+        OrConstraint,
+        NotConstraint,
+    )
+
+    if isinstance(constraint, EqualityConstraint):
+        left_z3 = _constraint_expr_to_z3(constraint.left, z3_vars)
+        right_z3 = _constraint_expr_to_z3(constraint.right, z3_vars)
+        return left_z3 == right_z3
+
+    elif isinstance(constraint, ComparisonConstraint):
+        left_z3 = _constraint_expr_to_z3(constraint.left, z3_vars)
+        right_z3 = _constraint_expr_to_z3(constraint.right, z3_vars)
+
+        match constraint.op_name:
+            case "ne":
+                return left_z3 != right_z3
+            case "lt":
+                return z3.ULT(left_z3, right_z3)
+            case "gt":
+                return z3.UGT(left_z3, right_z3)
+            case "le":
+                return z3.ULE(left_z3, right_z3)
+            case "ge":
+                return z3.UGE(left_z3, right_z3)
+            case _:
+                raise ValueError(f"Unknown comparison: {constraint.op_name}")
+
+    elif isinstance(constraint, AndConstraint):
+        left_z3 = constraint_to_z3(constraint.left, z3_vars)
+        right_z3 = constraint_to_z3(constraint.right, z3_vars)
+        return z3.And(left_z3, right_z3)
+
+    elif isinstance(constraint, OrConstraint):
+        left_z3 = constraint_to_z3(constraint.left, z3_vars)
+        right_z3 = constraint_to_z3(constraint.right, z3_vars)
+        return z3.Or(left_z3, right_z3)
+
+    elif isinstance(constraint, NotConstraint):
+        operand_z3 = constraint_to_z3(constraint.operand, z3_vars)
+        return z3.Not(operand_z3)
+
+    else:
+        raise TypeError(f"Unknown constraint type: {type(constraint)}")
+
+
+def _constraint_expr_to_z3(expr, z3_vars: dict[str, z3.BitVecRef]) -> z3.BitVecRef:
+    """Convert a SymbolicExpression within a constraint to Z3.
+
+    Args:
+        expr: SymbolicExpression to convert
+        z3_vars: Dictionary mapping variable names to Z3 BitVec objects
+
+    Returns:
+        Z3 BitVecRef representing the expression
+
+    Raises:
+        ValueError: If expr is not a SymbolicExpression
+    """
+    from d810.mba.dsl import SymbolicExpression
+
+    if isinstance(expr, SymbolicExpression):
+        visitor = Z3VerificationVisitor(bit_width=32, var_map=z3_vars)
+        return visitor.visit(expr)
+
+    raise ValueError(f"Cannot convert {type(expr).__name__} to Z3: expected SymbolicExpression")
+
+
 def _collect_symbolic_names(expr, names: set) -> None:
     """Recursively collect variable and constant names from a SymbolicExpression.
 
@@ -643,24 +934,38 @@ def _extract_constraints(rule, z3_vars: dict) -> list:
     """Extract and convert rule constraints to Z3 expressions.
 
     Args:
-        rule: The rule object with optional CONSTRAINTS attribute.
+        rule: The rule object with optional CONSTRAINTS attribute or get_constraints method.
         z3_vars: Dictionary mapping variable names to Z3 BitVec objects.
 
     Returns:
         List of Z3 constraint expressions.
     """
+    z3_constraints = []
+
+    # First, check for get_constraints method (explicit Z3 constraint generation)
+    if hasattr(rule, 'get_constraints') and callable(rule.get_constraints):
+        try:
+            custom_constraints = rule.get_constraints(z3_vars)
+            if custom_constraints:
+                if isinstance(custom_constraints, list):
+                    z3_constraints.extend(custom_constraints)
+                else:
+                    z3_constraints.append(custom_constraints)
+                logger.debug(f"Got {len(z3_constraints)} constraints from get_constraints() for {getattr(rule, 'name', 'unknown')}")
+        except Exception as e:
+            logger.warning(f"Failed to call get_constraints() for {getattr(rule, 'name', 'unknown')}: {e}")
+
+    # Then, check CONSTRAINTS attribute
     constraints_attr = getattr(rule, 'CONSTRAINTS', None)
     if not constraints_attr:
-        return []
-
-    z3_constraints = []
+        return z3_constraints
 
     for constraint in constraints_attr:
         # Check if this is a ConstraintExpr (declarative style)
         try:
             from d810.mba.constraints import is_constraint_expr
             if is_constraint_expr(constraint):
-                z3_constraint = constraint.to_z3(z3_vars)
+                z3_constraint = constraint_to_z3(constraint, z3_vars)
                 z3_constraints.append(z3_constraint)
                 continue
         except Exception:
@@ -694,132 +999,3 @@ def _extract_constraints(rule, z3_vars: dict) -> list:
         logger.debug(f"Could not convert constraint to Z3 for rule {getattr(rule, 'name', 'unknown')}")
 
     return z3_constraints
-
-
-# =============================================================================
-# AstNode-based Verification (IDA INTEGRATION)
-# =============================================================================
-# These functions work with AstNode trees from d810.expr.ast and may require
-# IDA Pro for full functionality (e.g., mop_to_ast conversion).
-
-
-@requires_z3_installed
-def z3_prove_equivalence(
-    pattern_ast: AstNode | AstLeaf,
-    replacement_ast: AstNode | AstLeaf,
-    z3_vars: dict[str, typing.Any] | None = None,
-    constraints: list[typing.Any] | None = None,
-    bit_width: int = 32,
-) -> tuple[bool, dict[str, int] | None]:
-    """Prove that two AST patterns are semantically equivalent using Z3.
-
-    This function creates Z3 symbolic variables for each unique variable in the
-    patterns, converts both patterns to Z3 expressions, and attempts to prove
-    that they are equivalent for all possible variable values (subject to any
-    provided constraints).
-
-    Args:
-        pattern_ast: The first AST pattern (typically the pattern to match).
-        replacement_ast: The second AST pattern (typically the replacement).
-        z3_vars: Optional pre-created Z3 variables mapping names to Z3 BitVec objects.
-                 If None, variables will be created automatically.
-        constraints: Optional list of Z3 constraint expressions that must hold for
-                     the equivalence to be valid. For example, [c2 == ~c1] to indicate
-                     that constant c2 must be the bitwise NOT of constant c1.
-        bit_width: The bit width for symbolic variables (default 32).
-
-    Returns:
-        A tuple of (is_equivalent, counterexample):
-        - is_equivalent: True if the patterns are proven equivalent, False otherwise.
-        - counterexample: If not equivalent, a dict mapping variable names to values
-                         that demonstrate the difference. None if equivalent.
-
-    Example:
-        >>> from d810.expr.ast import AstNode, AstLeaf
-        >>> from ida_hexrays import m_add, m_sub, m_xor, m_or, m_and
-        >>> # Pattern: (x | y) - (x & y)
-        >>> pattern = AstNode(m_sub,
-        ...     AstNode(m_or, AstLeaf("x"), AstLeaf("y")),
-        ...     AstNode(m_and, AstLeaf("x"), AstLeaf("y")))
-        >>> # Replacement: x ^ y
-        >>> replacement = AstNode(m_xor, AstLeaf("x"), AstLeaf("y"))
-        >>> is_equiv, counter = z3_prove_equivalence(pattern, replacement)
-        >>> assert is_equiv  # These are mathematically equivalent
-    """
-    # Get all leaf nodes from both patterns to find variables
-    pattern_leaves = pattern_ast.get_leaf_list()
-    replacement_leaves = replacement_ast.get_leaf_list()
-    all_leaves = pattern_leaves + replacement_leaves
-
-    # If z3_vars not provided, create them
-    if z3_vars is None:
-        # Extract unique variable names (excluding constants)
-        var_names = set()
-        for leaf in all_leaves:
-            if not leaf.is_constant() and hasattr(leaf, 'name'):
-                var_names.add(leaf.name)
-
-        # Create Z3 BitVec for each variable
-        z3_vars = {name: z3.BitVec(name, bit_width) for name in sorted(var_names)}
-
-        # Map the z3_vars to the leaves for conversion
-        for leaf in all_leaves:
-            if not leaf.is_constant() and hasattr(leaf, 'name') and leaf.name in z3_vars:
-                leaf.z3_var = z3_vars[leaf.name]
-                leaf.z3_var_name = leaf.name
-    else:
-        # Use provided z3_vars (includes both variables and pattern-matching constants)
-        for leaf in all_leaves:
-            if not hasattr(leaf, 'name'):
-                continue
-
-            # Assign z3_var to regular variables
-            if not leaf.is_constant() and leaf.name in z3_vars:
-                leaf.z3_var = z3_vars[leaf.name]
-                leaf.z3_var_name = leaf.name
-            # Also assign z3_var to pattern-matching constants (symbolic constants)
-            elif leaf.is_constant() and leaf.name in z3_vars:
-                # Pattern-matching constant like Const("c_1") - treat as symbolic
-                if hasattr(leaf, 'expected_value') and leaf.expected_value is None:
-                    leaf.z3_var = z3_vars[leaf.name]
-                    leaf.z3_var_name = leaf.name
-
-    # Convert both AST patterns to Z3 expressions
-    try:
-        pattern_z3 = ast_to_z3_expression(pattern_ast)
-        replacement_z3 = ast_to_z3_expression(replacement_ast)
-    except Exception as e:
-        logger.error(
-            "Failed to convert AST to Z3 expression: %s",
-            e,
-            exc_info=True,
-        )
-        return False, None
-
-    # Create a solver and add constraints if any
-    solver = z3.Solver()
-    if constraints:
-        for constraint in constraints:
-            solver.add(constraint)
-
-    # To prove equivalence, we check if NOT(pattern == replacement) is unsatisfiable
-    # If it's unsatisfiable, then pattern == replacement for all valid inputs
-    solver.add(z3.Not(pattern_z3 == replacement_z3))
-
-    result = solver.check()
-
-    if result == z3.unsat:
-        # Patterns are equivalent
-        return True, None
-    elif result == z3.sat:
-        # Patterns are NOT equivalent, get counterexample
-        model = solver.model()
-        counterexample = {}
-        for var_name, var in z3_vars.items():
-            if model[var] is not None:
-                counterexample[var_name] = model[var].as_long()
-        return False, counterexample
-    else:
-        # Unknown result (timeout, etc.)
-        logger.warning("Z3 returned unknown result for equivalence check")
-        return False, None

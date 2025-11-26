@@ -27,11 +27,16 @@ from d810.mba.constraints import (
     OrConstraint,
     NotConstraint,
 )
-from d810.mba.visitors import (
+from d810.mba.backends.z3 import (
+    Z3VerificationEngine,
     Z3VerificationVisitor,
     prove_equivalence,
 )
 from d810.mba.verifier import (
+    VerificationOptions,
+    DEFAULT_OPTIONS,
+    VerificationEngine,
+    get_default_engine,
     MBARule,
     ConstrainedMBARule,
     verify_transformation,
@@ -61,11 +66,16 @@ __all__ = [
     "OrConstraint",
     "NotConstraint",
 
-    # Z3 backend
+    # Verification engine protocol and implementations
+    "VerificationOptions",
+    "DEFAULT_OPTIONS",
+    "VerificationEngine",
+    "get_default_engine",
+    "Z3VerificationEngine",
     "Z3VerificationVisitor",
     "prove_equivalence",
 
-    # Verifier (Phase 3)
+    # Rule base classes
     "MBARule",
     "ConstrainedMBARule",
     "verify_transformation",
