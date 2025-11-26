@@ -71,17 +71,11 @@ run_unit_tests() {
         set -e
         pip install -e .[dev]
 
-        # Run local tests (no IDA required)
+        # Run unit tests (no IDA required)
         echo '========================================='
-        echo 'Running local tests (no IDA required)...'
+        echo 'Running unit tests (no IDA required)...'
         echo '========================================='
-        python tests/run_tests_local.py
-
-        echo ''
-        echo '========================================='
-        echo 'IDA Pro unit tests'
-        echo '========================================='
-        echo 'Unit tests requiring IDA modules are covered by integration tests'
+        PYTHONPATH=src pytest tests/unit/ -v --tb=short
     "
 }
 

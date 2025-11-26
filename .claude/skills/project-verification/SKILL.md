@@ -175,12 +175,14 @@ pytest tests/ -v --tb=short --maxfail=1  # Stop at first failure
 
 ### IDA Pro Projects (d810-ng example)
 
+**See:** `tests/README.md` for full documentation.
+
 **With IDA Python environment:**
 ```bash
 # Unit tests (no IDA required)
-python tests/run_tests_local.py
+PYTHONPATH=src pytest tests/unit/ -v --tb=short
 
-# Integration tests (IDA required)
+# Integration tests (IDA required - headless via pytest)
 /app/ida/.venv/bin/python3 -m pytest tests/system/ -v --tb=short
 
 # Specific test with IDA

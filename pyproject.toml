@@ -24,6 +24,7 @@ dev = [
 ci = ["coverage[toml]", "pytest", "pytest-cov", "Cython>=3.0.0"]
 profiling = ["pyinstrument>=5.0.0,<6.0.0"]
 speedups = ["Cython>=3.0.0"]
+egraph = ["egglog>=12.0.0", "cloudpickle>=3.0.0"]
 
 [tool.setuptools]
 package-dir = { "" = "src" }

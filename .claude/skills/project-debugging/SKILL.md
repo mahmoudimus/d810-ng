@@ -156,13 +156,12 @@ logger = logging.getLogger(__name__)
 sys.path.insert(0, '/home/user/d810-ng/src')
 
 print("STEP 1: Check VerifiableRule inheritance")
-from d810.optimizers.rules import VerifiableRule
+from d810.mba.rules._base import VerifiableRule
 print(f"VerifiableRule.__bases__: {VerifiableRule.__bases__}")
-print(f"Is subclass of PatternMatchingRule? {issubclass(VerifiableRule, PatternMatchingRule)}")
 
 print("\nSTEP 2: Check registered rules")
-from d810.optimizers.microcode.instructions.handler import InstructionOptimizationRule
-all_rules = InstructionOptimizationRule.all()
+from d810.mba.rules import get_all_rules
+all_rules = get_all_rules()
 xor_rules = [r for r in all_rules if 'Xor_HackersDelight' in r.__name__]
 print(f"Found XOR rules: {[r.__name__ for r in xor_rules]}")
 
@@ -172,14 +171,11 @@ if xor_rules:
     for method in ['match', 'check', 'replace', 'check_candidate']:
         print(f"  {method}: {'✓' if hasattr(rule, method) else '✗'}")
 
-print("\nSTEP 4: Try to add rule to optimizer")
-from d810.optimizers.microcode.instructions.pattern_matching.handler import PatternOptimizer
-opt = PatternOptimizer(log_dir="/tmp/debug")
+print("\nSTEP 4: Try instantiating and verifying rule")
 if xor_rules:
-    rule = xor_rules[0]()
-    success = opt.add_rule(rule)
-    print(f"add_rule() returned: {success}")
-    print(f"Rule in optimizer.rules: {rule in opt.rules}")
+    rule_cls = xor_rules[0]
+    instances = rule_cls.instantiate_all()
+    print(f"instantiate_all() returned: {len(instances)} instances")
 ```
 
 **Results from minimal test:**
@@ -398,7 +394,7 @@ Write a test that fails BEFORE your fix and passes AFTER.
 def test_verify_refactored_modules_loaded(self):
     """Verify refactored DSL rules are properly registered and importable."""
     from d810.optimizers.microcode.instructions.handler import InstructionOptimizationRule
-    from d810.optimizers.rules import VerifiableRule
+    from d810.mba.rules._base import VerifiableRule
 
     registered_rules = InstructionOptimizationRule.all()
     refactored_rules = [
@@ -764,11 +760,6 @@ timeout 120 pytest tests/unit/path/to/suspected_test.py -v -s --tb=short
 **1. Multiprocessing Operations**
 - **Symptom**: Worker processes don't terminate, queues block forever
 - **Detection**: Test creates processes/workers but never joins them
-- **Example from d810-ng**:
-  ```python
-  # tests/unit/optimizers/test_parallel.py
-  # Tests that create multiprocessing workers hung indefinitely
-  ```
 
 **Fix pattern:**
 ```python
@@ -782,11 +773,6 @@ class TestParallelExecution:
 **2. Database Operations (SQLite)**
 - **Symptom**: Connection hangs on locks, transactions never complete
 - **Detection**: Test uses SQLite/database but doesn't close connections
-- **Example from d810-ng**:
-  ```python
-  # tests/unit/optimizers/test_profiling_and_caching.py
-  # SQLite cache tests hung on database operations
-  ```
 
 **Fix pattern:**
 ```python
@@ -831,11 +817,9 @@ grep "PASSED" /tmp/test.log | tail -5
 
 **Root causes found:**
 1. **Parallel tests** hung at ~21% progress
-   - `test_parallel.py::TestOptimizeFunctionsParallel`
    - Multiprocessing workers never terminated
 
 2. **SQLite cache tests** hung at ~25% progress
-   - `test_profiling_and_caching.py::TestOptimizationCache`
    - Database connections hanging on locks
 
 3. **IDA import issue**
@@ -844,17 +828,16 @@ grep "PASSED" /tmp/test.log | tail -5
 
 **Fixes applied:**
 ```python
-# tests/unit/optimizers/test_parallel.py
+# Skip hanging test classes
 @pytest.mark.skip(reason="Parallel execution tests hang - not ready for CI")
-class TestOptimizeFunctionsParallel:
+class TestParallelExecution:
     pass
 
-# tests/unit/optimizers/test_profiling_and_caching.py
 @pytest.mark.skip(reason="SQLite cache tests hang - not working yet")
-class TestOptimizationCache:
+class TestDatabaseCache:
     pass
 
-# tests/__init__.py
+# Handle optional idapro import
 try:
     import idapro
 except ModuleNotFoundError:
@@ -932,3 +915,22 @@ When you suspect tests are hanging:
 
 - **project-verification** - Verify fix with full test suite
 - **ci-debugging** - Debug GitHub Actions failures when tests pass locally but fail in CI
+
+## Test Running Reference
+
+See **`tests/README.md`** for canonical test commands:
+
+```bash
+# Unit tests (no IDA required) - run from project root
+pytest tests/unit/ -v
+
+# System tests (requires IDA Pro headless or GUI)
+pytest tests/system/ -v
+
+# If import errors occur
+PYTHONPATH=src pytest tests/unit/ -v
+```
+
+**Two ways to run system tests:**
+1. **Headless**: `pytest tests/system/ -v` (requires `idapro` module)
+2. **IDA GUI**: `from d810.ui.testbed import show_gui; show_gui()`
