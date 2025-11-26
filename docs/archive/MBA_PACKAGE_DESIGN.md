@@ -1,5 +1,14 @@
 # MBA Package Design: Separating Z3 Verification Logic
 
+> **ARCHIVED**: This design document has been **implemented** as of 2025-11-25.
+> The `d810.mba` package now exists with:
+> - `mba/dsl.py` - Symbolic expression DSL
+> - `mba/rules/` - Pure rule definitions (177 rules)
+> - `mba/backends/z3.py` - Z3 SMT verification
+> - `mba/backends/ida.py` - IDA pattern adapter
+>
+> See the main [README.md](../../README.md#architecture-pure-rules-vs-ida-specific-rules) for current architecture.
+
 ## Overview
 
 This document proposes restructuring the Z3-based verification and MBA (Mixed Boolean Arithmetic) simplification logic into a standalone package: `d810.mba`.

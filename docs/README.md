@@ -42,11 +42,14 @@ See [DSL Migration Guide - Quick Start](DSL_MIGRATION.md#dsl-reference) for:
 ### Running Tests
 
 ```bash
-# Test all rules
-pytest tests/unit/optimizers/test_verifiable_rules.py -v
+# Test all rules (no IDA required!)
+pytest tests/unit/mba/test_verifiable_rules.py -v
 
 # Test specific rule
-pytest tests/unit/optimizers/test_verifiable_rules.py::TestVerifiableRules::test_rule_is_correct[RuleName] -v
+pytest tests/unit/mba/test_verifiable_rules.py::test_rule_is_correct[RuleName] -v
+
+# System tests (requires IDA)
+pytest tests/system/optimizers/test_verifiable_rules.py -v
 ```
 
 ### Migration Statistics
@@ -61,9 +64,9 @@ pytest tests/unit/optimizers/test_verifiable_rules.py::TestVerifiableRules::test
 
 ### Adding New Rules
 
-1. Create your rule in the appropriate `rewrite_*.py` file
+1. Create your rule in the appropriate file under `src/d810/mba/rules/` (e.g., `xor.py`, `add.py`)
 2. Use the declarative DSL (see [DSL Reference](DSL_MIGRATION.md#dsl-reference))
-3. Run tests: `pytest tests/unit/optimizers/test_verifiable_rules.py -k "YourRule" -v`
+3. Run tests: `pytest tests/unit/mba/test_verifiable_rules.py -k "YourRule" -v`
 4. Your rule is automatically registered and tested!
 
 ### Code Organization
@@ -75,16 +78,24 @@ d810-ng/
 │   ├── DSL_MIGRATION.md    # Complete DSL guide
 │   └── archive/            # Historical documents
 ├── src/d810/
+│   ├── mba/                # Pure symbolic MBA package (no IDA dependency)
+│   │   ├── dsl.py          # Symbolic expression DSL
+│   │   ├── rules/          # Pure rule definitions (177 rules)
+│   │   │   ├── _base.py    # VerifiableRule base class
+│   │   │   ├── xor.py      # XOR rules
+│   │   │   └── ...         # Other rule modules
+│   │   └── backends/
+│   │       ├── z3.py       # Z3 SMT verification
+│   │       └── ida.py      # IDA pattern adapter
 │   ├── optimizers/
-│   │   ├── dsl.py          # DSL implementation
-│   │   ├── rules.py        # VerifiableRule base class
+│   │   ├── extensions.py   # Context-aware DSL extensions (IDA-specific)
 │   │   └── microcode/instructions/pattern_matching/
-│   │       ├── rewrite_*.py # Rule modules
+│   │       └── experimental.py  # Rules requiring IDA context
 │   └── ...
 ├── tests/
-│   ├── unit/optimizers/
-│   │   └── test_verifiable_rules.py  # Automated rule tests
-│   └── system/             # Integration tests
+│   ├── unit/mba/
+│   │   └── test_verifiable_rules.py  # Unit tests (no IDA required)
+│   └── system/             # Integration tests (requires IDA)
 └── scripts/                # Utility scripts
 ```
 
@@ -101,12 +112,12 @@ d810-ng/
 ### Before You Start
 
 1. Read the [DSL Migration Guide](DSL_MIGRATION.md)
-2. Review existing rules in `src/d810/optimizers/microcode/instructions/pattern_matching/`
-3. Check the [Refactoring Strategy](../REFACTORING.md) to understand the overall vision
+2. Review existing rules in `src/d810/mba/rules/`
+3. Understand the [architecture](../README.md#architecture-pure-rules-vs-ida-specific-rules)
 
 ### Submitting Changes
 
-1. Ensure all tests pass: `pytest tests/unit/optimizers/test_verifiable_rules.py -v`
+1. Ensure all tests pass: `pytest tests/unit/mba/test_verifiable_rules.py -v`
 2. Add tests for new functionality
 3. Update documentation if needed
 4. Follow the existing code style
@@ -133,8 +144,8 @@ No - the old `PatternMatchingRule` has been fully replaced by `VerifiableRule`. 
 
 - File issues on GitHub
 - Check existing documentation in `docs/`
-- Review similar rules in `rewrite_*.py` files
+- Review similar rules in `src/d810/mba/rules/`
 
 ---
 
-*Last updated: 2024-11-22*
+*Last updated: 2025-11-25*
