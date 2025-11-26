@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from ida_hexrays import *
+import ida_hexrays
 
 from d810.core import getLogger
 from d810.expr.emulator import MicroCodeEnvironment, MicroCodeInterpreter
@@ -40,14 +40,14 @@ from d810.hexrays.hexrays_helpers import (
 logger = getLogger(__name__, logging.WARNING)
 
 
-class InstructionDefUseCollector(mop_visitor_t):
+class InstructionDefUseCollector(ida_hexrays.mop_visitor_t):
     def __init__(self):
         super().__init__()
         self.unresolved_ins_mops = []
         self.memory_unresolved_ins_mops = []
         self.target_mops = []
 
-    def visit_mop(self, op: mop_t, op_type: int, is_target: bool):
+    def visit_mop(self, op: ida_hexrays.mop_t, op_type: int, is_target: bool):
         # Skip mops with invalid sizes (e.g., function references with size=-1)
         if op.size < 0:
             return 0
@@ -57,16 +57,16 @@ class InstructionDefUseCollector(mop_visitor_t):
         else:
             # TODO whatever the case, in the end we will always return 0. May be this code can be better optimized.
             # TODO handle other special case (e.g. ldx ins, ...)
-            if op.t == mop_S:
+            if op.t == ida_hexrays.mop_S:
                 append_mop_if_not_in_list(op, self.unresolved_ins_mops)
-            elif op.t == mop_r:
+            elif op.t == ida_hexrays.mop_r:
                 append_mop_if_not_in_list(op, self.unresolved_ins_mops)
-            elif op.t == mop_v:
+            elif op.t == ida_hexrays.mop_v:
                 append_mop_if_not_in_list(op, self.memory_unresolved_ins_mops)
-            elif op.t == mop_a:
-                if op.a.t == mop_v:
+            elif op.t == ida_hexrays.mop_a:
+                if op.a.t == ida_hexrays.mop_v:
                     return 0
-                elif op.a.t == mop_S:
+                elif op.a.t == ida_hexrays.mop_S:
                     return 0
                 logger.warning(
                     "op.t == mop_a: Calling visit_mop with unsupported mop type %s - %s: '%s'",
@@ -75,15 +75,15 @@ class InstructionDefUseCollector(mop_visitor_t):
                     format_mop_t(op),
                 )
                 return 0
-            elif op.t == mop_n:
+            elif op.t == ida_hexrays.mop_n:
                 return 0
-            elif op.t == mop_d:
+            elif op.t == ida_hexrays.mop_d:
                 return 0
-            elif op.t == mop_h:
+            elif op.t == ida_hexrays.mop_h:
                 return 0
-            elif op.t == mop_b:
+            elif op.t == ida_hexrays.mop_b:
                 return 0
-            elif op.t == mop_str:
+            elif op.t == ida_hexrays.mop_str:
                 return 0
             else:
                 logger.warning(
@@ -95,7 +95,7 @@ class InstructionDefUseCollector(mop_visitor_t):
 
 
 class BlockInfo(object):
-    def __init__(self, blk: mblock_t, ins=None):
+    def __init__(self, blk: ida_hexrays.mblock_t, ins=None):
         self.blk = blk
         self.ins_list = []
         if ins is not None:
@@ -108,8 +108,8 @@ class BlockInfo(object):
 
 
 class MopHistory(object):
-    def __init__(self, searched_mop_list: list[mop_t]):
-        self.searched_mop_list = [mop_t(x) for x in searched_mop_list]
+    def __init__(self, searched_mop_list: list[ida_hexrays.mop_t]):
+        self.searched_mop_list = [ida_hexrays.mop_t(x) for x in searched_mop_list]
         self.history = []
         self.unresolved_mop_list = []
 
@@ -119,7 +119,7 @@ class MopHistory(object):
         self._mc_current_environment = self._mc_initial_environment.get_copy()
         self._is_dirty = True
 
-    def add_mop_initial_value(self, mop: mop_t, value: int):
+    def add_mop_initial_value(self, mop: ida_hexrays.mop_t, value: int):
         self._is_dirty = True
         self._mc_initial_environment.define(mop, value)
 
@@ -145,14 +145,14 @@ class MopHistory(object):
         return True
 
     @property
-    def block_path(self) -> list[mblock_t]:
+    def block_path(self) -> list[ida_hexrays.mblock_t]:
         return [blk_info.blk for blk_info in self.history]
 
     @property
     def block_serial_path(self) -> list[int]:
         return [blk.serial for blk in self.block_path]
 
-    def replace_block_in_path(self, old_blk: mblock_t, new_blk: mblock_t) -> bool:
+    def replace_block_in_path(self, old_blk: ida_hexrays.mblock_t, new_blk: ida_hexrays.mblock_t) -> bool:
         blk_index = get_blk_index(old_blk, self.block_path)
         if blk_index > 0:
             self.history[blk_index].blk = new_blk
@@ -162,13 +162,13 @@ class MopHistory(object):
             logger.error("replace_block_in_path: should not happen")
             return False
 
-    def insert_block_in_path(self, blk: mblock_t, where_index: int):
+    def insert_block_in_path(self, blk: ida_hexrays.mblock_t, where_index: int):
         self.history = (
             self.history[:where_index] + [BlockInfo(blk)] + self.history[where_index:]
         )
         self._is_dirty = True
 
-    def insert_ins_in_block(self, blk: mblock_t, ins: minsn_t, before=True):
+    def insert_ins_in_block(self, blk: ida_hexrays.mblock_t, ins: ida_hexrays.minsn_t, before=True):
         blk_index = get_blk_index(blk, self.block_path)
         if blk_index < 0:
             return False
@@ -218,7 +218,7 @@ class MopHistory(object):
             )
         return True
 
-    def get_mop_constant_value(self, searched_mop: mop_t) -> Union[None, int]:
+    def get_mop_constant_value(self, searched_mop: ida_hexrays.mop_t) -> Union[None, int]:
         if logger.debug_on:
             logger.debug(
                 "get_mop_constant_value called for {0}, _is_dirty={1}, history_len={2}".format(
@@ -280,7 +280,7 @@ class MopHistory(object):
                     )
 
 
-def get_standard_and_memory_mop_lists(mop_in: mop_t) -> tuple[list[mop_t], list[mop_t]]:
+def get_standard_and_memory_mop_lists(mop_in: ida_hexrays.mop_t) -> tuple[list[ida_hexrays.mop_t], list[ida_hexrays.mop_t]]:
     # Filter out mops with invalid sizes (e.g., function references with size=-1)
     # These cannot be tracked or evaluated as variables
     if mop_in.size < 0:
@@ -292,11 +292,11 @@ def get_standard_and_memory_mop_lists(mop_in: mop_t) -> tuple[list[mop_t], list[
             )
         return [], []
 
-    if mop_in.t in [mop_r, mop_S]:
+    if mop_in.t in [ida_hexrays.mop_r, ida_hexrays.mop_S]:
         return [mop_in], []
-    elif mop_in.t == mop_v:
+    elif mop_in.t == ida_hexrays.mop_v:
         return [], [mop_in]
-    elif mop_in.t == mop_d:
+    elif mop_in.t == ida_hexrays.mop_d:
         ins_mop_info = InstructionDefUseCollector()
         mop_in.d.for_all_ops(ins_mop_info)
         return (
@@ -320,12 +320,12 @@ cur_mop_tracker_nb_path = 0
 class MopTracker(object):
     def __init__(
         self,
-        searched_mop_list: list[mop_t],
+        searched_mop_list: list[ida_hexrays.mop_t],
         max_nb_block=-1,
         max_path=-1,
         dispatcher_info=None,
     ):
-        self.mba: mba_t
+        self.mba: ida_hexrays.mba_t
         self._unresolved_mops = []
         self._memory_unresolved_mops = []
         for searched_mop in searched_mop_list:
@@ -345,7 +345,7 @@ class MopTracker(object):
         global cur_mop_tracker_nb_path
         cur_mop_tracker_nb_path = 0
 
-    def add_mop_definition(self, mop: mop_t, cst_value: int):
+    def add_mop_definition(self, mop: ida_hexrays.mop_t, cst_value: int):
         self.constant_mops.append([mop, cst_value])
         self.history.add_mop_initial_value(mop, cst_value)
 
@@ -364,8 +364,8 @@ class MopTracker(object):
 
     def search_backward(
         self,
-        blk: mblock_t,
-        ins: minsn_t | None,
+        blk: ida_hexrays.mblock_t,
+        ins: ida_hexrays.minsn_t | None,
         avoid_list=None,
         must_use_pred=None,
         stop_at_first_duplication=False,
@@ -480,8 +480,8 @@ class MopTracker(object):
         return possible_histories
 
     def search_until_multiple_predecessor(
-        self, blk: mblock_t, ins: minsn_t | None = None
-    ) -> Union[None, mblock_t]:
+        self, blk: ida_hexrays.mblock_t, ins: ida_hexrays.minsn_t | None = None
+    ) -> Union[None, ida_hexrays.mblock_t]:
         # By default, we start searching from block tail
         cur_ins = ins if ins else blk.tail
         cur_blk = blk
@@ -523,22 +523,22 @@ class MopTracker(object):
                 return False
         return True
 
-    def _build_ml_list(self, blk: mblock_t) -> Union[None, mlist_t]:
-        ml = mlist_t()
+    def _build_ml_list(self, blk: ida_hexrays.mblock_t) -> Union[None, ida_hexrays.mlist_t]:
+        ml = ida_hexrays.mlist_t()
         for unresolved_mop in self._unresolved_mops:
-            if unresolved_mop.t not in [mop_r, mop_S]:
+            if unresolved_mop.t not in [ida_hexrays.mop_r, ida_hexrays.mop_S]:
                 logger.warning(
                     "_build_ml_list: Not supported mop type '{0}'".format(
                         unresolved_mop.t
                     )
                 )
                 return None
-            blk.append_use_list(ml, unresolved_mop, MUST_ACCESS)
+            blk.append_use_list(ml, unresolved_mop, ida_hexrays.MUST_ACCESS)
         return ml
 
     def blk_find_def_backward(
-        self, blk: mblock_t, ins_start: minsn_t
-    ) -> Union[None, minsn_t]:
+        self, blk: ida_hexrays.mblock_t, ins_start: ida_hexrays.minsn_t
+    ) -> Union[None, ida_hexrays.minsn_t]:
         if self.is_resolved():
             return None
         ml = self._build_ml_list(blk)
@@ -553,12 +553,12 @@ class MopTracker(object):
             ins_def = ins_def.prev
         return ins_def
 
-    def update_history(self, blk: mblock_t, ins_def: minsn_t) -> bool:
+    def update_history(self, blk: ida_hexrays.mblock_t, ins_def: ida_hexrays.minsn_t) -> bool:
         logger.debug(
             "Updating history with {0}.{1}".format(blk.serial, format_minsn_t(ins_def))
         )
         self.history.insert_ins_in_block(blk, ins_def, before=True)
-        if ins_def.opcode == m_call:
+        if ins_def.opcode == ida_hexrays.m_call:
             self.call_detected = True
             return False
         ins_mop_info = InstructionDefUseCollector()
@@ -605,11 +605,11 @@ class MopTracker(object):
         return True
 
     def _blk_find_ins_def_backward(
-        self, blk: mblock_t, ins_start: minsn_t, ml: mlist_t
-    ) -> Union[None, minsn_t]:
+        self, blk: ida_hexrays.mblock_t, ins_start: ida_hexrays.minsn_t, ml: ida_hexrays.mlist_t
+    ) -> Union[None, ida_hexrays.minsn_t]:
         cur_ins = ins_start
         while cur_ins is not None:
-            def_list = blk.build_def_list(cur_ins, MAY_ACCESS | FULL_XDSU)
+            def_list = blk.build_def_list(cur_ins, ida_hexrays.MAY_ACCESS | ida_hexrays.FULL_XDSU)
             if ml.has_common(def_list):
                 return cur_ins
             for mem_mop in self._memory_unresolved_mops:
@@ -621,7 +621,7 @@ class MopTracker(object):
 
 def get_block_with_multiple_predecessors(
     var_histories: list[MopHistory],
-) -> tuple[None | mblock_t, None | dict[int, list[MopHistory]]]:
+) -> tuple[None | ida_hexrays.mblock_t, None | dict[int, list[MopHistory]]]:
     for i, var_history in enumerate(var_histories):
         pred_blk = var_history.block_path[0]
         for block in var_history.block_path[1:]:
@@ -678,7 +678,7 @@ def try_to_duplicate_one_block(var_histories: list[MopHistory]) -> tuple[int, in
                 )
             )
             if (pred_block.tail is None) or (
-                not is_mcode_jcond(pred_block.tail.opcode)
+                not ida_hexrays.is_mcode_jcond(pred_block.tail.opcode)
             ):
                 change_1way_block_successor(pred_block, duplicated_blk_jmp.serial)
                 nb_change += 1
@@ -704,7 +704,7 @@ def try_to_duplicate_one_block(var_histories: list[MopHistory]) -> tuple[int, in
                 var_history.replace_block_in_path(
                     block_to_duplicate, duplicated_blk_jmp
                 )
-                if block_to_duplicate.tail is not None and is_mcode_jcond(
+                if block_to_duplicate.tail is not None and ida_hexrays.is_mcode_jcond(
                     block_to_duplicate.tail.opcode
                 ):
                     index_jump_block = get_blk_index(
@@ -757,18 +757,18 @@ def duplicate_histories(
     return total_nb_duplication, total_nb_change
 
 
-def get_segment_register_indexes(mop_list: list[mop_t]) -> list[int]:
+def get_segment_register_indexes(mop_list: list[ida_hexrays.mop_t]) -> list[int]:
     # This is a very dirty and probably buggy
     segment_register_indexes = []
     for i, mop in enumerate(mop_list):
-        if mop.t == mop_r:
+        if mop.t == ida_hexrays.mop_r:
             formatted_mop = format_mop_t(mop)
             if formatted_mop in ["ds.2", "cs.2", "es.2", "ss.2"]:
                 segment_register_indexes.append(i)
     return segment_register_indexes
 
 
-def remove_segment_registers(mop_list: list[mop_t]) -> list[mop_t]:
+def remove_segment_registers(mop_list: list[ida_hexrays.mop_t]) -> list[ida_hexrays.mop_t]:
     # TODO: instead of doing that, we should add the segment registers to the (global?) emulation environment
     segment_register_indexes = get_segment_register_indexes(mop_list)
     if len(segment_register_indexes) == 0:
