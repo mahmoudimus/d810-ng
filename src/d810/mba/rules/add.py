@@ -12,8 +12,9 @@ Original rules from rewrite_add.py, now with:
 All rules are mathematically proven correct by Z3 SMT solver.
 """
 
-from d810.mba.dsl import Var, Const, NEGATIVE_ONE, NEGATIVE_TWO
-from d810.mba.rules._base import VerifiableRule
+from d810.mba.dsl import NEGATIVE_ONE, NEGATIVE_TWO, Const, Var
+
+from ._base import VerifiableRule
 
 # Create symbolic variables
 x, y, z = Var("x"), Var("y"), Var("z")
@@ -163,7 +164,7 @@ class Add_OllvmRule_3(VerifiableRule):
 # The following rules use the extended DSL with constraints and dynamic constants.
 
 
-from d810.mba.dsl import when, DynamicConst
+from d810.mba.dsl import DynamicConst, when
 
 
 class Add_SpecialConstantRule_1(VerifiableRule):
@@ -202,9 +203,7 @@ class Add_SpecialConstantRule_2(VerifiableRule):
     PATTERN = ((x & val_ff) ^ c_1) + TWO * (x & c_2)
     REPLACEMENT = (x & val_ff) + c_1
 
-    CONSTRAINTS = [
-        (c_1 & val_ff) == c_2
-    ]
+    CONSTRAINTS = [(c_1 & val_ff) == c_2]
 
     DESCRIPTION = "Simplify masked XOR-AND pattern"
     REFERENCE = "Special constant pattern 2"
@@ -232,8 +231,8 @@ class Add_SpecialConstantRule_3(VerifiableRule):
     REPLACEMENT = x + val_res
 
     CONSTRAINTS = [
-        c1 == ~c2,          # Relationship between matched constants
-        val_res == c2 - ONE  # Definition of replacement constant
+        c1 == ~c2,  # Relationship between matched constants
+        val_res == c2 - ONE,  # Definition of replacement constant
     ]
 
     DESCRIPTION = "Simplify XOR-OR with inverted constants"

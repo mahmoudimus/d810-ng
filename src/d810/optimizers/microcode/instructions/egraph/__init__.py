@@ -14,20 +14,11 @@ The canonical approach is always available. The egglog approach requires:
     pip install egglog cloudpickle
 """
 
-from d810.optimizers.microcode.instructions.egraph.handler import (
-    PatternOptimizer2,
-)
+# from d810.optimizers.microcode.instructions.egraph.handler import (
+#     PatternOptimizer2,
+# )
 
 # Alias for clarity
-CanonicalPatternOptimizer = PatternOptimizer2
+# CanonicalPatternOptimizer = PatternOptimizer2
 
-__all__ = ["PatternOptimizer2", "CanonicalPatternOptimizer"]
-
-# Try to import egglog-based optimizer
-try:
-    from d810.optimizers.microcode.instructions.egraph.egglog_handler import (
-        EgglogOptimizer,
-    )
-    __all__.append("EgglogOptimizer")
-except ImportError:
-    pass
+# __all__ = ["PatternOptimizer2", "CanonicalPatternOptimizer"]

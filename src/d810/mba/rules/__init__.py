@@ -20,29 +20,30 @@ Note on hot-reload:
     TODO: Consider adding a registry cleanup mechanism on reload if this becomes an issue.
 """
 
-# Re-export base classes from _base module
-from d810.mba.rules._base import (
-    SymbolicRule,
-    VerifiableRule,
-    isabstract,
-)
-
 # Import all rule modules to trigger registration
 # Each module defines VerifiableRule subclasses that auto-register
 # Use relative imports to avoid circular import issues
-from . import add
-from . import and_
-from . import bnot
-from . import cst
-from . import hodur
-from . import misc
-from . import mov
-from . import mul
-from . import neg
-from . import or_
-from . import predicates
-from . import sub
-from . import xor
+from . import (
+    _base,
+    add,
+    and_,
+    bnot,
+    cst,
+    hodur,
+    misc,
+    mov,
+    mul,
+    neg,
+    or_,
+    predicates,
+    sub,
+    xor,
+)
+
+# Re-export base classes from _base module
+SymbolicRule = _base.SymbolicRule
+VerifiableRule = _base.VerifiableRule
+isabstract = _base.isabstract
 
 __all__ = [
     # Base classes

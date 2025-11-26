@@ -15,13 +15,9 @@ from __future__ import annotations
 
 import abc
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, List, Protocol, runtime_checkable
+from typing import Any, Dict, List, Protocol, runtime_checkable
 
 from d810.mba.dsl import SymbolicExpression
-
-if TYPE_CHECKING:
-    from d810.mba.constraints import ConstraintExpr
-
 
 # =============================================================================
 # Verification Options
@@ -84,9 +80,7 @@ class VerificationEngine(Protocol):
     """
 
     def create_variables(
-        self,
-        var_names: set[str],
-        options: VerificationOptions = DEFAULT_OPTIONS
+        self, var_names: set[str], options: VerificationOptions = DEFAULT_OPTIONS
     ) -> Dict[str, Any]:
         """Create solver-specific variables for the given names.
 
@@ -135,6 +129,7 @@ def get_default_engine() -> VerificationEngine:
         ImportError: If Z3 is not installed.
     """
     from d810.mba.backends.z3 import Z3VerificationEngine
+
     return Z3VerificationEngine()
 
 
@@ -200,7 +195,7 @@ class MBARule(abc.ABC):
     def verify(
         self,
         options: VerificationOptions | None = None,
-        engine: VerificationEngine | None = None
+        engine: VerificationEngine | None = None,
     ) -> bool:
         """Proves that the pattern is equivalent to the replacement.
 
@@ -223,9 +218,7 @@ class MBARule(abc.ABC):
 
         # Prove equivalence - engine handles variable creation internally
         is_equivalent, counterexample = engine.prove_equivalence(
-            self.pattern,
-            self.replacement,
-            options=options
+            self.pattern, self.replacement, options=options
         )
 
         if not is_equivalent:
@@ -291,7 +284,7 @@ class ConstrainedMBARule(MBARule):
     def verify(
         self,
         options: VerificationOptions | None = None,
-        engine: VerificationEngine | None = None
+        engine: VerificationEngine | None = None,
     ) -> bool:
         """Proves that pattern ≡ replacement under the defined constraints.
 
@@ -332,7 +325,7 @@ class ConstrainedMBARule(MBARule):
             self.replacement,
             variables=solver_vars,
             constraints=constraints,
-            options=options
+            options=options,
         )
 
         if not is_equivalent:
@@ -409,7 +402,7 @@ def verify_transformation(
         replacement,
         variables=solver_vars,
         constraints=constraints,
-        options=options
+        options=options,
     )
 
 

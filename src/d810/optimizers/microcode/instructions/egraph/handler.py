@@ -49,7 +49,6 @@ from d810.hexrays.hexrays_helpers import (
 )
 from d810.optimizers.microcode.instructions.handler import (
     GenericPatternRule,
-    InstructionOptimizationRule,
     InstructionOptimizer,
 )
 
@@ -61,7 +60,13 @@ optimizer_logger = getLogger("D810.optimizer")
 pattern_search_logger = getLogger("D810.pattern_search")
 
 
-COMMUTATIVE_OPCODES = {ida_hexrays.m_add, ida_hexrays.m_mul, ida_hexrays.m_or, ida_hexrays.m_and, ida_hexrays.m_xor}
+COMMUTATIVE_OPCODES = {
+    ida_hexrays.m_add,
+    ida_hexrays.m_mul,
+    ida_hexrays.m_or,
+    ida_hexrays.m_and,
+    ida_hexrays.m_xor,
+}
 
 
 def _flatten_operands(node: AstNode, opcode: int) -> list[AstBase]:
@@ -528,7 +533,11 @@ class Add_HackersDelightRule_1(CanonicalPatternRule):
         return AstNode(
             ida_hexrays.m_sub,
             AstLeaf("x_0"),
-            AstNode(ida_hexrays.m_add, AstNode(ida_hexrays.m_bnot, AstLeaf("x_1")), AstConstant("1", 1)),
+            AstNode(
+                ida_hexrays.m_add,
+                AstNode(ida_hexrays.m_bnot, AstLeaf("x_1")),
+                AstConstant("1", 1),
+            ),
         )
 
     @property
@@ -605,14 +614,18 @@ class Add_HackersDelightRule_5(CanonicalPatternRule):
                 ),
             ),
             AstNode(
-                ida_hexrays.m_xor, AstLeaf("x_0"), AstNode(ida_hexrays.m_or, AstLeaf("x_1"), AstLeaf("x_2"))
+                ida_hexrays.m_xor,
+                AstLeaf("x_0"),
+                AstNode(ida_hexrays.m_or, AstLeaf("x_1"), AstLeaf("x_2")),
             ),
         )
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
         return AstNode(
-            ida_hexrays.m_add, AstLeaf("x_0"), AstNode(ida_hexrays.m_or, AstLeaf("x_1"), AstLeaf("x_2"))
+            ida_hexrays.m_add,
+            AstLeaf("x_0"),
+            AstNode(ida_hexrays.m_or, AstLeaf("x_1"), AstLeaf("x_2")),
         )
 
 
@@ -711,7 +724,10 @@ class Add_OllvmRule_1(CanonicalPatternRule):
         # ~(x XOR y) + 2*(x OR y) → (x + y) - 1
         return AstNode(
             ida_hexrays.m_add,
-            AstNode(ida_hexrays.m_bnot, AstNode(ida_hexrays.m_xor, AstLeaf("x_0"), AstLeaf("x_1"))),
+            AstNode(
+                ida_hexrays.m_bnot,
+                AstNode(ida_hexrays.m_xor, AstLeaf("x_0"), AstLeaf("x_1")),
+            ),
             AstNode(
                 ida_hexrays.m_mul,
                 AstConstant("2", 2),
@@ -741,7 +757,10 @@ class Add_OllvmRule_2(CanonicalPatternRule):
         # ~(x XOR y) - val_fe*(x OR y) → (x + y) - 1  when constraint holds
         return AstNode(
             ida_hexrays.m_sub,
-            AstNode(ida_hexrays.m_bnot, AstNode(ida_hexrays.m_xor, AstLeaf("x_0"), AstLeaf("x_1"))),
+            AstNode(
+                ida_hexrays.m_bnot,
+                AstNode(ida_hexrays.m_xor, AstLeaf("x_0"), AstLeaf("x_1")),
+            ),
             AstNode(
                 ida_hexrays.m_mul,
                 AstConstant("val_fe"),
@@ -843,7 +862,10 @@ class AddXor_Rule_2(CanonicalPatternRule):
             AstNode(
                 ida_hexrays.m_mul,
                 AstConstant("2", 2),
-                AstNode(ida_hexrays.m_bnot, AstNode(ida_hexrays.m_and, AstLeaf("bnot_x_0"), AstLeaf("x_1"))),
+                AstNode(
+                    ida_hexrays.m_bnot,
+                    AstNode(ida_hexrays.m_and, AstLeaf("bnot_x_0"), AstLeaf("x_1")),
+                ),
             ),
         )
 

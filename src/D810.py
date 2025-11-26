@@ -8,6 +8,7 @@ import ida_kernwin
 import idaapi
 
 import d810
+import d810._vendor
 import d810._vendor.ida_reloader as reloadable
 import d810.core.typing as typing
 
@@ -41,7 +42,9 @@ class _UIHooks(idaapi.UI_Hooks):
 
 
 class D810Plugin(
-    reloadable.ReloadablePluginBase, idaapi.action_handler_t, idaapi.plugin_t
+    reloadable.ReloadablePluginBase,
+    idaapi.action_handler_t,
+    idaapi.plugin_t,
 ):
     #
     # Plugin flags:
@@ -145,7 +148,10 @@ class D810Plugin(
         with self.plugin_setup_reload():
             reloadable.reload_package(
                 d810,
-                skip=[f"{self.base_package_name}.core.registry"],
+                skip=[
+                    f"{self.base_package_name}.core.registry",
+                    f"{self.base_package_name}._vendor",
+                ],
                 suppress_errors=self.suppress_reload_errors,
             )
 

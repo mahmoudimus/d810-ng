@@ -26,9 +26,7 @@ Registry Architecture:
 from __future__ import annotations
 
 import abc
-import logging
-from inspect import isabstract
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Iterator, List, Self, Type
+from typing import TYPE_CHECKING, Any, Dict, List, Self
 
 from d810.core import getLogger
 from d810.core.registry import Registrant
@@ -37,9 +35,6 @@ from d810.mba.dsl import SymbolicExpression
 # Import types only for type checking to avoid circular imports and IDA dependencies
 if TYPE_CHECKING:
     from d810.optimizers.core import OptimizationContext
-    from d810.optimizers.microcode.instructions.pattern_matching.handler import (
-        PatternMatchingRule,
-    )
 
 logger = getLogger(__name__)
 
@@ -149,7 +144,7 @@ class VerifiableRule(SymbolicRule, Registrant):
     CONTEXT_VARS: Dict[str, Any] = (
         {}
     )  # Context providers (e.g., {"full_reg": context.dst.parent_register})
-    UPDATE_DESTINATION: str = (
+    UPDATE_DESTINATION: str | None = (
         None  # Variable name to use as new destination (e.g., "full_reg")
     )
     KNOWN_INCORRECT: bool = (
@@ -313,7 +308,7 @@ class VerifiableRule(SymbolicRule, Registrant):
 
     # Implement SymbolicRule abstract properties
     @property
-    def pattern(self) -> SymbolicExpression:
+    def pattern(self) -> SymbolicExpression | None:
         """The symbolic pattern to match (SymbolicRule interface).
 
         Returns the DSL SymbolicExpression for Z3 verification.
@@ -322,10 +317,9 @@ class VerifiableRule(SymbolicRule, Registrant):
         for cls in type(self).__mro__:
             if hasattr(cls, "_dsl_pattern"):
                 return cls._dsl_pattern
-        return None
 
     @property
-    def replacement(self) -> SymbolicExpression:
+    def replacement(self) -> SymbolicExpression | None:
         """The symbolic replacement expression (SymbolicRule interface).
 
         Returns the DSL SymbolicExpression for Z3 verification.
@@ -334,7 +328,6 @@ class VerifiableRule(SymbolicRule, Registrant):
         for cls in type(self).__mro__:
             if hasattr(cls, "_dsl_replacement"):
                 return cls._dsl_replacement
-        return None
 
     # =========================================================================
     # Constraint Checking Interface

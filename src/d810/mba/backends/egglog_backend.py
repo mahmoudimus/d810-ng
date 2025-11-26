@@ -29,20 +29,13 @@ logging.getLogger("egglog").setLevel(logging.WARNING)
 logging.getLogger("egglog.egraph").setLevel(logging.WARNING)
 
 try:
-    from egglog import EGraph, Expr, i64Like, rewrite, vars_, eq, StringLike
+    from egglog import EGraph, Expr, StringLike, eq, i64Like, rewrite, vars_
+
     EGGLOG_AVAILABLE = True
 except ImportError:
     EGGLOG_AVAILABLE = False
-    EGraph = None  # type: ignore[misc, assignment]
-    Expr = object  # type: ignore[misc, assignment]
 
-# Import IDA types only when available (not during unit tests)
-try:
-    import ida_hexrays
-    IDA_AVAILABLE = True
-except ImportError:
-    IDA_AVAILABLE = False
-    ida_hexrays = None  # type: ignore[assignment]
+import ida_hexrays
 
 
 def check_egglog_available() -> bool:
@@ -115,25 +108,18 @@ if EGGLOG_AVAILABLE:
             self.egraph.register(
                 # Or_MbaRule_1: (x & y) + (x ^ y) => x | y
                 rewrite((x & y) + (x ^ y)).to(x | y),
-
                 # Or_HackersDelightRule_2: (x + y) - (x & y) => x | y
                 rewrite((x + y) - (x & y)).to(x | y),
-
                 # Or_HackersDelightRule_2_variant_1: (x - y) - (x & -y) => x | -y
                 rewrite((x - y) - (x & -y)).to(x | -y),
-
                 # Or_FactorRule_1: (x & y) | (x ^ y) => x | y
                 rewrite((x & y) | (x ^ y)).to(x | y),
-
                 # Or_Rule_2: (x ^ y) | y => x | y
                 rewrite((x ^ y) | y).to(x | y),
-
                 # Or_Rule_4: (x & y) ^ (x ^ y) => x | y
                 rewrite((x & y) ^ (x ^ y)).to(x | y),
-
                 # OrBnot_FactorRule_1: ~x ^ (x & y) => ~x | y
                 rewrite((~x) ^ (x & y)).to((~x) | y),
-
                 # OrBnot_FactorRule_2: x ^ (~x & y) => x | y
                 rewrite(x ^ ((~x) & y)).to(x | y),
             )
@@ -142,13 +128,10 @@ if EGGLOG_AVAILABLE:
             self.egraph.register(
                 # And_MbaRule_1: (x | y) - (x ^ y) => x & y
                 rewrite((x | y) - (x ^ y)).to(x & y),
-
                 # And_HackersDelightRule_2: (x + y) - (x | y) => x & y
                 rewrite((x + y) - (x | y)).to(x & y),
-
                 # And_FactorRule_1: (x | y) ^ (x ^ y) => x & y
                 rewrite((x | y) ^ (x ^ y)).to(x & y),
-
                 # And_Rule_2: (x ^ y) ^ y => x
                 # (This is actually XOR cancellation, not AND)
             )
@@ -157,7 +140,6 @@ if EGGLOG_AVAILABLE:
             self.egraph.register(
                 # Xor_MbaRule_1: (x | y) - (x & y) => x ^ y
                 rewrite((x | y) - (x & y)).to(x ^ y),
-
                 # Xor_Rule_1: x ^ y ^ y => x (XOR cancellation)
                 rewrite((x ^ y) ^ y).to(x),
             )
@@ -166,7 +148,6 @@ if EGGLOG_AVAILABLE:
             self.egraph.register(
                 # ~(~x) => x (double bitwise negation)
                 rewrite(~~x).to(x),
-
                 # -(-x) => x (double arithmetic negation)
                 rewrite(-(-x)).to(x),
             )
@@ -199,112 +180,109 @@ if EGGLOG_AVAILABLE:
             """Create a constant expression."""
             return BitExpr(value)
 
+    # IDA opcode to BitExpr operation mapping
+    _OPCODE_TO_BITEXPR_BINARY = {
+        ida_hexrays.m_add: lambda l, r: l + r,
+        ida_hexrays.m_sub: lambda l, r: l - r,
+        ida_hexrays.m_mul: lambda l, r: l * r,
+        ida_hexrays.m_and: lambda l, r: l & r,
+        ida_hexrays.m_or: lambda l, r: l | r,
+        ida_hexrays.m_xor: lambda l, r: l ^ r,
+    }
 
-    if IDA_AVAILABLE:
-        # IDA opcode to BitExpr operation mapping
-        _OPCODE_TO_BITEXPR_BINARY = {
-            ida_hexrays.m_add: lambda l, r: l + r,
-            ida_hexrays.m_sub: lambda l, r: l - r,
-            ida_hexrays.m_mul: lambda l, r: l * r,
-            ida_hexrays.m_and: lambda l, r: l & r,
-            ida_hexrays.m_or: lambda l, r: l | r,
-            ida_hexrays.m_xor: lambda l, r: l ^ r,
-        }
+    _OPCODE_TO_BITEXPR_UNARY = {
+        ida_hexrays.m_neg: lambda x: -x,
+        ida_hexrays.m_bnot: lambda x: ~x,
+    }
 
-        _OPCODE_TO_BITEXPR_UNARY = {
-            ida_hexrays.m_neg: lambda x: -x,
-            ida_hexrays.m_bnot: lambda x: ~x,
-        }
+    # BitExpr operation to IDA opcode mapping (for extraction)
+    # Note: These are string representations from egglog
+    _BITEXPR_OP_TO_OPCODE = {
+        "__add__": ida_hexrays.m_add,
+        "__sub__": ida_hexrays.m_sub,
+        "__mul__": ida_hexrays.m_mul,
+        "__and__": ida_hexrays.m_and,
+        "__or__": ida_hexrays.m_or,
+        "__xor__": ida_hexrays.m_xor,
+        "__neg__": ida_hexrays.m_neg,
+        "__invert__": ida_hexrays.m_bnot,
+    }
 
-        # BitExpr operation to IDA opcode mapping (for extraction)
-        # Note: These are string representations from egglog
-        _BITEXPR_OP_TO_OPCODE = {
-            "__add__": ida_hexrays.m_add,
-            "__sub__": ida_hexrays.m_sub,
-            "__mul__": ida_hexrays.m_mul,
-            "__and__": ida_hexrays.m_and,
-            "__or__": ida_hexrays.m_or,
-            "__xor__": ida_hexrays.m_xor,
-            "__neg__": ida_hexrays.m_neg,
-            "__invert__": ida_hexrays.m_bnot,
-        }
+    class AstToBitExprConverter:
+        """Converts IDA AstNode to egglog BitExpr."""
 
-        class AstToBitExprConverter:
-            """Converts IDA AstNode to egglog BitExpr."""
+        def __init__(self):
+            self._var_counter = 0
+            self._leaf_to_var: dict[int, BitExpr] = {}
+            self._var_to_leaf: dict[str, typing.Any] = {}  # AstLeaf
 
-            def __init__(self):
-                self._var_counter = 0
-                self._leaf_to_var: dict[int, BitExpr] = {}
-                self._var_to_leaf: dict[str, typing.Any] = {}  # AstLeaf
+        def convert(self, ast_node) -> BitExpr | None:
+            """Convert an AstNode/AstLeaf to BitExpr.
 
-            def convert(self, ast_node) -> BitExpr | None:
-                """Convert an AstNode/AstLeaf to BitExpr.
+            Args:
+                ast_node: The AstNode or AstLeaf to convert.
 
-                Args:
-                    ast_node: The AstNode or AstLeaf to convert.
+            Returns:
+                BitExpr representation, or None if conversion fails.
+            """
+            from d810.expr.ast import AstConstant, AstLeaf, AstNode
 
-                Returns:
-                    BitExpr representation, or None if conversion fails.
-                """
-                from d810.expr.ast import AstNode, AstLeaf, AstConstant
-
-                if ast_node is None:
-                    return None
-
-                # Handle leaf nodes (variables)
-                if isinstance(ast_node, (AstLeaf, AstConstant)) or ast_node.is_leaf():
-                    return self._convert_leaf(ast_node)
-
-                # Handle AstNode
-                if isinstance(ast_node, AstNode) or ast_node.is_node():
-                    return self._convert_node(ast_node)
-
+            if ast_node is None:
                 return None
 
-            def _convert_leaf(self, leaf) -> BitExpr:
-                """Convert a leaf node to a BitExpr variable."""
-                # Use ast_index as unique identifier if available
-                leaf_id = getattr(leaf, 'ast_index', id(leaf))
+            # Handle leaf nodes (variables)
+            if isinstance(ast_node, (AstLeaf, AstConstant)) or ast_node.is_leaf():
+                return self._convert_leaf(ast_node)
 
-                if leaf_id in self._leaf_to_var:
-                    return self._leaf_to_var[leaf_id]
+            # Handle AstNode
+            if isinstance(ast_node, AstNode) or ast_node.is_node():
+                return self._convert_node(ast_node)
 
-                # Create new variable
-                var_name = f"v{self._var_counter}"
-                self._var_counter += 1
-                var = BitExpr.var(var_name)
+            return None
 
-                self._leaf_to_var[leaf_id] = var
-                self._var_to_leaf[var_name] = leaf
+        def _convert_leaf(self, leaf) -> BitExpr:
+            """Convert a leaf node to a BitExpr variable."""
+            # Use ast_index as unique identifier if available
+            leaf_id = getattr(leaf, "ast_index", id(leaf))
 
-                return var
+            if leaf_id in self._leaf_to_var:
+                return self._leaf_to_var[leaf_id]
 
-            def _convert_node(self, node) -> BitExpr | None:
-                """Convert an AstNode to BitExpr."""
-                opcode = node.opcode
+            # Create new variable
+            var_name = f"v{self._var_counter}"
+            self._var_counter += 1
+            var = BitExpr.var(var_name)
 
-                # Binary operations
-                if opcode in _OPCODE_TO_BITEXPR_BINARY:
-                    left = self.convert(node.left)
-                    right = self.convert(node.right)
-                    if left is None or right is None:
-                        return None
-                    return _OPCODE_TO_BITEXPR_BINARY[opcode](left, right)
+            self._leaf_to_var[leaf_id] = var
+            self._var_to_leaf[var_name] = leaf
 
-                # Unary operations
-                if opcode in _OPCODE_TO_BITEXPR_UNARY:
-                    operand = self.convert(node.left)
-                    if operand is None:
-                        return None
-                    return _OPCODE_TO_BITEXPR_UNARY[opcode](operand)
+            return var
 
-                # Unsupported opcode - treat as leaf
-                return self._convert_leaf(node)
+        def _convert_node(self, node) -> BitExpr | None:
+            """Convert an AstNode to BitExpr."""
+            opcode = node.opcode
 
-            def get_leaf_mapping(self) -> dict[str, typing.Any]:
-                """Get the mapping from variable names to original leaves."""
-                return self._var_to_leaf.copy()
+            # Binary operations
+            if opcode in _OPCODE_TO_BITEXPR_BINARY:
+                left = self.convert(node.left)
+                right = self.convert(node.right)
+                if left is None or right is None:
+                    return None
+                return _OPCODE_TO_BITEXPR_BINARY[opcode](left, right)
 
+            # Unary operations
+            if opcode in _OPCODE_TO_BITEXPR_UNARY:
+                operand = self.convert(node.left)
+                if operand is None:
+                    return None
+                return _OPCODE_TO_BITEXPR_UNARY[opcode](operand)
+
+            # Unsupported opcode - treat as leaf
+            return self._convert_leaf(node)
+
+        def get_leaf_mapping(self) -> dict[str, typing.Any]:
+            """Get the mapping from variable names to original leaves."""
+            return self._var_to_leaf.copy()
 
         class EGraphOptimizer:
             """IDA microcode optimizer using e-graphs and equality saturation.
@@ -334,7 +312,7 @@ if EGGLOG_AVAILABLE:
                 Returns:
                     Simplified AstNode if a simplification was found, None otherwise.
                 """
-                from d810.expr.ast import AstNode, AstLeaf
+                from d810.expr.ast import AstLeaf, AstNode
 
                 # Convert to BitExpr
                 converter = AstToBitExprConverter()
@@ -353,9 +331,7 @@ if EGGLOG_AVAILABLE:
                 leaf_mapping = converter.get_leaf_mapping()
 
                 # Create all possible simplified targets and check equivalence
-                simplified = self._find_simplification(
-                    egraph, bit_expr, leaf_mapping
-                )
+                simplified = self._find_simplification(egraph, bit_expr, leaf_mapping)
 
                 if simplified is not None:
                     self._stats["simplifications"] += 1
@@ -419,7 +395,6 @@ if EGGLOG_AVAILABLE:
             def get_stats(self) -> dict:
                 """Get optimization statistics."""
                 return self._stats.copy()
-
 
     # =========================================================================
     # Pattern Generation for VerifiableRule
@@ -533,79 +508,64 @@ if EGGLOG_AVAILABLE:
         return equivalent
 
 
-else:
-    # Stub classes for when egglog is not available
-    class BitExpr:  # type: ignore[no-redef]
-        """Stub BitExpr class for when egglog is not installed."""
-        pass
-
-    class MBAEGraph:  # type: ignore[no-redef]
-        """Stub MBAEGraph class for when egglog is not installed."""
-
-        def __init__(self, max_iterations: int = 10):
-            raise ImportError(
-                "egglog is not installed. Install with: pip install egglog cloudpickle"
-            )
-
-    class EGraphOptimizer:  # type: ignore[no-redef]
-        """Stub EGraphOptimizer class for when egglog is not installed."""
-
-        def __init__(self, max_iterations: int = 10):
-            raise ImportError(
-                "egglog is not installed. Install with: pip install egglog cloudpickle"
-            )
-
-
 # Example usage and testing
 if __name__ == "__main__":
     if not EGGLOG_AVAILABLE:
         print("egglog not installed. Run: pip install egglog cloudpickle")
         exit(1)
 
-    print("Testing egglog-based MBA pattern matching...")
-    print("=" * 60)
+    # print("Testing egglog-based MBA pattern matching...")
+    # print("=" * 60)
 
-    # Create e-graph
-    egraph = MBAEGraph()
+    # # Create e-graph
+    # egraph = MBAEGraph()
 
-    # Create variables
-    x = egraph.var("x")
-    y = egraph.var("y")
+    # # Create variables
+    # x = egraph.var("x")
+    # y = egraph.var("y")
 
-    # Test cases
-    test_cases = [
-        # (obfuscated_expr, expected_simplified, description)
-        ((x & y) + (x ^ y), x | y, "Or_MbaRule_1: (x & y) + (x ^ y) => x | y"),
-        ((x ^ y) + (x & y), x | y, "Or_MbaRule_1 (commuted): (x ^ y) + (x & y) => x | y"),
-        ((x + y) - (x & y), x | y, "Or_HackersDelightRule_2: (x + y) - (x & y) => x | y"),
-        ((x & y) | (x ^ y), x | y, "Or_FactorRule_1: (x & y) | (x ^ y) => x | y"),
-        ((x | y) - (x ^ y), x & y, "And_MbaRule_1: (x | y) - (x ^ y) => x & y"),
-        ((x | y) - (x & y), x ^ y, "Xor_MbaRule_1: (x | y) - (x & y) => x ^ y"),
-        ((~x) ^ (x & y), (~x) | y, "OrBnot_FactorRule_1: ~x ^ (x & y) => ~x | y"),
-        (x ^ ((~x) & y), x | y, "OrBnot_FactorRule_2: x ^ (~x & y) => x | y"),
-        ((x ^ y) ^ y, x, "Xor_Rule_1: (x ^ y) ^ y => x"),
-    ]
+    # # Test cases
+    # test_cases = [
+    #     # (obfuscated_expr, expected_simplified, description)
+    #     ((x & y) + (x ^ y), x | y, "Or_MbaRule_1: (x & y) + (x ^ y) => x | y"),
+    #     (
+    #         (x ^ y) + (x & y),
+    #         x | y,
+    #         "Or_MbaRule_1 (commuted): (x ^ y) + (x & y) => x | y",
+    #     ),
+    #     (
+    #         (x + y) - (x & y),
+    #         x | y,
+    #         "Or_HackersDelightRule_2: (x + y) - (x & y) => x | y",
+    #     ),
+    #     ((x & y) | (x ^ y), x | y, "Or_FactorRule_1: (x & y) | (x ^ y) => x | y"),
+    #     ((x | y) - (x ^ y), x & y, "And_MbaRule_1: (x | y) - (x ^ y) => x & y"),
+    #     ((x | y) - (x & y), x ^ y, "Xor_MbaRule_1: (x | y) - (x & y) => x ^ y"),
+    #     ((~x) ^ (x & y), (~x) | y, "OrBnot_FactorRule_1: ~x ^ (x & y) => ~x | y"),
+    #     (x ^ ((~x) & y), x | y, "OrBnot_FactorRule_2: x ^ (~x & y) => x | y"),
+    #     ((x ^ y) ^ y, x, "Xor_Rule_1: (x ^ y) ^ y => x"),
+    # ]
 
-    # Add all expressions
-    for i, (obf, simp, desc) in enumerate(test_cases):
-        egraph.add_expression(f"obf_{i}", obf)
-        egraph.add_expression(f"simp_{i}", simp)
+    # # Add all expressions
+    # for i, (obf, simp, desc) in enumerate(test_cases):
+    #     egraph.add_expression(f"obf_{i}", obf)
+    #     egraph.add_expression(f"simp_{i}", simp)
 
-    # Run saturation once
-    egraph.saturate()
+    # # Run saturation once
+    # egraph.saturate()
 
-    # Check all equivalences
-    passed = 0
-    for obf, simp, desc in test_cases:
-        is_equiv = egraph.check_equivalent(obf, simp)
-        status = "PASS" if is_equiv else "FAIL"
-        print(f"[{status}] {desc}")
-        if is_equiv:
-            passed += 1
+    # # Check all equivalences
+    # passed = 0
+    # for obf, simp, desc in test_cases:
+    #     is_equiv = egraph.check_equivalent(obf, simp)
+    #     status = "PASS" if is_equiv else "FAIL"
+    #     print(f"[{status}] {desc}")
+    #     if is_equiv:
+    #         passed += 1
 
-    print("=" * 60)
-    print(f"Results: {passed}/{len(test_cases)} tests passed")
+    # print("=" * 60)
+    # print(f"Results: {passed}/{len(test_cases)} tests passed")
 
-    if passed == len(test_cases):
-        print("\nE-graph successfully proves all MBA equivalences!")
-        print("This eliminates the need for explicit commuted rule variants.")
+    # if passed == len(test_cases):
+    #     print("\nE-graph successfully proves all MBA equivalences!")
+    #     print("This eliminates the need for explicit commuted rule variants.")

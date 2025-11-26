@@ -24,6 +24,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from .dsl import SymbolicExpression
+
 
 @dataclass
 class ConstraintExpr:
@@ -36,7 +38,9 @@ class ConstraintExpr:
     For Z3 conversion, use: d810.mba.backends.z3.constraint_to_z3()
     """
 
-    def eval_and_define(self, candidate: dict[str, Any]) -> tuple[str | None, int | None]:
+    def eval_and_define(
+        self, candidate: dict[str, Any]
+    ) -> tuple[str | None, int | None]:
         """Try to extract a variable definition from this constraint.
 
         If this is a defining constraint (e.g., val_res == c2 - 1), returns
@@ -107,7 +111,6 @@ class ConstraintExpr:
         Returns:
             SymbolicExpression representing 0 (false) or 1 (true)
         """
-        from d810.mba.dsl import SymbolicExpression
         return SymbolicExpression(operation="bool_to_int", constraint=self)
 
 
@@ -127,7 +130,9 @@ class EqualityConstraint(ConstraintExpr):
     left: Any  # SymbolicExpression or AstBase
     right: Any  # SymbolicExpression or AstBase
 
-    def eval_and_define(self, candidate: dict[str, Any]) -> tuple[str | None, int | None]:
+    def eval_and_define(
+        self, candidate: dict[str, Any]
+    ) -> tuple[str | None, int | None]:
         """If left is a simple constant, define it as right's value."""
         # Check if left is a simple constant (not a compound expression)
         if self._is_simple_constant(self.left):
@@ -154,13 +159,14 @@ class EqualityConstraint(ConstraintExpr):
         For constraints like `bnot_y == ~y`, this performs structural checking
         using IDA's equal_bnot_mop function instead of value-based comparison.
         """
-        from d810.mba.dsl import SymbolicExpression
 
         # Check if this is a structural BNOT constraint: left == ~right
         # This needs special handling because we compare AST structure, not values
-        if (isinstance(self.right, SymbolicExpression)
+        if (
+            isinstance(self.right, SymbolicExpression)
             and self.right.operation == "bnot"
-            and self.right.left is not None):
+            and self.right.left is not None
+        ):
             return self._check_bnot_constraint(candidate)
 
         # Regular value-based equality check
@@ -184,7 +190,6 @@ class EqualityConstraint(ConstraintExpr):
         Returns:
             True if left is structurally ~right, False otherwise.
         """
-        from d810.mba.dsl import SymbolicExpression
 
         # Get the variable names involved
         # left should be a simple variable (e.g., "bnot_y")
@@ -198,7 +203,10 @@ class EqualityConstraint(ConstraintExpr):
 
         # Get the operand of the BNOT (e.g., "y" from ~y)
         bnot_operand = self.right.left
-        if not isinstance(bnot_operand, SymbolicExpression) or not bnot_operand.is_leaf():
+        if (
+            not isinstance(bnot_operand, SymbolicExpression)
+            or not bnot_operand.is_leaf()
+        ):
             return False
 
         operand_name = bnot_operand.name
@@ -210,8 +218,8 @@ class EqualityConstraint(ConstraintExpr):
         right_node = candidate[operand_name]
 
         # Extract mops from AstNodes (if they have them)
-        left_mop = getattr(left_node, 'mop', None)
-        right_mop = getattr(right_node, 'mop', None)
+        left_mop = getattr(left_node, "mop", None)
+        right_mop = getattr(right_node, "mop", None)
 
         if left_mop is None or right_mop is None:
             return False
@@ -219,6 +227,7 @@ class EqualityConstraint(ConstraintExpr):
         # Use IDA's structural BNOT comparison
         try:
             from d810.hexrays.hexrays_helpers import equal_bnot_mop
+
             return equal_bnot_mop(left_mop, right_mop)
         except ImportError:
             # IDA not available - can't check structural constraint
@@ -226,7 +235,6 @@ class EqualityConstraint(ConstraintExpr):
 
     def _is_simple_constant(self, expr) -> bool:
         """Check if expression is a simple constant (not compound)."""
-        from d810.mba.dsl import SymbolicExpression
 
         if isinstance(expr, SymbolicExpression):
             return expr.is_leaf() and expr.name is not None
@@ -235,7 +243,6 @@ class EqualityConstraint(ConstraintExpr):
 
     def _get_name(self, expr) -> str:
         """Get the name of a constant."""
-        from d810.mba.dsl import SymbolicExpression
 
         if isinstance(expr, SymbolicExpression):
             if expr.name:
@@ -254,26 +261,26 @@ class EqualityConstraint(ConstraintExpr):
         Returns:
             Integer result of evaluation
         """
-        from d810.mba.dsl import SymbolicExpression
 
         if isinstance(expr, SymbolicExpression):
             return self._eval_symbolic_expr(expr, candidate)
 
-        raise ValueError(f"Cannot evaluate {type(expr).__name__}: expected SymbolicExpression")
+        raise ValueError(
+            f"Cannot evaluate {type(expr).__name__}: expected SymbolicExpression"
+        )
 
     def _eval_symbolic_expr(self, expr, candidate: dict[str, Any]) -> int:
         """Evaluate a pure SymbolicExpression with concrete values."""
-        from d810.mba.dsl import SymbolicExpression
 
         # Get width for masking (default 32-bit)
-        width = candidate.get('_width', 32)
+        width = candidate.get("_width", 32)
         mask = (1 << width) - 1
 
         # Leaf node
         if expr.is_leaf():
             if expr.name in candidate:
                 value = candidate[expr.name]
-                if hasattr(value, 'value'):
+                if hasattr(value, "value"):
                     return value.value
                 return value
             if expr.value is not None:
@@ -282,7 +289,9 @@ class EqualityConstraint(ConstraintExpr):
 
         # Operation node - evaluate recursively
         left_val = self._eval_symbolic_expr(expr.left, candidate) if expr.left else None
-        right_val = self._eval_symbolic_expr(expr.right, candidate) if expr.right else None
+        right_val = (
+            self._eval_symbolic_expr(expr.right, candidate) if expr.right else None
+        )
 
         match expr.operation:
             case "neg":
@@ -331,9 +340,11 @@ class ComparisonConstraint(ConstraintExpr):
     left: Any  # SymbolicExpression or AstBase
     right: Any  # SymbolicExpression or AstBase
     op_symbol: str  # For display: "!=", "<", ">", "<=", ">="
-    op_name: str    # Internal: "ne", "lt", "gt", "le", "ge"
+    op_name: str  # Internal: "ne", "lt", "gt", "le", "ge"
 
-    def eval_and_define(self, candidate: dict[str, Any]) -> tuple[str | None, int | None]:
+    def eval_and_define(
+        self, candidate: dict[str, Any]
+    ) -> tuple[str | None, int | None]:
         """Comparisons don't define variables."""
         return (None, None)
 
@@ -377,7 +388,9 @@ class AndConstraint(ConstraintExpr):
     left: ConstraintExpr
     right: ConstraintExpr
 
-    def eval_and_define(self, candidate: dict[str, Any]) -> tuple[str | None, int | None]:
+    def eval_and_define(
+        self, candidate: dict[str, Any]
+    ) -> tuple[str | None, int | None]:
         """Try to extract definitions from left first, then right."""
         # Try left constraint
         var_name, value = self.left.eval_and_define(candidate)
@@ -407,7 +420,9 @@ class OrConstraint(ConstraintExpr):
     left: ConstraintExpr
     right: ConstraintExpr
 
-    def eval_and_define(self, candidate: dict[str, Any]) -> tuple[str | None, int | None]:
+    def eval_and_define(
+        self, candidate: dict[str, Any]
+    ) -> tuple[str | None, int | None]:
         """OR doesn't define variables - both branches would need same value."""
         return (None, None)
 
@@ -429,7 +444,9 @@ class NotConstraint(ConstraintExpr):
 
     operand: ConstraintExpr
 
-    def eval_and_define(self, candidate: dict[str, Any]) -> tuple[str | None, int | None]:
+    def eval_and_define(
+        self, candidate: dict[str, Any]
+    ) -> tuple[str | None, int | None]:
         """NOT doesn't define variables."""
         return (None, None)
 

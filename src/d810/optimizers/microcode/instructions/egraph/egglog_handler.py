@@ -40,16 +40,13 @@ if typing.TYPE_CHECKING:
     from d810.core import OptimizationStatistics
 
 # Import egglog backend
-from d810.mba.backends.egglog_backend import (
-    EGGLOG_AVAILABLE,
-    IDA_AVAILABLE,
-)
+from d810.mba.backends.egglog_backend import EGGLOG_AVAILABLE
 
-if EGGLOG_AVAILABLE and IDA_AVAILABLE:
+if EGGLOG_AVAILABLE:
     from d810.mba.backends.egglog_backend import (
-        MBAEGraph,
-        BitExpr,
         AstToBitExprConverter,
+        BitExpr,
+        MBAEGraph,
     )
 
 optimizer_logger = getLogger("D810.optimizer")
@@ -100,18 +97,14 @@ class EgglogOptimizer(InstructionOptimizer):
         """
         super().__init__(maturities, stats, log_dir=log_dir)
         self.max_iterations = max_iterations
-        self._enabled = EGGLOG_AVAILABLE and IDA_AVAILABLE
+        self._enabled = EGGLOG_AVAILABLE
 
         if not EGGLOG_AVAILABLE:
             optimizer_logger.warning(
                 "[EgglogOptimizer] egglog not installed - optimizer disabled. "
                 "Install with: pip install egglog cloudpickle"
             )
-        elif not IDA_AVAILABLE:
-            optimizer_logger.warning(
-                "[EgglogOptimizer] IDA not available - optimizer disabled."
-            )
-
+            
     @classmethod
     def _get_egraph(cls, max_iterations: int = 10) -> "MBAEGraph":
         """Get or create the cached MBAEGraph instance.
