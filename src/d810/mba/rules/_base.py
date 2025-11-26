@@ -28,7 +28,7 @@ from __future__ import annotations
 import abc
 import logging
 from inspect import isabstract
-from typing import Any, ClassVar, Dict, Iterator, List, Type, TYPE_CHECKING, Self
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, Iterator, List, Self, Type
 
 from d810.core import getLogger
 from d810.core.registry import Registrant
@@ -37,7 +37,9 @@ from d810.mba.dsl import SymbolicExpression
 # Import types only for type checking to avoid circular imports and IDA dependencies
 if TYPE_CHECKING:
     from d810.optimizers.core import OptimizationContext
-    from d810.optimizers.microcode.instructions.pattern_matching.handler import PatternMatchingRule
+    from d810.optimizers.microcode.instructions.pattern_matching.handler import (
+        PatternMatchingRule,
+    )
 
 logger = getLogger(__name__)
 
@@ -144,10 +146,18 @@ class VerifiableRule(SymbolicRule, Registrant):
 
     CONSTRAINTS: List = []  # Runtime constraints (list of callables)
     DYNAMIC_CONSTS: Dict[str, Any] = {}  # Dynamic constant generators
-    CONTEXT_VARS: Dict[str, Any] = {}  # Context providers (e.g., {"full_reg": context.dst.parent_register})
-    UPDATE_DESTINATION: str = None  # Variable name to use as new destination (e.g., "full_reg")
-    KNOWN_INCORRECT: bool = False  # Set to True for rules that are mathematically incorrect
-    SKIP_VERIFICATION: bool = False  # Set to True to skip Z3 verification (e.g., for size-dependent constraints)
+    CONTEXT_VARS: Dict[str, Any] = (
+        {}
+    )  # Context providers (e.g., {"full_reg": context.dst.parent_register})
+    UPDATE_DESTINATION: str = (
+        None  # Variable name to use as new destination (e.g., "full_reg")
+    )
+    KNOWN_INCORRECT: bool = (
+        False  # Set to True for rules that are mathematically incorrect
+    )
+    SKIP_VERIFICATION: bool = (
+        False  # Set to True to skip Z3 verification (e.g., for size-dependent constraints)
+    )
 
     @classmethod
     def resolve_lazy_rules(cls) -> None:
@@ -180,13 +190,12 @@ class VerifiableRule(SymbolicRule, Registrant):
             if isabstract(rule_cls):
                 logger.debug(f"Skipping abstract class: {rule_cls.__name__}")
                 continue
-
             # Skip classes without a valid pattern definition
             # These are typically test base classes that inherit VerifiableRule
             # but don't define PATTERN/REPLACEMENT
-            has_pattern = (
-                hasattr(rule_cls, '_dsl_pattern') or
-                ('PATTERN' in rule_cls.__dict__ and isinstance(rule_cls.__dict__['PATTERN'], SymbolicExpression))
+            has_pattern = hasattr(rule_cls, "_dsl_pattern") or (
+                "PATTERN" in rule_cls.__dict__
+                and isinstance(rule_cls.__dict__["PATTERN"], SymbolicExpression)
             )
             if not has_pattern:
                 logger.debug(f"Skipping class without pattern: {rule_cls.__name__}")
@@ -214,13 +223,13 @@ class VerifiableRule(SymbolicRule, Registrant):
 
         # These attributes are needed for the d810 optimizer system
         # Set them here in case the parent __init__ didn't set them
-        if not hasattr(self, 'maturities'):
+        if not hasattr(self, "maturities"):
             self.maturities = []
-        if not hasattr(self, 'config'):
+        if not hasattr(self, "config"):
             self.config = {}
-        if not hasattr(self, 'log_dir'):
+        if not hasattr(self, "log_dir"):
             self.log_dir = None
-        if not hasattr(self, 'dump_intermediate_microcode'):
+        if not hasattr(self, "dump_intermediate_microcode"):
             self.dump_intermediate_microcode = False
         # Note: pattern_candidates is now a property, not set in __init__
 
@@ -236,11 +245,16 @@ class VerifiableRule(SymbolicRule, Registrant):
         if "maturities" in self.config:
             try:
                 from d810.hexrays.hexrays_formatters import string_to_maturity
-                self.maturities = [string_to_maturity(x) for x in self.config["maturities"]]
+
+                self.maturities = [
+                    string_to_maturity(x) for x in self.config["maturities"]
+                ]
             except ImportError:
                 pass
         if "dump_intermediate_microcode" in self.config:
-            self.dump_intermediate_microcode = self.config["dump_intermediate_microcode"]
+            self.dump_intermediate_microcode = self.config[
+                "dump_intermediate_microcode"
+            ]
 
     def set_log_dir(self, log_dir: str) -> None:
         """Set the log directory for this rule.
@@ -268,12 +282,16 @@ class VerifiableRule(SymbolicRule, Registrant):
         # IMPORTANT: Use isinstance() instead of hasattr(.., 'node') to avoid
         # triggering IDA imports at class definition time. The .node property
         # lazily imports IDA modules, which would break unit testing without IDA.
-        if 'PATTERN' in cls.__dict__ and isinstance(cls.__dict__['PATTERN'], SymbolicExpression):
-            cls._dsl_pattern = cls.__dict__['PATTERN']
+        if "PATTERN" in cls.__dict__ and isinstance(
+            cls.__dict__["PATTERN"], SymbolicExpression
+        ):
+            cls._dsl_pattern = cls.__dict__["PATTERN"]
             # Keep PATTERN as an alias for backward compatibility
 
-        if 'REPLACEMENT' in cls.__dict__ and isinstance(cls.__dict__['REPLACEMENT'], SymbolicExpression):
-            cls._dsl_replacement = cls.__dict__['REPLACEMENT']
+        if "REPLACEMENT" in cls.__dict__ and isinstance(
+            cls.__dict__["REPLACEMENT"], SymbolicExpression
+        ):
+            cls._dsl_replacement = cls.__dict__["REPLACEMENT"]
             # Keep REPLACEMENT as an alias for backward compatibility
 
     # Implement rule name property (required by OptimizationRule)
@@ -291,7 +309,7 @@ class VerifiableRule(SymbolicRule, Registrant):
 
         Falls back to "No description" if not set.
         """
-        return getattr(self.__class__, 'DESCRIPTION', "No description")
+        return getattr(self.__class__, "DESCRIPTION", "No description")
 
     # Implement SymbolicRule abstract properties
     @property
@@ -302,7 +320,7 @@ class VerifiableRule(SymbolicRule, Registrant):
         """
         # Look up the MRO for _dsl_pattern (set by __init_subclass__)
         for cls in type(self).__mro__:
-            if hasattr(cls, '_dsl_pattern'):
+            if hasattr(cls, "_dsl_pattern"):
                 return cls._dsl_pattern
         return None
 
@@ -314,7 +332,7 @@ class VerifiableRule(SymbolicRule, Registrant):
         """
         # Look up the MRO for _dsl_replacement (set by __init_subclass__)
         for cls in type(self).__mro__:
-            if hasattr(cls, '_dsl_replacement'):
+            if hasattr(cls, "_dsl_replacement"):
                 return cls._dsl_replacement
         return None
 
@@ -346,16 +364,16 @@ class VerifiableRule(SymbolicRule, Registrant):
         """
         # Build match context from candidate's matched variables
         # The candidate has a dictionary mapping variable names to matched mops
-        if not hasattr(candidate, 'get_z3_vars') and not hasattr(candidate, 'mop_dict'):
+        if not hasattr(candidate, "get_z3_vars") and not hasattr(candidate, "mop_dict"):
             # If candidate doesn't have variable bindings yet, assume it's valid
             # The actual constraint checking will happen during replacement
             return True
 
         # Get the variable bindings from the candidate
         match_context = {}
-        if hasattr(candidate, 'mop_dict'):
+        if hasattr(candidate, "mop_dict"):
             match_context = candidate.mop_dict
-        elif hasattr(candidate, 'get_z3_vars'):
+        elif hasattr(candidate, "get_z3_vars"):
             match_context = candidate.get_z3_vars({})
 
         # CRITICAL: Add the candidate itself so constraints/providers can inspect it
@@ -364,7 +382,7 @@ class VerifiableRule(SymbolicRule, Registrant):
 
         # Run context providers to bind additional variables
         # Example: {"full_reg": context.dst.parent_register}
-        if hasattr(self, 'CONTEXT_VARS') and self.CONTEXT_VARS:
+        if hasattr(self, "CONTEXT_VARS") and self.CONTEXT_VARS:
             for var_name, provider in self.CONTEXT_VARS.items():
                 try:
                     # Call the provider with the match context
@@ -378,7 +396,7 @@ class VerifiableRule(SymbolicRule, Registrant):
 
                     # Add the bound variable to both contexts
                     match_context[var_name] = value
-                    if hasattr(candidate, 'mop_dict'):
+                    if hasattr(candidate, "mop_dict"):
                         candidate.mop_dict[var_name] = value
 
                 except Exception as e:
@@ -393,16 +411,14 @@ class VerifiableRule(SymbolicRule, Registrant):
 
         # Handle destination update side effect
         # If UPDATE_DESTINATION is set, modify the candidate's destination operand
-        if hasattr(self, 'UPDATE_DESTINATION') and self.UPDATE_DESTINATION:
+        if hasattr(self, "UPDATE_DESTINATION") and self.UPDATE_DESTINATION:
             dest_var = self.UPDATE_DESTINATION
             if dest_var in match_context:
                 bound_var = match_context[dest_var]
                 # Extract the mop from the AstNode
-                if hasattr(bound_var, 'mop') and bound_var.mop is not None:
+                if hasattr(bound_var, "mop") and bound_var.mop is not None:
                     candidate.dst_mop = bound_var.mop
-                    logger.debug(
-                        f"Updated destination to '{dest_var}' in {self.name}"
-                    )
+                    logger.debug(f"Updated destination to '{dest_var}' in {self.name}")
                 else:
                     logger.warning(
                         f"UPDATE_DESTINATION '{dest_var}' has no mop in {self.name}"
@@ -443,13 +459,14 @@ class VerifiableRule(SymbolicRule, Registrant):
             ...     when.is_bnot("x_0", "bnot_x_0"),
             ... ]
         """
-        if not hasattr(self, 'CONSTRAINTS') or not self.CONSTRAINTS:
+        if not hasattr(self, "CONSTRAINTS") or not self.CONSTRAINTS:
             return True
 
         for constraint in self.CONSTRAINTS:
             try:
                 # Check if this is a ConstraintExpr (new declarative style)
                 from d810.mba.constraints import is_constraint_expr
+
                 if is_constraint_expr(constraint):
                     # Try to extract a variable definition
                     var_name, value = constraint.eval_and_define(match_context)
@@ -457,6 +474,7 @@ class VerifiableRule(SymbolicRule, Registrant):
                     if var_name is not None:
                         # This is a defining constraint - add the computed value
                         from d810.expr.ast import AstConstant
+
                         match_context[var_name] = AstConstant(var_name, value)
                     else:
                         # This is a checking constraint - verify it holds
@@ -467,9 +485,7 @@ class VerifiableRule(SymbolicRule, Registrant):
                     if not constraint(match_context):
                         return False
             except (KeyError, AttributeError, TypeError) as e:
-                logger.debug(
-                    f"Constraint check failed for {self.name}: {e}"
-                )
+                logger.debug(f"Constraint check failed for {self.name}: {e}")
                 return False
 
         return True
@@ -517,4 +533,3 @@ def isabstract(cls) -> bool:
         True if the class has any unimplemented abstract methods.
     """
     return bool(getattr(cls, "__abstractmethods__", None))
-
