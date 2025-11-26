@@ -19,6 +19,6 @@ class ChainOptimizer(InstructionOptimizer):
     def __init__(self, maturities, stats, log_dir=None):
         super().__init__(maturities, stats, log_dir)
         # Only consider binary associative ops chains
-        from ida_hexrays import m_add, m_and, m_or, m_sub, m_xor
+        import ida_hexrays
 
-        self._allowed_root_opcodes = {m_xor, m_and, m_or, m_add, m_sub}
+        self._allowed_root_opcodes = {ida_hexrays.m_xor, ida_hexrays.m_and, ida_hexrays.m_or, ida_hexrays.m_add, ida_hexrays.m_sub}

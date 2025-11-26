@@ -1,4 +1,4 @@
-from ida_hexrays import *
+import ida_hexrays
 
 from d810.expr.ast import AstConstant, AstLeaf, AstNode
 from d810.expr.z3_utils import z3_check_mop_equality, z3_check_mop_inequality
@@ -11,11 +11,11 @@ class Z3setzRuleGeneric(Z3Rule):
     @property
     def PATTERN(self) -> AstNode:
         """Return the pattern to match."""
-        return AstNode(m_setz, AstLeaf("x_0"), AstLeaf("x_1"))
+        return AstNode(ida_hexrays.m_setz, AstLeaf("x_0"), AstLeaf("x_1"))
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
-        return AstNode(m_mov, AstConstant("val_res"))
+        return AstNode(ida_hexrays.m_mov, AstConstant("val_res"))
 
     def check_candidate(self, candidate):
         res_size = candidate["x_0"].size or 1  # fall back to 1 byte if unknown
@@ -34,11 +34,11 @@ class Z3setnzRuleGeneric(Z3Rule):
     @property
     def PATTERN(self) -> AstNode:
         """Return the pattern to match."""
-        return AstNode(m_setnz, AstLeaf("x_0"), AstLeaf("x_1"))
+        return AstNode(ida_hexrays.m_setnz, AstLeaf("x_0"), AstLeaf("x_1"))
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
-        return AstNode(m_mov, AstConstant("val_res"))
+        return AstNode(ida_hexrays.m_mov, AstConstant("val_res"))
 
     def check_candidate(self, candidate):
         res_size = candidate["x_0"].size or 1
@@ -57,15 +57,15 @@ class Z3lnotRuleGeneric(Z3Rule):
     @property
     def PATTERN(self) -> AstNode:
         """Return the pattern to match."""
-        return AstNode(m_lnot, AstLeaf("x_0"))
+        return AstNode(ida_hexrays.m_lnot, AstLeaf("x_0"))
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
-        return AstNode(m_mov, AstConstant("val_res"))
+        return AstNode(ida_hexrays.m_mov, AstConstant("val_res"))
 
     def check_candidate(self, candidate):
         res_size = candidate["x_0"].size or 1
-        val_0_mop = mop_t()
+        val_0_mop = ida_hexrays.mop_t()
         val_0_mop.make_number(0, res_size)
         if z3_check_mop_equality(candidate["x_0"].mop, val_0_mop):
             candidate.add_constant_leaf("val_res", 1, res_size)
@@ -82,20 +82,20 @@ class Z3SmodRuleGeneric(Z3Rule):
     @property
     def PATTERN(self) -> AstNode:
         """Return the pattern to match."""
-        return AstNode(m_smod, AstLeaf("x_0"), AstConstant("2", 2))
+        return AstNode(ida_hexrays.m_smod, AstLeaf("x_0"), AstConstant("2", 2))
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
-        return AstNode(m_mov, AstConstant("val_res"))
+        return AstNode(ida_hexrays.m_mov, AstConstant("val_res"))
 
     def check_candidate(self, candidate):
         res_size = candidate["x_0"].size or 1
-        cst_0_mop = mop_t()
+        cst_0_mop = ida_hexrays.mop_t()
         cst_0_mop.make_number(0, res_size)
         if z3_check_mop_equality(candidate.mop, cst_0_mop):
             candidate.add_leaf("val_res", cst_0_mop)
             return True
-        cst_1_mop = mop_t()
+        cst_1_mop = ida_hexrays.mop_t()
         cst_1_mop.make_number(1, res_size)
         if z3_check_mop_equality(candidate.mop, cst_1_mop):
             candidate.add_leaf("val_res", cst_1_mop)
