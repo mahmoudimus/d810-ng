@@ -28,7 +28,7 @@ Example usage:
 
 from typing import Any, Dict, Optional
 
-from ida_hexrays import mop_r, mop_t, mop_a, mop_S, mop_v
+import ida_hexrays
 
 from d810.expr.ast import AstLeaf
 from d810.hexrays.hexrays_formatters import format_mop_t
@@ -62,7 +62,7 @@ class DestinationHelpers:
         dst = candidate.dst_mop
 
         # Must be a register
-        if dst.t != mop_r:
+        if dst.t != ida_hexrays.mop_r:
             return False
 
         # Must be 2 bytes (high word of 32-bit register)
@@ -87,7 +87,7 @@ class DestinationHelpers:
         if not candidate:
             return False
 
-        return candidate.dst_mop.t == mop_r
+        return candidate.dst_mop.t == ida_hexrays.mop_r
 
     @staticmethod
     def is_memory(ctx: Dict[str, Any]) -> bool:
@@ -104,7 +104,7 @@ class DestinationHelpers:
             return False
 
         # Memory can be: address (mop_a), stack var (mop_S), or global var (mop_v)
-        return candidate.dst_mop.t in (mop_a, mop_S, mop_v)
+        return candidate.dst_mop.t in (ida_hexrays.mop_a, ida_hexrays.mop_S, ida_hexrays.mop_v)
 
 
 class ContextProviders:
@@ -135,7 +135,7 @@ class ContextProviders:
         dst = candidate.dst_mop
 
         # Must be a register
-        if dst.t != mop_r:
+        if dst.t != ida_hexrays.mop_r:
             return None
 
         # IDA Logic: rX^2 has index (rX + 2)
@@ -143,7 +143,7 @@ class ContextProviders:
         base_reg_idx = dst.r - 2
 
         # Create a new mop_t for the full 32-bit register
-        new_mop = mop_t()
+        new_mop = ida_hexrays.mop_t()
         new_mop.make_reg(base_reg_idx, 4)  # 4 bytes = 32-bit
 
         # Create an AstLeaf and attach the mop
