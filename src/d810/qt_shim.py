@@ -32,8 +32,38 @@ Usage:
 
 from __future__ import annotations
 
+import pathlib
 import sys
 from typing import TYPE_CHECKING, Literal, Union, cast
+
+
+def _is_ida_gui_available() -> bool:
+    """Check if we're running in IDA GUI mode where Qt is available.
+
+    Returns True if:
+    - Running inside IDA Pro GUI (ida64/ida32, not idat64/idat32)
+    - Qt bindings should be importable
+
+    Returns False if:
+    - Running in headless IDA (idat64/idat32)
+    - Running via idalib/idapro module
+    - Running in pytest or other non-GUI environment
+    """
+    exec_name = pathlib.Path(sys.executable).name.lower()
+
+    # Check if we're in IDA at all
+    in_ida = exec_name.startswith("ida")
+    if in_ida:
+        try:
+            import idaapi
+        except ImportError:
+            return False
+
+    return idaapi.is_idaq() if in_ida else False
+
+
+# Skip Qt imports entirely if not in GUI mode
+_QT_AVAILABLE = _is_ida_gui_available()
 
 if TYPE_CHECKING:
     # Type stubs for Qt classes - these are only used for type checking
@@ -48,60 +78,58 @@ QT6: bool = False
 QT_VERSION: Literal[5, 6] = 5  # type: ignore[assignment]
 QT_BINDING: Literal["PyQt5", "PySide6"] = "PyQt5"  # type: ignore[assignment]
 
-# Try PySide6 first (IDA 9.2+, Qt6)
-try:
-    from PySide6 import QtCore, QtGui, QtWidgets
-    from PySide6.QtCore import QEvent, QObject, Qt, QTimer
-    from PySide6.QtGui import (
-        QColor,
-        QCursor,
-        QFont,
-        QIcon,
-        QKeyEvent,
-        QKeySequence,
-        QPalette,
-        QPixmap,
-        QShortcut,
-        QTextCursor,
-    )
-    from PySide6.QtWidgets import (
-        QAbstractItemView,
-        QApplication,
-        QCheckBox,
-        QComboBox,
-        QDialog,
-        QFileDialog,
-        QHBoxLayout,
-        QHeaderView,
-        QLabel,
-        QLineEdit,
-        QMainWindow,
-        QMenu,
-        QMessageBox,
-        QPushButton,
-        QSizePolicy,
-        QSplitter,
-        QStatusBar,
-        QStyleFactory,
-        QTabWidget,
-        QTextEdit,
-        QTreeWidget,
-        QTreeWidgetItem,
-        QVBoxLayout,
-        QWidget,
-    )
+# Skip Qt imports if not in GUI mode - prevents errors in headless/idalib mode
+if not _QT_AVAILABLE:
+    # Create stub classes/values that will fail gracefully if used
+    QtCore = None  # type: ignore[assignment]
+    QtGui = None  # type: ignore[assignment]
+    QtWidgets = None  # type: ignore[assignment]
+    Qt = None  # type: ignore[assignment]
+    QEvent = None  # type: ignore[assignment]
+    QObject = None  # type: ignore[assignment]
+    QTimer = None  # type: ignore[assignment]
+    QColor = None  # type: ignore[assignment]
+    QCursor = None  # type: ignore[assignment]
+    QFont = None  # type: ignore[assignment]
+    QIcon = None  # type: ignore[assignment]
+    QKeyEvent = None  # type: ignore[assignment]
+    QKeySequence = None  # type: ignore[assignment]
+    QPalette = None  # type: ignore[assignment]
+    QPixmap = None  # type: ignore[assignment]
+    QShortcut = None  # type: ignore[assignment]
+    QTextCursor = None  # type: ignore[assignment]
+    QAbstractItemView = None  # type: ignore[assignment]
+    QApplication = None  # type: ignore[assignment]
+    QCheckBox = None  # type: ignore[assignment]
+    QComboBox = None  # type: ignore[assignment]
+    QDialog = None  # type: ignore[assignment]
+    QFileDialog = None  # type: ignore[assignment]
+    QHBoxLayout = None  # type: ignore[assignment]
+    QHeaderView = None  # type: ignore[assignment]
+    QLabel = None  # type: ignore[assignment]
+    QLineEdit = None  # type: ignore[assignment]
+    QMainWindow = None  # type: ignore[assignment]
+    QMenu = None  # type: ignore[assignment]
+    QMessageBox = None  # type: ignore[assignment]
+    QPushButton = None  # type: ignore[assignment]
+    QSizePolicy = None  # type: ignore[assignment]
+    QSplitter = None  # type: ignore[assignment]
+    QStatusBar = None  # type: ignore[assignment]
+    QStyleFactory = None  # type: ignore[assignment]
+    QTabWidget = None  # type: ignore[assignment]
+    QTextEdit = None  # type: ignore[assignment]
+    QTreeWidget = None  # type: ignore[assignment]
+    QTreeWidgetItem = None  # type: ignore[assignment]
+    QVBoxLayout = None  # type: ignore[assignment]
+    QWidget = None  # type: ignore[assignment]
+    _QT_MODULE = None
 
-    QT_VERSION = 6  # type: ignore[assignment]
-    QT_BINDING = "PySide6"  # type: ignore[assignment]
-    QT5 = False
-    QT6 = True
-    _QT_MODULE = "PySide6"
-except ImportError:
-    # Fall back to PyQt5 (IDA 9.1, Qt5)
+# Try PySide6 first (IDA 9.2+, Qt6)
+else:
     try:
-        from PyQt5 import QtCore, QtGui, QtWidgets, sip
-        from PyQt5.QtCore import QEvent, QObject, Qt, QTimer
-        from PyQt5.QtGui import (
+        from PySide6 import QtCore, QtGui, QtWidgets
+        from PySide6.QtCore import QEvent, QObject, Qt, QTimer
+        from PySide6.QtGui import (
             QColor,
             QCursor,
             QFont,
@@ -110,9 +138,10 @@ except ImportError:
             QKeySequence,
             QPalette,
             QPixmap,
+            QShortcut,
             QTextCursor,
         )
-        from PyQt5.QtWidgets import (
+        from PySide6.QtWidgets import (
             QAbstractItemView,
             QApplication,
             QCheckBox,
@@ -128,7 +157,6 @@ except ImportError:
             QMessageBox,
             QPushButton,
             QSizePolicy,
-            QShortcut,
             QSplitter,
             QStatusBar,
             QStyleFactory,
@@ -140,26 +168,76 @@ except ImportError:
             QWidget,
         )
 
-        QT_VERSION = 5  # type: ignore[assignment]
-        QT_BINDING = "PyQt5"  # type: ignore[assignment]
-        QT5 = True
-        QT6 = False
-        _QT_MODULE = "PyQt5"
+        QT_VERSION = 6  # type: ignore[assignment]
+        QT_BINDING = "PySide6"  # type: ignore[assignment]
+        QT5 = False
+        QT6 = True
+        _QT_MODULE = "PySide6"
     except ImportError:
-        raise ImportError(
-            "Neither PySide6 nor PyQt5 could be imported. "
-            "Please ensure one of them is installed."
-        ) from None
-else:
-    try:
-        import shiboken6  # import shiboken6 for PySide6 only
-    except ImportError:
-        print(
-            "shiboken6 could not be imported. Please ensure it is installed.",
-            file=sys.stderr,
-            flush=True,
-        )
-        shiboken6 = None
+        # Fall back to PyQt5 (IDA 9.1, Qt5)
+        try:
+            from PyQt5 import QtCore, QtGui, QtWidgets, sip
+            from PyQt5.QtCore import QEvent, QObject, Qt, QTimer
+            from PyQt5.QtGui import (
+                QColor,
+                QCursor,
+                QFont,
+                QIcon,
+                QKeyEvent,
+                QKeySequence,
+                QPalette,
+                QTextCursor,
+            )
+            from PyQt5.QtWidgets import (
+                QAbstractItemView,
+                QApplication,
+                QCheckBox,
+                QComboBox,
+                QDialog,
+                QFileDialog,
+                QHBoxLayout,
+                QHeaderView,
+                QLabel,
+                QLineEdit,
+                QMainWindow,
+                QMenu,
+                QMessageBox,
+                QPixmap,
+                QPushButton,
+                QShortcut,
+                QSizePolicy,
+                QSplitter,
+                QStatusBar,
+                QStyleFactory,
+                QTabWidget,
+                QTextEdit,
+                QTreeWidget,
+                QTreeWidgetItem,
+                QVBoxLayout,
+                QWidget,
+            )
+
+            QT_VERSION = 5  # type: ignore[assignment]
+            QT_BINDING = "PyQt5"  # type: ignore[assignment]
+            QT5 = True
+            QT6 = False
+            _QT_MODULE = "PyQt5"
+        except ImportError:
+            raise ImportError(
+                "Neither PySide6 nor PyQt5 could be imported. "
+                "Please ensure one of them is installed."
+            ) from None
+    else:
+        # shiboken6 is only needed for PySide6
+        try:
+            import shiboken6  # import shiboken6 for PySide6 only
+        except ImportError:
+            print(
+                "shiboken6 could not be imported. Please ensure it is installed.",
+                file=sys.stderr,
+                flush=True,
+            )
+            shiboken6 = None
 
 
 def _setup_compatibility() -> None:
@@ -171,6 +249,8 @@ def _setup_compatibility() -> None:
     - Keyboard modifier enum access patterns
     - pyqtSignal/pyqtSlot aliases for PySide6
     """
+    if not _QT_AVAILABLE:
+        return
     if not QT_VERSION or QT_VERSION != 6:
         return
 
