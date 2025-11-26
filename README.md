@@ -198,8 +198,8 @@ D-810 ng uses a modern, declarative DSL for defining optimization rules. Rules a
 ### Quick Start: Create a Simple Rule
 
 ```python
-from d810.optimizers.rules import VerifiableRule
-from d810.optimizers.dsl import Var, Const
+from d810.mba.rules import VerifiableRule
+from d810.mba.dsl import Var, Const
 
 # Define symbolic variables
 x, y = Var("x_0"), Var("x_1")
@@ -339,7 +339,8 @@ class MyPredicateRule(VerifiableRule):
 For rules involving zero-extension (IDA's `xdu` instruction):
 
 ```python
-from d810.optimizers.dsl import Var, Const, Zext
+from d810.mba.dsl import Var, Const, Zext
+from d810.mba.rules import VerifiableRule
 
 class MyZextRule(VerifiableRule):
     """Simplify: Zext(x & 1, 32) == 2 => 0
@@ -365,8 +366,8 @@ class MyZextRule(VerifiableRule):
 Some rules are only valid for specific bit-widths (e.g., byte operations where 256 wraps to 0). Instead of marking these as `SKIP_VERIFICATION`, you can **configure the verification bit-width**:
 
 ```python
-from d810.optimizers.dsl import Var, Const, ZERO
-from d810.optimizers.rules import VerifiableRule
+from d810.mba.dsl import Var, Const, ZERO
+from d810.mba.rules import VerifiableRule
 
 class Xor_Hodur_2(VerifiableRule):
     """Simplify: (x - c_0) ^ (y ^ c_1) => (x + c_1) ^ (y ^ c_1) when c_0 + c_1 = 256
@@ -439,7 +440,8 @@ Some rules need to inspect or modify the instruction context beyond just the sou
 #### Example: Fix IDA's constant propagation for high-half register writes
 
 ```python
-from d810.optimizers.dsl import Const, Var, VerifiableRule
+from d810.mba.dsl import Const, Var
+from d810.mba.rules import VerifiableRule
 from d810.optimizers.extensions import context, when
 
 c_0 = Const("c_0")
@@ -540,28 +542,37 @@ class MyKnownIncorrectRule(VerifiableRule):
 
 ### File Organization
 
-Create your rules in the appropriate file under:
+Rules are organized in a dedicated package that is **independent of IDA**:
 
 ```bash
-src/d810/optimizers/microcode/instructions/pattern_matching/
-├── rewrite_add.py          # Addition/subtraction rules
-├── rewrite_and.py          # Bitwise AND rules
-├── rewrite_bnot.py         # Bitwise NOT rules
-├── rewrite_cst.py          # Constant simplification rules
-├── rewrite_misc.py         # Miscellaneous complex identities
-├── rewrite_mov.py          # Move/assignment rules
-├── rewrite_mul.py          # Multiplication rules
-├── rewrite_neg.py          # Negation rules
-├── rewrite_or.py           # Bitwise OR rules
-├── rewrite_predicates.py   # Predicate/conditional rules
-├── rewrite_sub.py          # Subtraction rules
-└── rewrite_xor.py          # Bitwise XOR rules
+src/d810/mba/rules/
+├── _base.py       # VerifiableRule base class and registry
+├── __init__.py    # Package init - imports all rule modules
+├── add.py         # Addition rules
+├── and_.py        # Bitwise AND rules (underscore to avoid Python keyword)
+├── bnot.py        # Bitwise NOT rules
+├── cst.py         # Constant simplification rules
+├── hodur.py       # Hodur deobfuscator patterns
+├── misc.py        # Miscellaneous complex identities
+├── mov.py         # Move/assignment rules
+├── mul.py         # Multiplication rules
+├── neg.py         # Negation rules
+├── or_.py         # Bitwise OR rules (underscore to avoid Python keyword)
+├── predicates.py  # Predicate/conditional rules
+├── sub.py         # Subtraction rules
+└── xor.py         # Bitwise XOR rules
 ```
 
-Then import your module in `tests/unit/optimizers/test_verifiable_rules.py`:
+**Architecture**: Pure symbolic rules live in `d810.mba.rules` (no IDA dependency). Context-aware rules that need IDA's microcode API stay in `d810.optimizers.microcode.instructions.pattern_matching/`.
+
+Rules are automatically registered when imported. The `__init__.py` imports all modules:
 
 ```python
-import d810.optimizers.microcode.instructions.pattern_matching.rewrite_add
+from d810.mba.rules import VerifiableRule
+
+# All rules are now available via the registry
+for name, rule_cls in VerifiableRule.registry.items():
+    print(f"{name}: {rule_cls}")
 ```
 
 ### Unit Testing Without IDA (TDD Workflow)
@@ -608,7 +619,7 @@ LOCAL_RULE_REGISTRY = [
 PYTHONPATH="src" python -m pytest tests/unit/mba/test_verifiable_rules.py::test_rule_is_correct[MyNewRule] -v
 ```
 
-4. **If verification passes**, copy your rule to the appropriate `rewrite_*.py` file for IDA integration.
+4. **If verification passes**, copy your rule to the appropriate file in `src/d810/mba/rules/` (e.g., `xor.py`, `add.py`).
 
 **Benefits of Unit Testing:**
 - ⚡ **Fast feedback** - 49 rules verified in 0.4 seconds (vs ~12s with IDA)
@@ -672,6 +683,145 @@ Counterexample: x = 1, y = 2
 ```
 
 This immediate feedback prevents incorrect optimizations from being merged!
+
+### Architecture: Pure Rules vs IDA-Specific Rules
+
+D-810 ng separates **pure symbolic rules** from **IDA-specific integration code**:
+
+```
+d810.mba/                    # Pure symbolic (no IDA dependency)
+├── dsl.py                   # Symbolic expression DSL
+├── rules/                   # Pure rule definitions (177 rules)
+│   ├── _base.py            # VerifiableRule base class
+│   ├── xor.py, add.py, ... # Concrete rules
+└── backends/
+    ├── z3.py               # Z3 SMT verification
+    └── ida.py              # IDA pattern adapter
+
+d810.optimizers/             # IDA-specific code
+├── extensions.py            # Context-aware DSL extensions
+└── microcode/instructions/pattern_matching/
+    └── experimental.py      # Rules requiring IDA context
+```
+
+**Key principle**: Rules in `d810.mba.rules` are **pure mathematics**. They define pattern/replacement pairs verified by Z3. The `d810.mba.backends.ida` module wraps these rules for IDA integration, providing:
+
+- `IDAPatternAdapter`: Converts symbolic patterns to IDA AST matching
+- `adapt_rules()`: Batch conversion of pure rules to IDA-compatible rules
+
+**Context-Aware Extensions** (`d810.optimizers.extensions`):
+
+Some rules need IDA-specific context (destination register type, operand size). These use the extension DSL:
+
+```python
+from d810.mba.dsl import Const, Var
+from d810.mba.rules import VerifiableRule
+from d810.optimizers.extensions import context, when
+
+class FixHighMov(VerifiableRule):
+    """Fix constant propagation for high-half registers."""
+
+    PATTERN = c0
+    REPLACEMENT = (full_reg & 0xFFFF) | (c0 << 16)
+
+    # Check destination type (IDA-specific)
+    CONSTRAINTS = [when.dst.is_high_half]
+
+    # Bind variable from instruction context
+    CONTEXT_VARS = {"full_reg": context.dst.parent_register}
+
+    # Modify destination after replacement
+    UPDATE_DESTINATION = "full_reg"
+```
+
+**Available context helpers:**
+
+- `when.dst.is_high_half` - Destination is high-half register (e.g., r6^2)
+- `when.dst.is_register` - Destination is any register
+- `when.dst.is_memory` - Destination is memory location
+- `context.dst.parent_register` - Get full 32-bit parent register
+- `context.dst.operand_size` - Get destination size in bytes
+
+**When to use context-aware rules:**
+
+- Rules that check IDA-specific operand properties (register type, size)
+- Rules that modify the destination operand (not just the source expression)
+- Rules that need access to instruction metadata beyond the pattern
+
+Context-aware rules stay in `d810.optimizers.microcode.instructions.pattern_matching/` since they depend on IDA APIs.
+
+### Verification Engine Protocol
+
+D-810 ng uses a **pluggable verification engine architecture** that decouples rules from the underlying solver (Z3, etc.):
+
+```python
+from d810.mba import VerificationOptions, VerificationEngine, Z3VerificationEngine
+
+# Options dataclass for flexible configuration
+opts = VerificationOptions(
+    bit_width=32,      # Bitvector width (default 32)
+    timeout_ms=5000,   # Solver timeout in milliseconds (0 = no timeout)
+    verbose=False,     # Enable verbose output
+    extra={}           # Engine-specific options
+)
+
+# Verify a rule with custom options
+rule.verify(options=opts)
+
+# Or use a specific engine
+engine = Z3VerificationEngine()
+rule.verify(engine=engine, options=opts)
+```
+
+**Protocol definition:**
+
+```python
+class VerificationEngine(Protocol):
+    def create_variables(self, var_names: set[str], options: VerificationOptions) -> Dict[str, Any]:
+        """Create solver-specific variables for symbolic names."""
+        ...
+
+    def prove_equivalence(
+        self,
+        pattern: SymbolicExpression,
+        replacement: SymbolicExpression,
+        variables: Dict[str, Any] | None = None,
+        constraints: List[Any] | None = None,
+        options: VerificationOptions = DEFAULT_OPTIONS,
+    ) -> tuple[bool, Dict[str, int] | None]:
+        """Prove pattern ⟺ replacement under constraints."""
+        ...
+```
+
+**Benefits:**
+
+* **Pluggable backends**: Z3 today, CVC5 or e-graphs tomorrow
+* **Dependency injection**: Easy to mock for testing
+* **Flexible options**: Timeout, bit-width, and engine-specific settings
+* **Clean separation**: Rules don't import solver libraries directly
+
+**Usage examples:**
+
+```python
+# Default: 32-bit, no timeout, Z3 backend
+rule.verify()
+
+# 64-bit verification
+rule.verify(options=VerificationOptions(bit_width=64))
+
+# With 5-second timeout
+rule.verify(options=VerificationOptions(timeout_ms=5000))
+
+# One-off transformation verification
+from d810.mba import verify_transformation, Var
+
+x, y = Var("x"), Var("y")
+is_valid, counterexample = verify_transformation(
+    pattern=(x | y) - (x & y),
+    replacement=x ^ y,
+    options=VerificationOptions(bit_width=32)
+)
+```
 
 ### DSL Reference
 
