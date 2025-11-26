@@ -16,7 +16,7 @@ import logging
 logging.getLogger("egglog").setLevel(logging.WARNING)
 logging.getLogger("egglog.egraph").setLevel(logging.WARNING)
 
-from egglog import EGraph, Expr, rewrite, vars_, eq, StringLike
+from egglog import EGraph, Expr, StringLike, eq, rewrite, vars_
 
 
 class PatternExpr(Expr):
@@ -54,7 +54,9 @@ def create_pattern_egraph() -> EGraph:
     return egraph
 
 
-def generate_equivalent_patterns(base_pattern: PatternExpr, candidates: list[PatternExpr]) -> list[PatternExpr]:
+def generate_equivalent_patterns(
+    base_pattern: PatternExpr, candidates: list[PatternExpr]
+) -> list[PatternExpr]:
     """Use egglog to find which candidate patterns are equivalent to base.
 
     Args:
@@ -133,13 +135,10 @@ def test_or_mba_rule_1_pattern_generation():
     egraph.register(commuted)
     egraph.run(10)
 
-    try:
-        egraph.check(eq(base).to(commuted))
-        print("\n✓ VERIFIED: (x & y) + (x ^ y) ≡ (x ^ y) + (x & y)")
-        return True
-    except Exception as e:
-        print(f"\n✗ FAILED: Could not verify equivalence: {e}")
-        return False
+    assert (
+        egraph.check(eq(base).to(commuted)) is None
+    ), f"\n✗ FAILED: Could not verify equivalence!"
+    print("\n✓ VERIFIED: (x & y) + (x ^ y) ≡ (x ^ y) + (x & y)")
 
 
 def test_nested_commutativity():
@@ -163,13 +162,10 @@ def test_nested_commutativity():
     egraph.register(nested_commuted)
     egraph.run(10)
 
-    try:
-        egraph.check(eq(base).to(nested_commuted))
-        print("✓ VERIFIED: (x & y) + (x ^ y) ≡ (y & x) + (x ^ y)")
-        return True
-    except Exception as e:
-        print(f"✗ FAILED: {e}")
-        return False
+    assert (
+        egraph.check(eq(base).to(nested_commuted)) is None
+    ), f"\n✗ FAILED: Could not verify equivalence!"
+    print("✓ VERIFIED: (x & y) + (x ^ y) ≡ (y & x) + (x ^ y)")
 
 
 def test_full_permutation():
@@ -193,13 +189,10 @@ def test_full_permutation():
     egraph.register(fully_permuted)
     egraph.run(10)
 
-    try:
-        egraph.check(eq(base).to(fully_permuted))
-        print("✓ VERIFIED: (x & y) + (x ^ y) ≡ (y ^ x) + (y & x)")
-        return True
-    except Exception as e:
-        print(f"✗ FAILED: {e}")
-        return False
+    assert (
+        egraph.check(eq(base).to(fully_permuted)) is None
+    ), f"\n✗ FAILED: Could not verify equivalence!"
+    print("✓ VERIFIED: (x & y) + (x ^ y) ≡ (y ^ x) + (y & x)")
 
 
 if __name__ == "__main__":
@@ -207,7 +200,9 @@ if __name__ == "__main__":
     print("=" * 60)
 
     results = []
-    results.append(("Or_MbaRule_1 pattern gen", test_or_mba_rule_1_pattern_generation()))
+    results.append(
+        ("Or_MbaRule_1 pattern gen", test_or_mba_rule_1_pattern_generation())
+    )
     results.append(("Nested commutativity", test_nested_commutativity()))
     results.append(("Full permutation", test_full_permutation()))
 
