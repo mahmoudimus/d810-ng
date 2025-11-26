@@ -889,3 +889,9 @@ class ReloadablePluginBase(LateInitPlugin):
 
     @abc.abstractmethod
     def reload(self): ...
+
+    @abc.abstractmethod
+    def register_reload_action(self): ...
+    
+    @abc.abstractmethod
+    def unregister_reload_action(self): ...

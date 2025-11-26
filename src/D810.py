@@ -8,8 +8,8 @@ import ida_kernwin
 import idaapi
 
 import d810
-import d810.core.typing as typing
 import d810._vendor.ida_reloader as reloadable
+import d810.core.typing as typing
 
 D810_VERSION = "0.1"
 
@@ -40,7 +40,9 @@ class _UIHooks(idaapi.UI_Hooks):
         pass
 
 
-class D810Plugin(reloadable.ReloadablePluginBase, idaapi.action_handler_t):
+class D810Plugin(
+    reloadable.ReloadablePluginBase, idaapi.action_handler_t, idaapi.plugin_t
+):
     #
     # Plugin flags:
     # - PLUGIN_MOD: plugin may modify the database
@@ -144,7 +146,7 @@ class D810Plugin(reloadable.ReloadablePluginBase, idaapi.action_handler_t):
             reloadable.reload_package(
                 d810,
                 skip=[f"{self.base_package_name}.core.registry"],
-                suppress_errors=self.suppress_reload_errors
+                suppress_errors=self.suppress_reload_errors,
             )
 
 
