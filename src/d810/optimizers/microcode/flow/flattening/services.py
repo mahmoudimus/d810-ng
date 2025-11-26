@@ -15,7 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Protocol, Tuple
 
-from ida_hexrays import mba_t, mblock_t, minsn_t, mop_t
+import ida_hexrays
 
 from d810.optimizers.core import OptimizationContext
 
@@ -39,12 +39,12 @@ class Dispatcher:
         exit_blocks: Blocks that the dispatcher can transfer control to.
         mba: The microcode array containing this dispatcher.
     """
-    entry_block: mblock_t
-    state_variable: mop_t
+    entry_block: ida_hexrays.mblock_t
+    state_variable: ida_hexrays.mop_t
     comparison_values: List[int] = field(default_factory=list)
-    internal_blocks: List[mblock_t] = field(default_factory=list)
-    exit_blocks: List[mblock_t] = field(default_factory=list)
-    mba: mba_t | None = None
+    internal_blocks: List[ida_hexrays.mblock_t] = field(default_factory=list)
+    exit_blocks: List[ida_hexrays.mblock_t] = field(default_factory=list)
+    mba: ida_hexrays.mba_t | None = None
 
     def __str__(self) -> str:
         """Return a human-readable representation of this dispatcher."""
@@ -110,9 +110,9 @@ class PathEmulator:
     def resolve_target(
         self,
         context: OptimizationContext,
-        from_block: mblock_t,
+        from_block: ida_hexrays.mblock_t,
         dispatcher: Dispatcher
-    ) -> mblock_t | None:
+    ) -> ida_hexrays.mblock_t | None:
         """Emulate execution from from_block through the dispatcher.
 
         This method:
@@ -166,8 +166,8 @@ class CFGPatcher:
     @staticmethod
     def redirect_edge(
         context: OptimizationContext,
-        from_block: mblock_t,
-        to_block: mblock_t
+        from_block: ida_hexrays.mblock_t,
+        to_block: ida_hexrays.mblock_t
     ) -> int:
         """Redirect a block's outgoing edge to a new target.
 
@@ -201,10 +201,10 @@ class CFGPatcher:
     @staticmethod
     def insert_intermediate_block(
         context: OptimizationContext,
-        before_block: mblock_t,
-        after_block: mblock_t,
-        instructions: List[minsn_t]
-    ) -> mblock_t:
+        before_block: ida_hexrays.mblock_t,
+        after_block: ida_hexrays.mblock_t,
+        instructions: List[ida_hexrays.minsn_t]
+    ) -> ida_hexrays.mblock_t:
         """Insert a new block between two existing blocks.
 
         Sometimes the dispatcher performs computations that need to be
@@ -240,7 +240,7 @@ class CFGPatcher:
     @staticmethod
     def ensure_unconditional_predecessor(
         context: OptimizationContext,
-        child: mblock_t
+        child: ida_hexrays.mblock_t
     ) -> int:
         """Ensure all predecessors of a block are unconditional jumps.
 

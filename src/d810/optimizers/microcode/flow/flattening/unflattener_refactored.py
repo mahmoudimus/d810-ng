@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import List
 
-from ida_hexrays import mblock_t
+import ida_hexrays
 
 from d810.core import getLogger
 from d810.optimizers.core import OptimizationContext, OptimizationRule
@@ -86,7 +86,7 @@ class UnflattenerRule:
         self._emulator = emulator or PathEmulator()
         self._patcher = patcher or CFGPatcher()
 
-    def apply(self, context: OptimizationContext, blk: mblock_t) -> int:
+    def apply(self, context: OptimizationContext, blk: ida_hexrays.mblock_t) -> int:
         """Apply control-flow unflattening to the microcode.
 
         This is the main entry point. The logic is simple and readable:

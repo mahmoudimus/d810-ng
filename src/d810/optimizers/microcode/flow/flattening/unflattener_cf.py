@@ -413,7 +413,7 @@ def extract_jcc_parts(
         if pred1.tail.d.t != ida_hexrays.mop_b:
             logger.info(
                 "extract_jcc_parts: block was jcc, but destination was %s, not mop_b"
-                % (MicrocodeHelper.get_mopt_name(pred1.tail.d.t))
+                % (MicrocodeHelper.ida_hexrays.ida_hexrays.get_mopt_name(pred1.tail.d.t))
             )
             return False, None, -1, -1
         ends_with_jcc = pred1
@@ -1980,7 +1980,7 @@ class cf_unflattener_t:
                 op_copy = self.deferred_erasures_local[-1].op_copy
                 m = self.deferred_erasures_local[-1].ins_mov
                 self.report(
-                    f"Block {disp_pred} did not define assign a number to assigned var; assigned {MicrocodeHelper.get_mopt_name(m.l.t)} instead"
+                    f"Block {disp_pred} did not define assign a number to assigned var; assigned {MicrocodeHelper.ida_hexrays.ida_hexrays.get_mopt_name(m.l.t)} instead"
                 )
 
                 # Call the function that handles the case of a conditional assignment

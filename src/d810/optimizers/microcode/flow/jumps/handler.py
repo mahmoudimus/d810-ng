@@ -1,6 +1,6 @@
 from typing import Union
 
-from ida_hexrays import *
+import ida_hexrays
 
 from d810.core import getLogger
 from d810.expr.ast import AstNode, mop_to_ast
@@ -112,11 +112,11 @@ class JumpOptimizationRule(Registrant):
         return []
 
     def check_pattern_and_replace(
-        self, blk: mblock_t, instruction: minsn_t, left_ast: AstNode, right_ast: AstNode
+        self, blk: ida_hexrays.mblock_t, instruction: ida_hexrays.minsn_t, left_ast: AstNode, right_ast: AstNode
     ):
         if instruction.opcode not in self.ORIGINAL_JUMP_OPCODES:
             return None
-        if instruction.d is None or instruction.d.t != mop_b:
+        if instruction.d is None or instruction.d.t != ida_hexrays.mop_b:
             return None
         self.jump_original_block_serial = instruction.d.b
         if blk.nextb is None:
@@ -137,14 +137,14 @@ class JumpOptimizationRule(Registrant):
         return new_ins
 
     def get_replacement(
-        self, original_ins: minsn_t, left_candidate: AstNode, right_candidate: AstNode
+        self, original_ins: ida_hexrays.minsn_t, left_candidate: AstNode, right_candidate: AstNode
     ):
         new_left_mop = None
         new_right_mop = None
         new_dst_mop = None
 
         if self.jump_original_block_serial is not None:
-            new_dst_mop = mop_t()
+            new_dst_mop = ida_hexrays.mop_t()
             new_dst_mop.make_blkref(self.jump_replacement_block_serial)
 
         if self.REPLACEMENT_LEFT_PATTERN is not None:
@@ -169,14 +169,14 @@ class JumpOptimizationRule(Registrant):
 
     def create_new_ins(
         self,
-        original_ins: minsn_t,
-        new_left_mop: mop_t,
-        new_right_mop: Union[None, mop_t] = None,
-        new_dst_mop: Union[None, mop_t] = None,
-    ) -> minsn_t:
-        new_ins = minsn_t(original_ins)
+        original_ins: ida_hexrays.minsn_t,
+        new_left_mop: ida_hexrays.mop_t,
+        new_right_mop: Union[None, ida_hexrays.mop_t] = None,
+        new_dst_mop: Union[None, ida_hexrays.mop_t] = None,
+    ) -> ida_hexrays.minsn_t:
+        new_ins = ida_hexrays.minsn_t(original_ins)
         new_ins.opcode = self.REPLACEMENT_OPCODE
-        if self.REPLACEMENT_OPCODE == m_goto:
+        if self.REPLACEMENT_OPCODE == ida_hexrays.m_goto:
             new_ins.l.erase()
             new_ins.r.erase()
             new_ins.d = new_dst_mop
@@ -232,7 +232,7 @@ class JumpFixer(FlowOptimizationRule):
                         "JumpFixer disables rule {0}".format(rule.name)
                     )
 
-    def optimize(self, blk: mblock_t) -> bool:
+    def optimize(self, blk: ida_hexrays.mblock_t) -> bool:
         if not is_conditional_jump(blk):
             return False
         left_ast = mop_to_ast(blk.tail.l)
@@ -248,7 +248,7 @@ class JumpFixer(FlowOptimizationRule):
                         "  orig: {0}".format(format_minsn_t(blk.tail))
                     )
                     optimizer_logger.info("  new : {0}".format(format_minsn_t(new_ins)))
-                    if new_ins.opcode == m_goto:
+                    if new_ins.opcode == ida_hexrays.m_goto:
                         make_2way_block_goto(blk, new_ins.d.b)
                         return True
                     else:
