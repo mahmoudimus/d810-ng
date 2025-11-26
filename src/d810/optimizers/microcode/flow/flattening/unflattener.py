@@ -1,4 +1,4 @@
-from ida_hexrays import *
+import ida_hexrays
 
 from d810.core import getLogger
 from d810.hexrays.hexrays_helpers import append_mop_if_not_in_list, extract_num_mop
@@ -11,16 +11,16 @@ from d810.optimizers.microcode.flow.flattening.generic import (
 
 unflat_logger = getLogger("D810.unflat")
 FLATTENING_JUMP_OPCODES = [
-    m_jnz,
-    m_jz,
-    m_jae,
-    m_jb,
-    m_ja,
-    m_jbe,
-    m_jg,
-    m_jge,
-    m_jl,
-    m_jle,
+    ida_hexrays.m_jnz,
+    ida_hexrays.m_jz,
+    ida_hexrays.m_jae,
+    ida_hexrays.m_jb,
+    ida_hexrays.m_ja,
+    ida_hexrays.m_jbe,
+    ida_hexrays.m_jg,
+    ida_hexrays.m_jge,
+    ida_hexrays.m_jl,
+    ida_hexrays.m_jle,
 ]
 MIN_NUM_COMPARISONS = 4
 
@@ -41,7 +41,7 @@ class OllvmDispatcherInfo(GenericDispatcherInfo):
         if dispatch != -1:
             lif = self.mba.get_mblock(dispatch).pred(0)
             mb_lif = self.mba.get_mblock(lif)
-            if lif >= dispatch or not mb_lif.tail or is_mcode_jcond(mb_lif.tail.opcode):
+            if lif >= dispatch or not mb_lif.tail or ida_hexrays.is_mcode_jcond(mb_lif.tail.opcode):
                 min_num = dispatch
                 for curr in self.mba.get_mblock(dispatch).predset:
                     mb_curr = self.mba.get_mblock(curr)
@@ -50,7 +50,7 @@ class OllvmDispatcherInfo(GenericDispatcherInfo):
                     if (
                         curr < min_num
                         and mb_curr.tail
-                        and not is_mcode_jcond(mb_curr.tail.opcode)
+                        and not ida_hexrays.is_mcode_jcond(mb_curr.tail.opcode)
                     ):
                         min_num = curr
                 lif = min_num
@@ -77,10 +77,10 @@ class OllvmDispatcherInfo(GenericDispatcherInfo):
                 and mb.tail
                 and mb.tail.opcode in FLATTENING_JUMP_OPCODES
             ):
-                if mb.tail.r.t != mop_n:
+                if mb.tail.r.t != ida_hexrays.mop_n:
                     continue
-                if mb.tail.l.t == mop_r or (
-                    mb.tail.l.t == mop_d and mb.tail.l.d.opcode == m_and
+                if mb.tail.l.t == ida_hexrays.mop_r or (
+                    mb.tail.l.t == ida_hexrays.mop_d and mb.tail.l.d.opcode == ida_hexrays.m_and
                 ):
                     npred_max = mb.npred()
                     dispatch = mb.serial
@@ -114,7 +114,7 @@ class OllvmDispatcherInfo(GenericDispatcherInfo):
         return entropy
 
     def explore(
-        self, blk: mblock_t, min_entropy=None, max_entropy=None
+        self, blk: ida_hexrays.mblock_t, min_entropy=None, max_entropy=None
     ) -> bool:  # Detect dispatcher entry blocks
         unflat_logger.debug(
             "mblock %s: exploring dispatcher (guessed outmost dispatcher %s)",
@@ -172,7 +172,7 @@ class OllvmDispatcherInfo(GenericDispatcherInfo):
         )
         return True
 
-    def _is_candidate_for_dispatcher_entry_block(self, blk: mblock_t) -> bool:
+    def _is_candidate_for_dispatcher_entry_block(self, blk: ida_hexrays.mblock_t) -> bool:
         # blk must be a condition branch with one numerical operand
         num_mop, mop_compared = self._get_comparison_info(blk)
         if (num_mop is None) or (mop_compared is None):
@@ -182,7 +182,7 @@ class OllvmDispatcherInfo(GenericDispatcherInfo):
             father_blk = self.mba.get_mblock(father_serial)
             father_num_mop, father_mop_compared = self._get_comparison_info(father_blk)
             if (father_num_mop is not None) and (father_mop_compared is not None):
-                if mop_compared.equal_mops(father_mop_compared, EQ_IGNSIZE):
+                if mop_compared.equal_mops(father_mop_compared, ida_hexrays.EQ_IGNSIZE):
                     return False
         unflat_logger.debug(
             "mblock %s is candidate for dispatcher entry block",
@@ -190,7 +190,7 @@ class OllvmDispatcherInfo(GenericDispatcherInfo):
         )
         return True
 
-    def _get_comparison_info(self, blk: mblock_t) -> tuple[mop_t | None, mop_t | None]:
+    def _get_comparison_info(self, blk: ida_hexrays.mblock_t) -> tuple[ida_hexrays.mop_t | None, ida_hexrays.mop_t | None]:
         # We check if blk is a good candidate for dispatcher entry block: blk.tail must be a conditional branch
         if (blk.tail is None) or (blk.tail.opcode not in FLATTENING_JUMP_OPCODES):
             return None, None
@@ -235,7 +235,7 @@ class OllvmDispatcherInfo(GenericDispatcherInfo):
 
     def _get_external_fathers(
         self, block_info: OllvmDispatcherBlockInfo
-    ) -> list[mblock_t]:
+    ) -> list[ida_hexrays.mblock_t]:
         internal_serials = [
             blk_info.blk.serial for blk_info in self.dispatcher_internal_blocks
         ]
@@ -246,7 +246,7 @@ class OllvmDispatcherInfo(GenericDispatcherInfo):
         ]
         return external_fathers
 
-    def _get_dispatcher_blocks_with_external_father(self) -> list[mblock_t]:
+    def _get_dispatcher_blocks_with_external_father(self) -> list[ida_hexrays.mblock_t]:
         dispatcher_blocks_with_external_father = []
         for blk_info in self.dispatcher_internal_blocks:
             if blk_info.blk.serial != self.entry_block.blk.serial:
@@ -279,7 +279,7 @@ class OllvmDispatcherCollector(GenericDispatcherCollector):
 
 class Unflattener(GenericDispatcherUnflatteningRule):
     DESCRIPTION = "Remove control flow flattening generated by OLLVM"
-    DEFAULT_UNFLATTENING_MATURITIES = [MMAT_CALLS, MMAT_GLBOPT1, MMAT_GLBOPT2]
+    DEFAULT_UNFLATTENING_MATURITIES = [ida_hexrays.MMAT_CALLS, ida_hexrays.MMAT_GLBOPT1, ida_hexrays.MMAT_GLBOPT2]
     DEFAULT_MAX_DUPLICATION_PASSES = 20
     DEFAULT_MAX_PASSES = 5
 
