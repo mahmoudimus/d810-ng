@@ -595,30 +595,43 @@ The declarative DSL refactoring has been **successfully completed** with the fol
 ### ✅ What We've Accomplished
 
 #### 1. **Declarative DSL Implementation** ✓
-- **Complete**: All 177 optimization rules migrated from imperative `AstNode` construction to declarative DSL
+- **Complete**: All 181 optimization rules migrated from imperative `AstNode` construction to declarative DSL
 - **Operator Overloading**: Rules now use natural Python operators (`+`, `-`, `&`, `|`, `^`, `~`, `>>`, `<<`)
 - **Type Safety**: Strict separation between Terms (`SymbolicExpression`) and Formulas (`ConstraintExpr`)
 - **Examples**:
   ```python
   # Before (Imperative)
-  PATTERN = AstNode(m_sub, AstNode(m_or, AstLeaf("x"), AstLeaf("y")), 
+  PATTERN = AstNode(m_sub, AstNode(m_or, AstLeaf("x"), AstLeaf("y")),
                     AstNode(m_and, AstLeaf("x"), AstLeaf("y")))
-  
+
   # After (Declarative)
   PATTERN = (x | y) - (x & y)
   ```
 
 #### 2. **Automatic Z3 Verification** ✓
-- **Coverage**: **170/177 rules (96.0%)** automatically verified
-- **Matches Main Branch**: Same 7 skipped rules as main branch (5 KNOWN_INCORRECT + 2 performance)
-- **Test Time**: 12.44 seconds for all 170 rules
-- **Auto-Discovery**: All rules automatically registered and tested via metaclass
+- **Coverage**: **173/181 rules (95.6%)** automatically verified
+- **Test Time**: ~10 seconds for all 173 rules
+- **Auto-Discovery**: All rules automatically registered and tested via `RuleRegistry`
 - **Results**:
   ```
-  ==================== 170 passed, 7 skipped in 12.44s ====================
+  ================= 173 passed, 8 skipped in 9.82s =================
   ```
 
-#### 3. **Advanced Features Implemented** ✓
+#### 3. **IDA-Independent MBA Package** ✓ (NEW - 2025)
+- **Complete**: The `mba/` package is now fully decoupled from IDA
+- **Architecture**:
+  - `mba/dsl.py` - Pure Python DSL with string operations (`"xor"`, `"add"`, etc.)
+  - `mba/rules/` - All optimization rules using declarative DSL
+  - `mba/backends/z3.py` - Z3 verification (no IDA imports)
+  - `mba/backends/ida.py` - IDA adapter (`IDAPatternAdapter`, `IDANodeVisitor`)
+- **Removed**: `d810/opcodes.py` fake opcode layer (was unnecessary abstraction)
+- **Benefits**:
+  - Rules can be tested without IDA Pro license
+  - CI/CD verification in GitHub Actions
+  - TDD workflow: write rule → verify with Z3 → integrate with IDA
+  - Clear dependency boundaries
+
+#### 4. **Advanced Features Implemented** ✓
 
 **Boolean-to-Integer Bridge (`.to_int()`):**
 - Enables verification of predicate rules (comparisons that return 0/1)
@@ -653,7 +666,7 @@ The declarative DSL refactoring has been **successfully completed** with the fol
 - Migrated `ReplaceMovHigh` as proof-of-concept
 - Fully tested with 11 unit tests (all passing)
 
-#### 4. **Constraint System** ✓
+#### 5. **Constraint System** ✓
 
 **Declarative Constraints:**
 - All lambda constraints migrated to `ConstraintExpr` where possible
@@ -672,16 +685,16 @@ The declarative DSL refactoring has been **successfully completed** with the fol
 
 | Metric | Value |
 |--------|-------|
-| **Total Rules** | 177 |
-| **Verified** | 170 (96.0%) |
-| **Skipped** | 7 (4.0%) |
-| **Test Time** | 12.44s |
-| **Main Branch Parity** | ✅ Exact match on skipped rules |
+| **Total Rules** | 181 |
+| **Verified** | 173 (95.6%) |
+| **Skipped** | 8 (4.4%) |
+| **Test Time** | ~10s |
+| **mba/ IDA-independent** | ✅ Yes |
 
-### 🔍 Remaining Skipped Rules (7 total)
+### 🔍 Remaining Skipped Rules (8 total)
 
 **KNOWN_INCORRECT (5 rules):**
-These are mathematically wrong but kept for test parity with main branch:
+These are mathematically wrong but kept for compatibility:
 1. `AndGetUpperBits_FactorRule_1` - Only valid under very specific conditions
 2. `CstSimplificationRule2` - Requires disjoint constants constraint not captured
 3. `CstSimplificationRule12` - Off by constant value of 1
@@ -690,8 +703,11 @@ These are mathematically wrong but kept for test parity with main branch:
 
 **Performance (2 rules):**
 These have complex MBA multiplication patterns that are correct but slow to verify:
-6. `Mul_MBA_1` - 4 multiplications (main branch marks as `is_nonlinear=True`)
-7. `Mul_MBA_4` - 3 multiplications (main branch marks as `is_nonlinear=True`)
+6. `Mul_MBA_1` - 4 multiplications (marked as `is_nonlinear=True`)
+7. `Mul_MBA_4` - 3 multiplications (marked as `is_nonlinear=True`)
+
+**Context-Aware (1 rule):**
+8. `ReplaceMovHighContext` - Requires IDA context, skipped in pure unit tests
 
 ### 🎯 What's Left (Future Work)
 
@@ -725,44 +741,45 @@ These have complex MBA multiplication patterns that are correct but slow to veri
 | Goal | Target | Achieved | Status |
 |------|--------|----------|--------|
 | Declarative DSL | 100% | 100% | ✅ |
-| Automatic Verification | >90% | 96.0% | ✅ |
-| Main Branch Parity | Match skipped rules | Exact match | ✅ |
-| Test Speed | <30s | 12.44s | ✅ |
+| Automatic Verification | >90% | 95.6% | ✅ |
+| Test Speed | <30s | ~10s | ✅ |
 | Type Safety | Full separation | Complete | ✅ |
 | Context-Aware Framework | Accessible to non-experts | Implemented | ✅ |
+| mba/ IDA-independent | Full decoupling | Complete | ✅ |
 
 ### 📝 Migration Summary
 
-**Files Modified:**
-- `src/d810/optimizers/dsl.py` - Core DSL with operator overloading
-- `src/d810/optimizers/constraints.py` - Constraint system with `.to_int()`
-- `src/d810/optimizers/rules.py` - `VerifiableRule` base class with bit-width and context support
-- `src/d810/expr/visitors.py` - Z3 visitor with `bool_to_int` and `zext` support
-- 12 `rewrite_*.py` files - All rules migrated to declarative DSL
-- `hodur_verifiable.py` - **NEW**: 5 HODUR obfuscation rules with byte-specific verification
-- `extensions.py` - **NEW**: Context-aware DSL (constraints, providers, side effects)
-- `rewrite_mov_context_aware.py` - **NEW**: Context-aware rule proof-of-concept
+**New Architecture (2025):**
+```
+src/d810/mba/                    # IDA-independent package
+├── dsl.py                       # SymbolicExpression with operator overloading
+├── constraints.py               # Constraint system with `.to_int()`
+├── verifier.py                  # VerificationEngine protocol
+├── rules/                       # All optimization rules (181 total)
+│   ├── __init__.py              # RuleRegistry with lazy instantiation
+│   ├── _base.py                 # VerifiableRule base class
+│   ├── add.py, and_.py, ...     # Rule modules by operation type
+│   └── hodur.py                 # HODUR obfuscation rules
+└── backends/
+    ├── z3.py                    # Z3 verification (pure Python)
+    └── ida.py                   # IDA adapter (IDAPatternAdapter, IDANodeVisitor)
+```
+
+**Deleted Files:**
+- `src/d810/opcodes.py` - Fake opcode layer (unnecessary)
+- `src/d810/mba/visitors.py` - Moved to `backends/ida.py`
+- `src/d810/mba/rules.py` - Split into `rules/` subpackage
+- `src/d810/expr/visitors.py` - Moved to `backends/ida.py`
+- `src/d810/optimizers/.../rewrite_*.py` - Migrated to `mba/rules/`
 
 **Test Files:**
-- `tests/unit/optimizers/test_verifiable_rules.py` - Automatic verification test
-- `tests/unit/optimizers/test_context_aware_dsl.py` - **NEW**: Context-aware DSL tests (11 tests)
+- `tests/unit/mba/test_verifiable_rules.py` - Unit tests (no IDA needed)
+- `tests/system/optimizers/test_verifiable_rules.py` - System tests (with IDA)
 
 **Documentation:**
 - `README.md` - Complete rule creation guide
 - `REFACTORING.md` - This summary
-
-### 🔄 Comparison with Main Branch
-
-| Branch | Rules | Verified | Skipped | Test Time |
-|--------|-------|----------|---------|-----------|
-| **Main** | 168 | 161 (95.8%) | 7 | 7.17s |
-| **Ours** | 177 | **170 (96.0%)** | 7 | 12.44s |
-
-**Net Improvement:**
-- ✅ +9 rules added and verified (including 5 HODUR obfuscation rules)
-- ✅ Same 7 rules skipped (for same reasons)
-- ✅ Higher absolute verification coverage (96.0% vs 95.8%)
-- ⚠️ Slower tests (+5.3s) due to +9 verified rules
+- `docs/RULE_REGISTRY_MIGRATION.md` - Migration guide
 
 ### 🎓 Key Lessons Learned
 
@@ -773,19 +790,21 @@ These have complex MBA multiplication patterns that are correct but slow to veri
 5. **Operator Overloading Works**: Makes rules readable and mathematically precise
 6. **Bit-Width Configuration**: Size-specific rules can be verified by setting `BIT_WIDTH = 8/16/32` instead of marking as `SKIP_VERIFICATION`
 7. **Context Abstraction Enables Accessibility**: By hiding IDA's C++ API behind declarative helpers (`when.dst.*`, `context.dst.*`), the framework becomes accessible to users who understand the math but not IDA internals
+8. **Avoid Unnecessary Abstractions**: The `d810/opcodes.py` fake opcode layer was over-engineering. Use real IDA opcodes (`ida_hexrays.m_*`) directly when interfacing with IDA, and string operations (`"xor"`, `"add"`) in the pure DSL layer
 
 ### 🚀 How to Add a New Rule
 
 See the comprehensive guide in `README.md`, but in summary:
 
-1. Create rule class inheriting from `VerifiableRule`
-2. Define `PATTERN` and `REPLACEMENT` using DSL operators
-3. Add `CONSTRAINTS` if needed (declarative preferred)
-4. Add `DESCRIPTION` and `REFERENCE`
-5. Run `pytest tests/unit/optimizers/test_verifiable_rules.py::TestVerifiableRules::test_rule_is_correct[YourRule]`
-6. If verification passes, you're done! The rule is proven correct.
+1. Create rule class in appropriate file under `src/d810/mba/rules/`
+2. Inherit from `VerifiableRule` (from `d810.mba.rules`)
+3. Define `pattern` and `replacement` using DSL operators (`Var`, `Const`, `+`, `-`, `^`, `&`, `|`, `~`)
+4. Add `CONSTRAINTS` if needed (declarative preferred)
+5. Add `description` attribute
+6. Run `pytest tests/unit/mba/test_verifiable_rules.py -k YourRule`
+7. If verification passes, you're done! The rule is proven correct.
 
-**The declarative DSL refactoring is complete. The codebase rules are now maintainable, testable, and mathematically verified.**
+**The declarative DSL refactoring is complete. The codebase rules are now maintainable, testable, and mathematically verified. The mba/ package is fully IDA-independent.**
 
 ---
 
