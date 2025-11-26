@@ -83,24 +83,20 @@ jobs:
                       set -e
                       pip install -e .[dev]
 
-                      # Run local tests (no IDA required)
+                      # Run unit tests (no IDA required)
                       echo '========================================='
-                      echo 'Running local tests (no IDA required)...'
+                      echo 'Running unit tests (no IDA required)...'
                       echo '========================================='
-                      python tests/run_tests_local.py
+                      PYTHONPATH=src pytest tests/unit/ -v --tb=short
 
                       echo ''
                       echo '========================================='
-                      echo 'Running IDA Pro unit tests...'
+                      echo 'IDA Pro environment check...'
                       echo '========================================='
 
                       # Check IDA Pro availability
                       which idat64 || which idat || echo 'IDA Pro binary not found in PATH'
                       ls -la /app/ida/ || true
-
-                      # For now, skip unit tests that require IDA modules
-                      # They will be covered by integration tests running through IDA Pro
-                      echo 'Unit tests requiring IDA modules will run through integration tests'
                   "
                   docker compose logs
 

@@ -44,9 +44,9 @@ jobs:
             - name: Check package boundaries
               run: |
                   python scripts/check_package_boundaries.py
-            - name: Python local tests (no IDA required)
+            - name: Run unit tests (no IDA required)
               run: |
-                  python tests/run_tests_local.py
+                  pytest tests/unit/ -v --tb=short
             # - name: Run all tests except system (those require ida)
             #   run: |
             #       for dir in d810/tests/*; do
