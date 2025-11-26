@@ -126,8 +126,9 @@ class DependencyGraph:
                 node, self.dependencies, self.file_path
             )
 
-    def __init__(self, pkg_prefix: str) -> None:
+    def __init__(self, pkg_prefix: str, pkg_paths: Iterable[str] = ()) -> None:
         self._pkg_prefix = pkg_prefix
+        self._pkg_paths = [pathlib.Path(p) for p in pkg_paths]
         self._module_dependencies: dict[str, set[str]] = {}
         self._reverse_dependencies: dict[str, set[str]] = {}
         self._last_scan_time: dict[str, float] = {}
@@ -212,7 +213,21 @@ class DependencyGraph:
             # Get the module path relative to plugin package
             # Find the plugin package root by going up from this file
             base_dir = pathlib.Path(__file__).parent.parent
-            relative_path = file_path.relative_to(base_dir)
+            relative_path = None
+
+            # Try provided package paths first
+            for path in self._pkg_paths:
+                try:
+                    relative_path = file_path.relative_to(path)
+                    break
+                except ValueError:
+                    continue
+
+            # Fallback to location-based deduction if no path matched
+            if relative_path is None:
+                # Find the plugin package root by going up from this file
+                base_dir = pathlib.Path(__file__).parent.parent
+                relative_path = file_path.relative_to(base_dir)
 
             # Calculate the parent directory based on level
             path_parts = list(relative_path.parts[:-1])  # Remove filename
@@ -559,7 +574,7 @@ def _reload_package_with_graph(
     from reloading.
     """
     # Build dependency graph
-    dg = DependencyGraph(base_package + ".")
+    dg = DependencyGraph(base_package + ".", pkg_paths=pkg_path)
 
     # Scan and discover all modules in the package
     def update_deps(module):
@@ -712,7 +727,7 @@ class Reloader:
         self.skip = tuple(skip_prefixes)
         self.priority = tuple(priority_prefixes)
         self.suppress = suppress_errors
-        self._dg = DependencyGraph(base_package + ".")
+        self._dg = DependencyGraph(base_package + ".", pkg_paths=pkg_path)
         self._scanner = Scanner
 
     def scan(self):
