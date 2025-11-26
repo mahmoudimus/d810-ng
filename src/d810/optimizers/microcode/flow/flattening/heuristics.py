@@ -22,7 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Optional, Set
 
-from ida_hexrays import *
+import ida_hexrays
 
 from d810.core import getLogger
 
@@ -113,7 +113,7 @@ class DispatcherHeuristics:
         self.blocks_skipped = 0
         self.false_negatives = 0  # Skipped a real dispatcher
 
-    def check_block(self, blk: mblock_t) -> BlockHeuristics:
+    def check_block(self, blk: ida_hexrays.mblock_t) -> BlockHeuristics:
         """Run all heuristics on a block.
 
         Args:
@@ -148,7 +148,7 @@ class DispatcherHeuristics:
             has_state_variable=has_state_var
         )
 
-    def is_potential_dispatcher(self, blk: mblock_t) -> bool:
+    def is_potential_dispatcher(self, blk: ida_hexrays.mblock_t) -> bool:
         """Quick check if a block might be a dispatcher.
 
         This is the main entry point for selective scanning.
@@ -183,7 +183,7 @@ class DispatcherHeuristics:
         )
         return True
 
-    def _has_switch_jump(self, blk: mblock_t) -> bool:
+    def _has_switch_jump(self, blk: ida_hexrays.mblock_t) -> bool:
         """Check if block has a switch/jtbl instruction.
 
         Args:
@@ -196,18 +196,18 @@ class DispatcherHeuristics:
             return False
 
         # Check for m_jtbl (switch table)
-        if blk.tail.opcode == m_jtbl:
+        if blk.tail.opcode == ida_hexrays.m_jtbl:
             return True
 
         # Check for indirect jump patterns
-        if blk.tail.opcode == m_goto:
+        if blk.tail.opcode == ida_hexrays.m_goto:
             # Check if jump target is computed (not constant)
-            if blk.tail.l.t == mop_d:  # Computed destination
+            if blk.tail.l.t == ida_hexrays.mop_d:  # Computed destination
                 return True
 
         return False
 
-    def _has_comparison_pattern(self, blk: mblock_t) -> bool:
+    def _has_comparison_pattern(self, blk: ida_hexrays.mblock_t) -> bool:
         """Check if block compares against multiple constant values.
 
         Args:
@@ -222,13 +222,13 @@ class DispatcherHeuristics:
         ins = blk.head
         while ins:
             # Check conditional jumps with constant comparisons
-            if ins.opcode in [m_jz, m_jnz, m_jl, m_jge, m_jg, m_jle]:
+            if ins.opcode in [ida_hexrays.m_jz, ida_hexrays.m_jnz, ida_hexrays.m_jl, ida_hexrays.m_jge, ida_hexrays.m_jg, ida_hexrays.m_jle]:
                 # Extract constant if present
-                if ins.r.t == mop_n:  # Constant operand
+                if ins.r.t == ida_hexrays.mop_n:  # Constant operand
                     comparison_values.add(ins.r.nnn.value)
 
             # Check m_jtbl cases
-            if ins.opcode == m_jtbl:
+            if ins.opcode == ida_hexrays.m_jtbl:
                 # jtbl has multiple case values
                 return True  # Strong signal
 
@@ -237,7 +237,7 @@ class DispatcherHeuristics:
         # Dispatcher compares state variable against many values
         return len(comparison_values) >= self.min_comparison_values
 
-    def _is_small_block(self, blk: mblock_t) -> bool:
+    def _is_small_block(self, blk: ida_hexrays.mblock_t) -> bool:
         """Check if block is small (typical for dispatchers).
 
         Args:
@@ -254,7 +254,7 @@ class DispatcherHeuristics:
 
         return ins_count <= self.max_block_size
 
-    def _has_state_variable_pattern(self, blk: mblock_t) -> bool:
+    def _has_state_variable_pattern(self, blk: ida_hexrays.mblock_t) -> bool:
         """Check if block uses what looks like a state variable.
 
         Dispatchers typically load a state variable and switch on it.
@@ -274,11 +274,11 @@ class DispatcherHeuristics:
         ins = blk.head
         while ins:
             # Check for load from memory/stack
-            if ins.opcode == m_ldx:
+            if ins.opcode == ida_hexrays.m_ldx:
                 has_load = True
 
             # Check for use in comparison/jump
-            if ins.opcode in [m_jz, m_jnz, m_jtbl]:
+            if ins.opcode in [ida_hexrays.m_jz, ida_hexrays.m_jnz, ida_hexrays.m_jtbl]:
                 has_use = True
 
             ins = ins.next
@@ -330,8 +330,8 @@ class DefUseCache:
 
     def get_def_use(
         self,
-        blk: mblock_t
-    ) -> tuple[list[mop_t], list[mop_t]]:
+        blk: ida_hexrays.mblock_t
+    ) -> tuple[list[ida_hexrays.mop_t], list[ida_hexrays.mop_t]]:
         """Get def/use lists for a block (cached).
 
         Args:
@@ -351,8 +351,8 @@ class DefUseCache:
         # Cache miss: compute def/use
         self.misses += 1
 
-        use_list: list[mop_t] = []
-        def_list: list[mop_t] = []
+        use_list: list[ida_hexrays.mop_t] = []
+        def_list: list[ida_hexrays.mop_t] = []
 
         # TODO: In real implementation, use InstructionDefUseCollector
         # For now, this is a placeholder
@@ -370,7 +370,7 @@ class DefUseCache:
 
         return use_list, def_list
 
-    def invalidate_block(self, blk: mblock_t) -> None:
+    def invalidate_block(self, blk: ida_hexrays.mblock_t) -> None:
         """Invalidate cache for a specific block.
 
         Call this when a block is modified.
@@ -414,7 +414,7 @@ class EarlyExitOptimizer:
     """
 
     @staticmethod
-    def try_simple_constant_dispatcher(blk: mblock_t) -> Optional[dict]:
+    def try_simple_constant_dispatcher(blk: ida_hexrays.mblock_t) -> Optional[dict]:
         """Try to handle simple constant-based dispatcher without emulation.
 
         For dispatchers like:
@@ -430,7 +430,7 @@ class EarlyExitOptimizer:
             Dict with {'target': target_block} if successful, None otherwise.
         """
         # Check if block has exactly: mov constant, jump
-        if not blk.tail or blk.tail.opcode != m_jtbl:
+        if not blk.tail or blk.tail.opcode != ida_hexrays.m_jtbl:
             return None
 
         # Walk backwards to find constant assignment
@@ -438,7 +438,7 @@ class EarlyExitOptimizer:
         constant_value = None
 
         while ins and ins != blk.tail:
-            if ins.opcode == m_mov and ins.l.t == mop_n:
+            if ins.opcode == ida_hexrays.m_mov and ins.l.t == ida_hexrays.mop_n:
                 # Found: mov constant
                 constant_value = ins.l.nnn.value
                 break
@@ -457,7 +457,7 @@ class EarlyExitOptimizer:
         return None  # Placeholder
 
     @staticmethod
-    def try_single_predecessor_inline(blk: mblock_t) -> bool:
+    def try_single_predecessor_inline(blk: ida_hexrays.mblock_t) -> bool:
         """Check if dispatcher can be inlined (only one predecessor).
 
         If a "dispatcher" only has one predecessor, it's not really
@@ -473,9 +473,9 @@ class EarlyExitOptimizer:
 
 
 def apply_selective_scanning(
-    mba: mba_t,
+    mba: ida_hexrays.mba_t,
     heuristics: Optional[DispatcherHeuristics] = None
-) -> List[mblock_t]:
+) -> List[ida_hexrays.mblock_t]:
     """Apply selective scanning to find potential dispatcher blocks.
 
     This is the main entry point for performance optimization.
@@ -502,7 +502,7 @@ def apply_selective_scanning(
     if heuristics is None:
         heuristics = DispatcherHeuristics()
 
-    candidates: List[mblock_t] = []
+    candidates: List[ida_hexrays.mblock_t] = []
 
     for blk_idx in range(mba.qty):
         blk = mba.get_mblock(blk_idx)

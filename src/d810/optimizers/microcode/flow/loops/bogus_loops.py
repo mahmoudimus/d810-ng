@@ -18,7 +18,7 @@ Which in microcode becomes:
 This always executes exactly once and can be safely unrolled.
 """
 
-from ida_hexrays import *
+import ida_hexrays
 
 from d810.core import getLogger
 from d810.hexrays.cfg_utils import (
@@ -46,49 +46,49 @@ class BogusLoopInfo:
         self.is_valid = False
 
 
-def get_mop_from_stack_var(mop: mop_t) -> tuple[int, int] | None:
+def get_mop_from_stack_var(mop: ida_hexrays.mop_t) -> tuple[int, int] | None:
     """Extract (offset, size) from a stack variable mop."""
-    if mop.t == mop_S:
+    if mop.t == ida_hexrays.mop_S:
         return (mop.s.off, mop.size)
     return None
 
 
-def mops_equal(mop1: mop_t, mop2: mop_t) -> bool:
+def mops_equal(mop1: ida_hexrays.mop_t, mop2: ida_hexrays.mop_t) -> bool:
     """Check if two mops refer to the same location."""
     if mop1 is None or mop2 is None:
         return False
 
     # For stack variables
-    if mop1.t == mop_S and mop2.t == mop_S:
+    if mop1.t == ida_hexrays.mop_S and mop2.t == ida_hexrays.mop_S:
         return mop1.s.off == mop2.s.off and mop1.size == mop2.size
 
     # For registers
-    if mop1.t == mop_r and mop2.t == mop_r:
+    if mop1.t == ida_hexrays.mop_r and mop2.t == ida_hexrays.mop_r:
         return mop1.r == mop2.r and mop1.size == mop2.size
 
     return False
 
 
-def is_simple_constant_assignment(ins: minsn_t) -> tuple[mop_t | None, int | None]:
+def is_simple_constant_assignment(ins: ida_hexrays.minsn_t) -> tuple[ida_hexrays.mop_t | None, int | None]:
     """
     Check if instruction is a simple assignment of a constant to a variable.
     Returns (destination_mop, constant_value) or (None, None).
     """
-    if ins is None or ins.opcode != m_mov:
+    if ins is None or ins.opcode != ida_hexrays.m_mov:
         return None, None
 
     # Check if right side is a constant
-    if ins.l.t != mop_n:
+    if ins.l.t != ida_hexrays.mop_n:
         return None, None
 
     # Check if destination is a stack variable or register
-    if ins.d.t not in [mop_S, mop_r]:
+    if ins.d.t not in [ida_hexrays.mop_S, ida_hexrays.mop_r]:
         return None, None
 
     return ins.d, ins.l.nnn.value
 
 
-def find_counter_increment_in_block(blk: mblock_t, counter_var: mop_t) -> int | None:
+def find_counter_increment_in_block(blk: ida_hexrays.mblock_t, counter_var: ida_hexrays.mop_t) -> int | None:
     """
     Look for an instruction that sets the counter variable to a constant.
     Returns the constant value or None.
@@ -102,7 +102,7 @@ def find_counter_increment_in_block(blk: mblock_t, counter_var: mop_t) -> int | 
     return None
 
 
-def analyze_bogus_loop(blk: mblock_t) -> BogusLoopInfo:
+def analyze_bogus_loop(blk: ida_hexrays.mblock_t) -> BogusLoopInfo:
     """
     Analyze a block to see if it's part of a bogus single-iteration loop.
 
@@ -143,10 +143,10 @@ def analyze_bogus_loop(blk: mblock_t) -> BogusLoopInfo:
     counter_var = None
     compare_value = None
 
-    if left_mop.t == mop_n and right_mop.t in [mop_S, mop_r]:
+    if left_mop.t == ida_hexrays.mop_n and right_mop.t in [ida_hexrays.mop_S, ida_hexrays.mop_r]:
         compare_value = left_mop.nnn.value
         counter_var = right_mop
-    elif right_mop.t == mop_n and left_mop.t in [mop_S, mop_r]:
+    elif right_mop.t == ida_hexrays.mop_n and left_mop.t in [ida_hexrays.mop_S, ida_hexrays.mop_r]:
         compare_value = right_mop.nnn.value
         counter_var = left_mop
     else:
@@ -169,12 +169,12 @@ def analyze_bogus_loop(blk: mblock_t) -> BogusLoopInfo:
     #   - If var != 0 (after loop), condition is false, takes direct successor (fallthrough)
     # So: conditional_succ is body, direct_succ is exit
 
-    if jump_ins.opcode == m_jnz:
+    if jump_ins.opcode == ida_hexrays.m_jnz:
         # jnz: jumps when condition is true (!=)
         # Initially counter == compare_value, so doesn't jump → body is fallthrough
         body_serial = direct_succ_serial
         exit_serial = conditional_succ_serial
-    elif jump_ins.opcode == m_jz:
+    elif jump_ins.opcode == ida_hexrays.m_jz:
         # jz: jumps when condition is true (==)
         # Initially counter == compare_value, so jumps → body is jump target
         body_serial = conditional_succ_serial
@@ -260,7 +260,7 @@ class BogusLoopRemover(FlowOptimizationRule):
         super().__init__()
         self.nb_changes = 0
 
-    def optimize(self, blk: mblock_t) -> int:
+    def optimize(self, blk: ida_hexrays.mblock_t) -> int:
         """
         Analyze and optimize the given block.
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import abc
 
-from ida_hexrays import *
+import ida_hexrays
 
 from d810.core import getLogger
 from d810.expr.emulator import MicroCodeEnvironment, MicroCodeInterpreter
@@ -70,7 +70,7 @@ class GenericDispatcherBlockInfo(object):
         self.assume_def_list = [x for x in father.assume_def_list]
 
     def update_use_def_lists(
-        self, ins_mops_used: list[mop_t], ins_mops_def: list[mop_t]
+        self, ins_mops_used: list[ida_hexrays.mop_t], ins_mops_def: list[ida_hexrays.mop_t]
     ):
         for mop_used in ins_mops_used:
             append_mop_if_not_in_list(mop_used, self.use_list)
@@ -80,7 +80,7 @@ class GenericDispatcherBlockInfo(object):
         for mop_def in ins_mops_def:
             append_mop_if_not_in_list(mop_def, self.def_list)
 
-    def update_with_ins(self, ins: minsn_t):
+    def update_with_ins(self, ins: ida_hexrays.minsn_t):
         ins_mop_info = InstructionDefUseCollector()
         ins.for_all_ops(ins_mop_info)
         cleaned_unresolved_ins_mops = remove_segment_registers(
@@ -105,7 +105,7 @@ class GenericDispatcherBlockInfo(object):
         for mop_def in self.def_list:
             append_mop_if_not_in_list(mop_def, self.assume_def_list)
 
-    def does_only_need(self, prerequisite_mop_list: list[mop_t]) -> bool:
+    def does_only_need(self, prerequisite_mop_list: list[ida_hexrays.mop_t]) -> bool:
         for used_before_def_mop in self.use_before_def_list:
             mop_index = get_mop_index(used_before_def_mop, prerequisite_mop_list)
             if mop_index == -1:
@@ -140,9 +140,9 @@ class GenericDispatcherBlockInfo(object):
 
 
 class GenericDispatcherInfo(object):
-    def __init__(self, mba: mba_t):
+    def __init__(self, mba: ida_hexrays.mba_t):
         self.mba = mba
-        self.mop_compared: mop_t | None = None
+        self.mop_compared: ida_hexrays.mop_t | None = None
         self.entry_block = None
         self.comparison_values = []
         self.dispatcher_internal_blocks = []
@@ -165,12 +165,12 @@ class GenericDispatcherInfo(object):
         self.dispatcher_internal_blocks = []
         self.dispatcher_exit_blocks = []
 
-    def explore(self, blk: mblock_t) -> bool:
+    def explore(self, blk: ida_hexrays.mblock_t) -> bool:
         return False
 
     def get_shared_internal_blocks(
         self, other_dispatcher: GenericDispatcherInfo
-    ) -> list[mblock_t]:
+    ) -> list[ida_hexrays.mblock_t]:
         my_dispatcher_block_serial = [
             blk_info.blk.serial for blk_info in self.dispatcher_internal_blocks
         ]
@@ -192,7 +192,7 @@ class GenericDispatcherInfo(object):
             return True
         return False
 
-    def should_emulation_continue(self, cur_blk: mblock_t) -> bool:
+    def should_emulation_continue(self, cur_blk: ida_hexrays.mblock_t) -> bool:
         exit_block_serial_list = [
             exit_block.serial for exit_block in self.dispatcher_exit_blocks
         ]
@@ -202,7 +202,7 @@ class GenericDispatcherInfo(object):
 
     def emulate_dispatcher_with_father_history(
         self, father_history: MopHistory
-    ) -> tuple[mblock_t, list[minsn_t]]:
+    ) -> tuple[ida_hexrays.mblock_t, list[ida_hexrays.minsn_t]]:
         # Use concrete values from tracker - do NOT use symbolic mode here
         # Symbolic mode would generate fake values instead of using tracked values
         microcode_interpreter = MicroCodeInterpreter(symbolic_mode=False)
@@ -305,7 +305,7 @@ class GenericDispatcherInfo(object):
                 exit_blk.show_history()
 
 
-class GenericDispatcherCollector(minsn_visitor_t):
+class GenericDispatcherCollector(ida_hexrays.minsn_visitor_t):
     DISPATCHER_CLASS = GenericDispatcherInfo
     DEFAULT_DISPATCHER_MIN_INTERNAL_BLOCK = 2
     DEFAULT_DISPATCHER_MIN_EXIT_BLOCK = 2
@@ -394,21 +394,21 @@ class GenericDispatcherCollector(minsn_visitor_t):
 class GenericUnflatteningRule(FlowOptimizationRule):
 
     DEFAULT_UNFLATTENING_MATURITIES = [
-        MMAT_CALLS,
-        MMAT_GLBOPT1,
-        MMAT_GLBOPT2,
-        MMAT_GLBOPT3,
+        ida_hexrays.MMAT_CALLS,
+        ida_hexrays.MMAT_GLBOPT1,
+        ida_hexrays.MMAT_GLBOPT2,
+        ida_hexrays.MMAT_GLBOPT3,
     ]
 
     def __init__(self):
         super().__init__()
-        self.mba: mba_t
-        self.cur_maturity = MMAT_ZERO
+        self.mba: ida_hexrays.mba_t
+        self.cur_maturity = ida_hexrays.MMAT_ZERO
         self.cur_maturity_pass = 0
         self.last_pass_nb_patch_done = 0
         self.maturities = self.DEFAULT_UNFLATTENING_MATURITIES
 
-    def check_if_rule_should_be_used(self, blk: mblock_t) -> bool:
+    def check_if_rule_should_be_used(self, blk: ida_hexrays.mblock_t) -> bool:
         if self.cur_maturity == self.mba.maturity:
             self.cur_maturity_pass += 1
         else:
@@ -445,7 +445,7 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
         """Return the class of the dispatcher collector."""
         raise NotImplementedError
 
-    def check_if_rule_should_be_used(self, blk: mblock_t) -> bool:
+    def check_if_rule_should_be_used(self, blk: ida_hexrays.mblock_t) -> bool:
         if not super().check_if_rule_should_be_used(blk):
             return False
         if (self.cur_maturity_pass >= 1) and (self.last_pass_nb_patch_done == 0):
@@ -503,7 +503,7 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
 
     def get_dispatcher_father_histories(
         self,
-        dispatcher_father: mblock_t,
+        dispatcher_father: ida_hexrays.mblock_t,
         dispatcher_entry_block: GenericDispatcherBlockInfo,
         dispatcher_info: GenericDispatcherInfo,
     ) -> list[MopHistory]:
@@ -529,7 +529,7 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
 
     def ensure_dispatcher_father_is_resolvable(
         self,
-        dispatcher_father: mblock_t,
+        dispatcher_father: ida_hexrays.mblock_t,
         dispatcher_entry_block: GenericDispatcherBlockInfo,
         dispatcher_info: GenericDispatcherInfo,
     ) -> int:
@@ -583,110 +583,110 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
     def father_patcher_abc_extract_mop(self, target_instruction):
         cnst = None
         compare_mop = None
-        if target_instruction.opcode == m_sub:
+        if target_instruction.opcode == ida_hexrays.m_sub:
             if target_instruction.l.t == 2:
                 cnst = target_instruction.l.signed_value()
-                compare_mop = mop_t(target_instruction.r)
-        elif target_instruction.opcode == m_add:
+                compare_mop = ida_hexrays.mop_t(target_instruction.r)
+        elif target_instruction.opcode == ida_hexrays.m_add:
             if target_instruction.r.t == 2:
                 cnst = target_instruction.r.signed_value()
-                compare_mop = mop_t(target_instruction.l)
-        elif target_instruction.opcode == m_or:
+                compare_mop = ida_hexrays.mop_t(target_instruction.l)
+        elif target_instruction.opcode == ida_hexrays.m_or:
             if target_instruction.r.t == 2:
                 cnst = target_instruction.r.signed_value()
-                compare_mop = mop_t(target_instruction.l)
-        elif target_instruction.opcode == m_xor:
+                compare_mop = ida_hexrays.mop_t(target_instruction.l)
+        elif target_instruction.opcode == ida_hexrays.m_xor:
             if target_instruction.r.t == 2:
                 cnst = target_instruction.r.signed_value()
-                compare_mop = mop_t(target_instruction.l)
+                compare_mop = ida_hexrays.mop_t(target_instruction.l)
         return cnst, compare_mop, target_instruction.opcode
 
     def father_patcher_abc_check_instruction(
         self, target_instruction
-    ) -> tuple[int | None, mop_t | None, mop_t | None, int | None]:
+    ) -> tuple[int | None, ida_hexrays.mop_t | None, ida_hexrays.mop_t | None, int | None]:
         # TODO reimplement here
         compare_mop_left = None
         compare_mop_right = None
         cnst = None
         instruction_opcode = None
-        opcodes_interested_in = [m_add, m_sub, m_or, m_xor, m_xdu, m_high]
+        opcodes_interested_in = [ida_hexrays.m_add, ida_hexrays.m_sub, ida_hexrays.m_or, ida_hexrays.m_xor, ida_hexrays.m_xdu, ida_hexrays.m_high]
         # if target_instruction.d.r != jtbl_r:
         # return cnst,compare_mop_left,compare_mop_right,instruction_opcode
         if target_instruction.opcode in opcodes_interested_in:
             trgt_opcode = target_instruction.opcode
             # check add or sub
-            if trgt_opcode == m_xdu:
-                if target_instruction.l.t == mop_d:
-                    if target_instruction.l.d.opcode == m_high:
+            if trgt_opcode == ida_hexrays.m_xdu:
+                if target_instruction.l.t == ida_hexrays.mop_d:
+                    if target_instruction.l.d.opcode == ida_hexrays.m_high:
                         high_i = target_instruction.l.d
-                        if high_i.l.t == mop_d:
+                        if high_i.l.t == ida_hexrays.mop_d:
                             sub_instruction = high_i.l.d
-                            if sub_instruction.opcode == m_sub:
-                                if sub_instruction.l.t == mop_d:
-                                    compare_mop_right = mop_t(sub_instruction.r)
+                            if sub_instruction.opcode == ida_hexrays.m_sub:
+                                if sub_instruction.l.t == ida_hexrays.mop_d:
+                                    compare_mop_right = ida_hexrays.mop_t(sub_instruction.r)
                                     sub_sub_instruction = sub_instruction.l.d
-                                    if sub_sub_instruction.opcode == m_or:
+                                    if sub_sub_instruction.opcode == ida_hexrays.m_or:
                                         if sub_sub_instruction.r.t == 2:
                                             cnst = sub_sub_instruction.r.signed_value()
                                             cnst = cnst >> 32
-                                            compare_mop_left = mop_t(
+                                            compare_mop_left = ida_hexrays.mop_t(
                                                 sub_sub_instruction.l
                                             )
-                                            instruction_opcode = m_sub
-                                elif sub_instruction.l.t == mop_n:
+                                            instruction_opcode = ida_hexrays.m_sub
+                                elif sub_instruction.l.t == ida_hexrays.mop_n:
                                     # 9. 0 high   (#0xF6A120000005F.8-xdu.8(ebx.4)), ecx.4{11}
-                                    compare_mop_right = mop_t(sub_instruction.r)
+                                    compare_mop_right = ida_hexrays.mop_t(sub_instruction.r)
                                     cnst = sub_instruction.l.signed_value()
                                     cnst = cnst >> 32
-                                    compare_mop_left = mop_t()
+                                    compare_mop_left = ida_hexrays.mop_t()
                                     compare_mop_left.make_number(
                                         sub_instruction.l.signed_value() & 0xFFFFFFFF,
                                         8,
                                         target_instruction.ea,
                                     )
-                                    instruction_opcode = m_sub
+                                    instruction_opcode = ida_hexrays.m_sub
                     else:
                         sub_instruction = target_instruction.l.d
                         cnst, compare_mop_left, trgt_opcode = (
                             self.father_patcher_abc_extract_mop(sub_instruction)
                         )
-                        compare_mop_right = mop_t()
+                        compare_mop_right = ida_hexrays.mop_t()
                         compare_mop_right.make_number(0, 4, target_instruction.ea)
                         instruction_opcode = trgt_opcode
                 else:
                     return cnst, compare_mop_left, compare_mop_right, instruction_opcode
-            elif trgt_opcode == m_high:
-                if target_instruction.l.t == mop_d:
+            elif trgt_opcode == ida_hexrays.m_high:
+                if target_instruction.l.t == ida_hexrays.mop_d:
                     sub_instruction = target_instruction.l.d
-                    if sub_instruction.opcode == m_sub:
-                        if sub_instruction.l.t == mop_d:
-                            compare_mop_right = mop_t(sub_instruction.r)
+                    if sub_instruction.opcode == ida_hexrays.m_sub:
+                        if sub_instruction.l.t == ida_hexrays.mop_d:
+                            compare_mop_right = ida_hexrays.mop_t(sub_instruction.r)
                             sub_sub_instruction = sub_instruction.l.d
-                            if sub_sub_instruction.opcode == m_or:
+                            if sub_sub_instruction.opcode == ida_hexrays.m_or:
                                 if sub_sub_instruction.r.t == 2:
                                     cnst = sub_sub_instruction.r.signed_value()
                                     cnst = cnst >> 32
-                                    compare_mop_left = mop_t(sub_sub_instruction.l)
-                                    instruction_opcode = m_sub
-                        elif sub_instruction.l.t == mop_n:
+                                    compare_mop_left = ida_hexrays.mop_t(sub_sub_instruction.l)
+                                    instruction_opcode = ida_hexrays.m_sub
+                        elif sub_instruction.l.t == ida_hexrays.mop_n:
                             # 9. 0 high   (#0xF6A120000005F.8-xdu.8(ebx.4)), ecx.4{11}
-                            compare_mop_right = mop_t(sub_instruction.r)
+                            compare_mop_right = ida_hexrays.mop_t(sub_instruction.r)
                             cnst = sub_instruction.l.signed_value()
                             cnst = cnst >> 32
-                            compare_mop_left = mop_t()
+                            compare_mop_left = ida_hexrays.mop_t()
                             compare_mop_left.make_number(
                                 sub_instruction.l.signed_value() & 0xFFFFFFFF,
                                 8,
                                 target_instruction.ea,
                             )
-                            instruction_opcode = m_sub
+                            instruction_opcode = ida_hexrays.m_sub
                         else:
                             pass
             else:
                 cnst, compare_mop_left, trgt_opcode = (
                     self.father_patcher_abc_extract_mop(target_instruction)
                 )
-                compare_mop_right = mop_t()
+                compare_mop_right = ida_hexrays.mop_t()
                 compare_mop_right.make_number(0, 4, target_instruction.ea)
                 instruction_opcode = trgt_opcode
 
@@ -694,39 +694,39 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
 
     def father_patcher_abc_create_blocks(
         self,
-        dispatcher_father: mblock_t,
-        curr_inst: minsn_t,
+        dispatcher_father: ida_hexrays.mblock_t,
+        curr_inst: ida_hexrays.minsn_t,
         cnst: int,
-        compare_mop_left: mop_t,
-        compare_mop_right: mop_t,
+        compare_mop_left: ida_hexrays.mop_t,
+        compare_mop_right: ida_hexrays.mop_t,
         opcode: int,
-    ) -> tuple[mblock_t, mblock_t]:
+    ) -> tuple[ida_hexrays.mblock_t, ida_hexrays.mblock_t]:
 
         mba = dispatcher_father.mba
-        if dispatcher_father.tail.opcode == m_goto:
+        if dispatcher_father.tail.opcode == ida_hexrays.m_goto:
             dispatcher_father.remove_from_block(dispatcher_father.tail)
         new_id0_serial = dispatcher_father.serial + 1
         new_id1_serial = dispatcher_father.serial + 2
-        dispatcher_reg0 = mop_t(curr_inst.d)
+        dispatcher_reg0 = ida_hexrays.mop_t(curr_inst.d)
         dispatcher_reg0.size = 4
-        dispatcher_reg1 = mop_t(curr_inst.d)
+        dispatcher_reg1 = ida_hexrays.mop_t(curr_inst.d)
         dispatcher_reg1.size = 4
-        if dispatcher_father.type != BLT_1WAY:
+        if dispatcher_father.type != ida_hexrays.BLT_1WAY:
             raise RuntimeError("father is not 1 way")
 
         ea = curr_inst.ea
         block0_const = 0
         block1_const = 0
-        if opcode == m_sub:
+        if opcode == ida_hexrays.m_sub:
             block0_const = cnst - 0
             block1_const = cnst - 1
-        elif opcode == m_add:
+        elif opcode == ida_hexrays.m_add:
             block0_const = cnst + 0
             block1_const = cnst + 1
-        elif opcode == m_or:
+        elif opcode == ida_hexrays.m_or:
             block0_const = cnst | 0
             block1_const = cnst | 1
-        elif opcode == m_xor:
+        elif opcode == ida_hexrays.m_xor:
             block0_const = cnst ^ 0
             block1_const = cnst ^ 1
 
@@ -735,16 +735,16 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
         new_block1 = mba.insert_block(new_id1_serial)
 
         # get father succset after creation of new childs, since it will increase auto
-        childs_goto0 = mop_t()
-        childs_goto1 = mop_t()
+        childs_goto0 = ida_hexrays.mop_t()
+        childs_goto1 = ida_hexrays.mop_t()
         childs_goto_serial = dispatcher_father.succset[0]
         childs_goto0.make_blkref(childs_goto_serial)
         childs_goto_serial = dispatcher_father.succset[0]
         childs_goto1.make_blkref(childs_goto_serial)
         dispatcher_tail = dispatcher_father.tail
         while dispatcher_tail.dstr() != curr_inst.dstr():
-            innsert_inst0 = minsn_t(dispatcher_tail)
-            innsert_inst1 = minsn_t(dispatcher_tail)
+            innsert_inst0 = ida_hexrays.minsn_t(dispatcher_tail)
+            innsert_inst1 = ida_hexrays.minsn_t(dispatcher_tail)
             innsert_inst0.setaddr(ea)
             innsert_inst1.setaddr(ea)
 
@@ -756,28 +756,28 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
             new_block0.tail.next = None
             new_block1.tail.next = None
 
-        mov_inst0 = minsn_t(ea)
-        mov_inst0.opcode = m_mov
-        mov_inst0.l = mop_t()
+        mov_inst0 = ida_hexrays.minsn_t(ea)
+        mov_inst0.opcode = ida_hexrays.m_mov
+        mov_inst0.l = ida_hexrays.mop_t()
         mov_inst0.l.make_number(block0_const, 4, ea)
         mov_inst0.d = dispatcher_reg0
         new_block0.insert_into_block(mov_inst0, new_block0.tail)
 
-        goto_inst0 = minsn_t(ea)
-        goto_inst0.opcode = m_goto
+        goto_inst0 = ida_hexrays.minsn_t(ea)
+        goto_inst0.opcode = ida_hexrays.m_goto
         goto_inst0.l = childs_goto0
         new_block0.insert_into_block(goto_inst0, new_block0.tail)
 
         # generate block1 instructions
-        mov_inst1 = minsn_t(ea)
-        mov_inst1.opcode = m_mov
-        mov_inst1.l = mop_t()
+        mov_inst1 = ida_hexrays.minsn_t(ea)
+        mov_inst1.opcode = ida_hexrays.m_mov
+        mov_inst1.l = ida_hexrays.mop_t()
         mov_inst1.l.make_number(block1_const, 4, ea)
         mov_inst1.d = dispatcher_reg1
         new_block1.insert_into_block(mov_inst1, new_block1.tail)
 
-        goto_inst1 = minsn_t(ea)
-        goto_inst1.opcode = m_goto
+        goto_inst1 = ida_hexrays.minsn_t(ea)
+        goto_inst1.opcode = ida_hexrays.m_goto
         goto_inst1.l = childs_goto1
         new_block1.insert_into_block(goto_inst1, new_block1.tail)
         #
@@ -799,11 +799,11 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
 
         # add jz to end of block
         # dispatcher_father.tail = minsn_t(curr_inst.ea) # do not create new instruction to keep references to earlier instructions
-        jz_to_childs = minsn_t(ea)
-        jz_to_childs.opcode = m_jz
+        jz_to_childs = ida_hexrays.minsn_t(ea)
+        jz_to_childs.opcode = ida_hexrays.m_jz
         jz_to_childs.l = compare_mop_left
         jz_to_childs.r = compare_mop_right
-        jz_to_childs.d = mop_t()
+        jz_to_childs.d = ida_hexrays.mop_t()
         jz_to_childs.d.make_blkref(new_id1_serial)
         dispatcher_father.insert_into_block(jz_to_childs, dispatcher_father.tail)
 
@@ -856,9 +856,9 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
         dispatcher_father.succset.add_unique(new_id1_serial)
         dispatcher_father.mark_lists_dirty()
 
-        dispatcher_father.type = BLT_2WAY
-        new_block0.type = BLT_1WAY
-        new_block1.type = BLT_1WAY
+        dispatcher_father.type = ida_hexrays.BLT_2WAY
+        new_block0.type = ida_hexrays.BLT_1WAY
+        new_block1.type = ida_hexrays.BLT_1WAY
         new_block0.start = dispatcher_father.start
         new_block1.start = dispatcher_father.start
         new_block0.end = dispatcher_father.end
@@ -872,9 +872,9 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
         )
         return new_block0, new_block1
 
-    def father_history_patcher_abc(self, father_history: mblock_t) -> int:
+    def father_history_patcher_abc(self, father_history: ida_hexrays.mblock_t) -> int:
         # father can have instructions that we are not interested in but need to copy and remove from generated childs.
-        curr_inst: minsn_t | None = father_history.head
+        curr_inst: ida_hexrays.minsn_t | None = father_history.head
         while curr_inst:
             cnst, compare_mop_left, compare_mop_right, instruction_opcode = (
                 self.father_patcher_abc_check_instruction(curr_inst)
@@ -908,34 +908,34 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
 
     def dispatcher_fixer_abc(self, dispatcher_list):
         for dispatcher in dispatcher_list:
-            if dispatcher.entry_block.blk.tail.opcode == m_jtbl:
+            if dispatcher.entry_block.blk.tail.opcode == ida_hexrays.m_jtbl:
                 # check jtbl have 3 case where one is default to itsel
                 jtbl_minst = dispatcher.entry_block.blk.tail
                 # jtbl left is mop_d -> minst
-                if jtbl_minst.l.t == mop_d:
+                if jtbl_minst.l.t == ida_hexrays.mop_d:
                     # jtbl left is m_sub
                     # jtbl   (#0xF6BBE.4-xdu.4((rax17.8 == #0.8))), {0xF6BBB => 22, 0xF6BBD => 19, 0xF6BBE => 20, def => 18}
-                    if jtbl_minst.l.d.opcode == m_sub:
+                    if jtbl_minst.l.d.opcode == ida_hexrays.m_sub:
                         sub_minst = jtbl_minst.l.d
                         # sub left is constant
                         if sub_minst.l.t == 2:
                             cnst = jtbl_minst.l.signed_value()
-                            compare_mop = mop_t(jtbl_minst.r)
+                            compare_mop = ida_hexrays.mop_t(jtbl_minst.r)
                     # jtbl left is m_xdu
                     # jtbl   xdu.4((rax17.4{26} == varD8.4)), {-2,1 => 22, 0 => 21, def => 20}
-                    if jtbl_minst.l.d.opcode == m_xdu:
+                    if jtbl_minst.l.d.opcode == ida_hexrays.m_xdu:
                         sub_minst = jtbl_minst.l.d
                         # sub left is constant
                         if sub_minst.l.t == 2:
                             cnst = jtbl_minst.l.signed_value()
-                            compare_mop = mop_t(jtbl_minst.r)
+                            compare_mop = ida_hexrays.mop_t(jtbl_minst.r)
                             # remove jtbl
                             # create jz with compare mop
                             # get 2 case from jtbl cases
                             # create 2 block with goto to jtbl case
 
     def resolve_dispatcher_father(
-        self, dispatcher_father: mblock_t, dispatcher_info: GenericDispatcherInfo
+        self, dispatcher_father: ida_hexrays.mblock_t, dispatcher_info: GenericDispatcherInfo
     ) -> int:
         dispatcher_father_histories = self.get_dispatcher_father_histories(
             dispatcher_father,
@@ -996,11 +996,11 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
                 )
                 tail_serial = self.mba.qty - 1
                 block_to_copy = self.mba.get_mblock(tail_serial)
-                while block_to_copy.type == BLT_XTRN or block_to_copy.type == BLT_STOP:
+                while block_to_copy.type == ida_hexrays.BLT_XTRN or block_to_copy.type == ida_hexrays.BLT_STOP:
                     block_to_copy = self.mba.get_mblock(tail_serial)
                     tail_serial -= 1
                 dispatcher_side_effect_blk = create_block(
-                    block_to_copy, ins_to_copy, is_0_way=(target_blk.type == BLT_0WAY)
+                    block_to_copy, ins_to_copy, is_0_way=(target_blk.type == ida_hexrays.BLT_0WAY)
                 )
                 change_1way_block_successor(
                     dispatcher_father, dispatcher_side_effect_blk.serial
@@ -1036,12 +1036,12 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
 
     def find_bad_while_loops(self, blk):
         # find from mov x,eax
-        if blk.tail.opcode == m_mov and blk.tail.l.t == mop_n:
+        if blk.tail.opcode == ida_hexrays.m_mov and blk.tail.l.t == ida_hexrays.mop_n:
             left_cnst = blk.tail.l.signed_value()
             if left_cnst > 0xF6000 and left_cnst < 0xF6FFF:
-                if blk.next.opcode == m_jz and blk.next.tail.r.t == mop_n:
+                if blk.next.opcode == ida_hexrays.m_jz and blk.next.tail.r.t == ida_hexrays.mop_n:
                     jz0_cnst = blk.next.tail.r.signed_value()
-                    if blk.next.next.opcode == m_jz and blk.next.next.tail.r.t == mop_n:
+                    if blk.next.next.opcode == ida_hexrays.m_jz and blk.next.next.tail.r.t == ida_hexrays.mop_n:
                         jz1_cnst = blk.next.ntext.tail.r.signed_value()
                         if (
                             jz1_cnst > 0xF6000
@@ -1123,7 +1123,7 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
         total_nb_change += nb_flattened_branches
         return total_nb_change
 
-    def optimize(self, blk: mblock_t) -> int:
+    def optimize(self, blk: ida_hexrays.mblock_t) -> int:
         self.mba = blk.mba
         if not self.check_if_rule_should_be_used(blk):
             return 0
