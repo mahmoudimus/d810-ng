@@ -12,7 +12,8 @@ import idaapi
 
 if idaapi.is_idaq():
     from d810.qt_shim import QtCore, QtWidgets, qt_flag_or
-
+    from d810.ui.testbed import TestRunnerForm
+    
 if typing.TYPE_CHECKING:
     from d810.manager import D810State
 
@@ -22,7 +23,6 @@ from d810.core import (
     RuleConfiguration,
     getLogger,
 )
-from d810.ui.testbed import TestRunnerForm
 
 logger = getLogger("D810.ui")
 cast = typing.cast
