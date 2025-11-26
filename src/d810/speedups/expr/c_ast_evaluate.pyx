@@ -20,7 +20,21 @@ from d810.hexrays.hexrays_helpers import AND_TABLE
 
 logger = getLogger(__name__)
 
-from d810.expr.p_ast import AstConstant, AstLeaf, AstNode, AstProxy
+# Lazy import to avoid circular dependency with c_ast.pyx
+# These get populated on first use
+cdef object _AstNode = None
+cdef object _AstLeaf = None
+cdef object _AstConstant = None
+cdef object _AstProxy = None
+
+cdef inline void _ensure_types_loaded():
+    global _AstNode, _AstLeaf, _AstConstant, _AstProxy
+    if _AstNode is None:
+        from d810.speedups.expr.c_ast import AstNode, AstLeaf, AstConstant, AstProxy
+        _AstNode = AstNode
+        _AstLeaf = AstLeaf
+        _AstConstant = AstConstant
+        _AstProxy = AstProxy
 
 
 cdef object _BINARY_OPCODES = frozenset((
@@ -68,11 +82,12 @@ cdef class AstEvaluator:
         return self.evaluate(node, dict_index_to_value)
 
     cpdef object evaluate(self, object node, dict dict_index_to_value):
-        if isinstance(node, AstNode):
+        _ensure_types_loaded()
+        if isinstance(node, _AstNode):
             return self._eval_node(node, dict_index_to_value)
-        if isinstance(node, AstLeaf):
+        if isinstance(node, _AstLeaf):
             return self._eval_leaf(node, dict_index_to_value)
-        if isinstance(node, AstProxy):
+        if isinstance(node, _AstProxy):
             return self.evaluate(node._target, dict_index_to_value)
         raise AstEvaluationException(
             f"Unsupported AST node type: {type(node).__name__}"
@@ -80,7 +95,7 @@ cdef class AstEvaluator:
 
     cdef inline object _eval_leaf(self, object leaf, dict dict_index_to_value):
         # AstConstant: prefer concrete mop value, otherwise fall back to expected_value
-        if isinstance(leaf, AstConstant):
+        if isinstance(leaf, _AstConstant):
             if leaf.mop is not None and leaf.mop.t == ida_hexrays.mop_n:
                 return leaf.mop.nnn.value
             return leaf.expected_value

@@ -251,15 +251,15 @@ def ast_to_z3_expression(ast: AstNode | AstLeaf | None, use_bitvecval=False):
             return z3.If(z3.ULT(left, right), z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
         case ida_hexrays.m_seta:
             return z3.If(z3.UGT(left, right), z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case ida_hexrays.m_setbE:
+        case ida_hexrays.m_setbe:
             return z3.If(z3.ULE(left, right), z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
         case ida_hexrays.m_setg:
             return z3.If(left > right, z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case ida_hexrays.m_setgE:
+        case ida_hexrays.m_setge:
             return z3.If(left >= right, z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
         case ida_hexrays.m_setl:
             return z3.If(left < right, z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case ida_hexrays.m_setlE:
+        case ida_hexrays.m_setle:
             return z3.If(left <= right, z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
         case ida_hexrays.m_setp:
             # 1) isolate the low byte
