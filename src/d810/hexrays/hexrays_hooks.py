@@ -4,7 +4,7 @@ import enum
 import pathlib
 import typing
 
-from ida_hexrays import *
+import ida_hexrays
 
 from d810.core import getLogger
 from d810.errors import D810Exception
@@ -18,6 +18,9 @@ from d810.hexrays.hexrays_formatters import (
 from d810.hexrays.hexrays_helpers import check_ins_mop_size_are_ok
 from d810.mba.rules import VerifiableRule
 from d810.mba.backends.ida import adapt_rules
+# Import experimental rules that depend on optimizer extensions
+# These rules use context-aware features and can't be in mba.rules
+from d810.optimizers.microcode.instructions.pattern_matching import experimental  # noqa: F401
 from d810.optimizers.microcode.flow.handler import FlowOptimizationRule
 from d810.optimizers.microcode.instructions.handler import (
     InstructionOptimizationRule,
@@ -28,26 +31,26 @@ main_logger = getLogger("D810")
 optimizer_logger = getLogger("D810.optimizer")
 
 DEFAULT_OPTIMIZATION_PATTERN_MATURITIES = [
-    MMAT_PREOPTIMIZED,
-    MMAT_LOCOPT,
-    MMAT_CALLS,
-    MMAT_GLBOPT1,
+    ida_hexrays.MMAT_PREOPTIMIZED,
+    ida_hexrays.MMAT_LOCOPT,
+    ida_hexrays.MMAT_CALLS,
+    ida_hexrays.MMAT_GLBOPT1,
 ]
 DEFAULT_OPTIMIZATION_CHAIN_MATURITIES = [
-    MMAT_PREOPTIMIZED,
-    MMAT_LOCOPT,
-    MMAT_CALLS,
-    MMAT_GLBOPT1,
+    ida_hexrays.MMAT_PREOPTIMIZED,
+    ida_hexrays.MMAT_LOCOPT,
+    ida_hexrays.MMAT_CALLS,
+    ida_hexrays.MMAT_GLBOPT1,
 ]
-DEFAULT_OPTIMIZATION_Z3_MATURITIES = [MMAT_LOCOPT, MMAT_CALLS, MMAT_GLBOPT1]
-DEFAULT_OPTIMIZATION_EARLY_MATURITIES = [MMAT_GENERATED, MMAT_PREOPTIMIZED]
+DEFAULT_OPTIMIZATION_Z3_MATURITIES = [ida_hexrays.MMAT_LOCOPT, ida_hexrays.MMAT_CALLS, ida_hexrays.MMAT_GLBOPT1]
+DEFAULT_OPTIMIZATION_EARLY_MATURITIES = [ida_hexrays.MMAT_GENERATED, ida_hexrays.MMAT_PREOPTIMIZED]
 DEFAULT_OPTIMIZATION_PEEPHOLE_MATURITIES = [
-    MMAT_LOCOPT,
-    MMAT_CALLS,
-    MMAT_GLBOPT1,
-    MMAT_GLBOPT2,
+    ida_hexrays.MMAT_LOCOPT,
+    ida_hexrays.MMAT_CALLS,
+    ida_hexrays.MMAT_GLBOPT1,
+    ida_hexrays.MMAT_GLBOPT2,
 ]
-DEFAULT_ANALYZER_MATURITIES = [MMAT_PREOPTIMIZED, MMAT_LOCOPT, MMAT_CALLS, MMAT_GLBOPT1]
+DEFAULT_ANALYZER_MATURITIES = [ida_hexrays.MMAT_PREOPTIMIZED, ida_hexrays.MMAT_LOCOPT, ida_hexrays.MMAT_CALLS, ida_hexrays.MMAT_GLBOPT1]
 
 
 if typing.TYPE_CHECKING:
@@ -66,7 +69,7 @@ if typing.TYPE_CHECKING:
     from d810.optimizers.microcode.instructions.z3.handler import Z3Optimizer
 
 
-class InstructionOptimizerManager(optinsn_t):
+class InstructionOptimizerManager(ida_hexrays.optinsn_t):
     def __init__(self, stats: OptimizationStatistics, log_dir: pathlib.Path):
         optimizer_logger.debug("Initializing {0}...".format(self.__class__.__name__))
         super().__init__()
@@ -155,7 +158,7 @@ class InstructionOptimizerManager(optinsn_t):
             ins_optimizer.add_rule(rule)
         self.analyzer.add_rule(rule)
 
-    def func(self, blk: mblock_t, ins: minsn_t) -> bool:
+    def func(self, blk: ida_hexrays.mblock_t, ins: ida_hexrays.minsn_t) -> bool:
         self.log_info_on_input(blk, ins)
         try:
             optimization_performed = self.optimize(blk, ins)
@@ -189,8 +192,8 @@ class InstructionOptimizerManager(optinsn_t):
 
     # statistics are managed centrally via the stats object
 
-    def log_info_on_input(self, blk: mblock_t, ins: minsn_t):
-        mba: mbl_array_t = blk.mba
+    def log_info_on_input(self, blk: ida_hexrays.mblock_t, ins: ida_hexrays.minsn_t):
+        mba: ida_hexrays.mbl_array_t = blk.mba
 
         if (mba is not None) and (mba.maturity != self.current_maturity):
             self.current_maturity = mba.maturity
@@ -220,7 +223,7 @@ class InstructionOptimizerManager(optinsn_t):
         self.generate_z3_code = generate_z3_code
         self.dump_intermediate_microcode = dump_intermediate_microcode
 
-    def optimize(self, blk: mblock_t, ins: minsn_t) -> bool:
+    def optimize(self, blk: ida_hexrays.mblock_t, ins: ida_hexrays.minsn_t) -> bool:
         # optimizer_log.info("Trying to optimize {0}".format(format_minsn_t(ins)))
         for ins_optimizer in self.instruction_optimizers:
             self._last_optimizer_tried = ins_optimizer
@@ -260,7 +263,7 @@ class InstructionOptimizerManager(optinsn_t):
         return False
 
 
-class InstructionVisitorManager(minsn_visitor_t):
+class InstructionVisitorManager(ida_hexrays.minsn_visitor_t):
     def __init__(self, optimizer: InstructionOptimizerManager):
         optimizer_logger.debug("Initializing {0}...".format(self.__class__.__name__))
         super().__init__()
@@ -270,7 +273,7 @@ class InstructionVisitorManager(minsn_visitor_t):
         return self.instruction_optimizer.optimize(self.blk, self.curins)
 
 
-class BlockOptimizerManager(optblock_t):
+class BlockOptimizerManager(ida_hexrays.optblock_t):
     def __init__(self, stats: OptimizationStatistics, log_dir: pathlib.Path):
         optimizer_logger.debug("Initializing {0}...".format(self.__class__.__name__))
         super().__init__()
@@ -281,13 +284,13 @@ class BlockOptimizerManager(optblock_t):
         self.current_maturity = None
         # usage tracking moved to centralized statistics object
 
-    def func(self, blk: mblock_t):
+    def func(self, blk: ida_hexrays.mblock_t):
         self.log_info_on_input(blk)
         nb_patch = self.optimize(blk)
         return nb_patch
 
-    def log_info_on_input(self, blk: mblock_t):
-        mba: mbl_array_t = blk.mba
+    def log_info_on_input(self, blk: ida_hexrays.mblock_t):
+        mba: ida_hexrays.mbl_array_t = blk.mba
 
         if (mba is not None) and (mba.maturity != self.current_maturity):
             if main_logger.debug_on:
@@ -300,7 +303,7 @@ class BlockOptimizerManager(optblock_t):
 
     # statistics are managed centrally via the stats object
 
-    def optimize(self, blk: mblock_t):
+    def optimize(self, blk: ida_hexrays.mblock_t):
         for cfg_rule in self.cfg_rules:
             cfg_rule.current_maturity = self.current_maturity
             guard = blk.mba is not None and blk.mba.entry_ea is not None
@@ -345,12 +348,12 @@ class DecompilationEvent(enum.Enum):
     FINISHED = "decompilation_finished"
 
 
-class HexraysDecompilationHook(Hexrays_Hooks):
+class HexraysDecompilationHook(ida_hexrays.Hexrays_Hooks):
     def __init__(self, callback: typing.Callable):
         super().__init__()
         self.callback = callback
 
-    def prolog(self, mba: mbl_array_t, fc, reachable_blocks, decomp_flags) -> "int":
+    def prolog(self, mba: ida_hexrays.mbl_array_t, fc, reachable_blocks, decomp_flags) -> "int":
         main_logger.info("Starting decompilation of function at %s", hex(mba.entry_ea))
         self.callback(DecompilationEvent.STARTED)
         # self.manager.start_profiling()
@@ -369,7 +372,7 @@ class HexraysDecompilationHook(Hexrays_Hooks):
     #     # )
     #     return 0
 
-    def glbopt(self, mba: mbl_array_t) -> "int":
+    def glbopt(self, mba: ida_hexrays.mbl_array_t) -> "int":
         main_logger.info("glbopt finished for function at %s", hex(mba.entry_ea))
         main_logger.reset_maturity()
         return 0

@@ -6,22 +6,41 @@ import typing
 try:
     import ida_hexrays
     import idaapi
-    from ida_hexrays import mbl_array_t, minsn_t, mop_t, vd_printer_t
     IDA_AVAILABLE = True
 except ImportError:
     # Mock for unit testing
     IDA_AVAILABLE = False
-    ida_hexrays = None  # type: ignore
     idaapi = None  # type: ignore
-    # Mock IDA types used in function signatures
-    class mbl_array_t:  # type: ignore
-        pass
-    class minsn_t:  # type: ignore
-        pass
-    class mop_t:  # type: ignore
-        pass
-    class vd_printer_t:  # type: ignore
-        pass
+
+    class _MockIDAHexrays:  # type: ignore
+        class mbl_array_t:
+            pass
+        class minsn_t:
+            pass
+        class mop_t:
+            pass
+        class vd_printer_t:
+            def __init__(self):
+                pass
+
+        # Operand types for type comparisons
+        mop_d = 4
+        mop_a = 10
+        mop_f = 8
+        mop_l = 9
+        mop_S = 5
+        mop_c = 12
+        mop_p = 14
+        mop_sc = 15
+        mop_n = 2
+        mop_fn = 13
+        mop_r = 1
+        mop_v = 6
+        mop_b = 7
+        mop_str = 3
+        mop_h = 11
+
+    ida_hexrays = _MockIDAHexrays()
 
 from d810.core import getLogger
 from d810.hexrays.hexrays_helpers import (
@@ -51,7 +70,7 @@ def _cached_format_minsn_t(ea: int, raw_repr: str) -> str:
     return raw_repr.translate(_trans_table)
 
 
-def format_minsn_t(ins: minsn_t | None) -> str:
+def format_minsn_t(ins: ida_hexrays.minsn_t | None) -> str:
     """Return a printable representation of *ins*.
 
     The heavy-weight ``_print`` call is cached so subsequent requests for the
@@ -64,7 +83,7 @@ def format_minsn_t(ins: minsn_t | None) -> str:
     return _cached_format_minsn_t(ins.ea, raw)
 
 
-def mop_tree(mop: mop_t | None, depth: int = 0, max_depth: int = 8) -> str:
+def mop_tree(mop: ida_hexrays.mop_t | None, depth: int = 0, max_depth: int = 8) -> str:
     """
     Recursively format a mop_t tree as a string for inspection.
     Returns a string representation of the tree.
@@ -295,7 +314,7 @@ class MopTreeLogger:
         return renderer.render(mop, indent, child_indent, 0)
 
 
-def format_mop_t(mop_in: mop_t | None) -> str:
+def format_mop_t(mop_in: ida_hexrays.mop_t | None) -> str:
     if mop_in is None:
         return "mop_t is None"
     if mop_in.t > 15:
@@ -304,7 +323,7 @@ def format_mop_t(mop_in: mop_t | None) -> str:
     return mop_tree(mop_in, max_depth=0)
 
 
-def format_mop_list(mop_list: list[mop_t]) -> str:
+def format_mop_list(mop_list: list[ida_hexrays.mop_t]) -> str:
     return ", ".join([format_mop_t(x) for x in mop_list])
 
 
@@ -337,9 +356,9 @@ def opcode_to_string(opcode: int) -> str:
         return "Unknown opcode: {0}".format(opcode)
 
 
-class mba_printer(vd_printer_t):
+class mba_printer(ida_hexrays.vd_printer_t):
     def __init__(self):
-        vd_printer_t.__init__(self)
+        ida_hexrays.vd_printer_t.__init__(self)
         self.mc = []
 
     def get_mc(self):
@@ -350,9 +369,9 @@ class mba_printer(vd_printer_t):
         return 1
 
 
-class block_printer(vd_printer_t):
+class block_printer(ida_hexrays.vd_printer_t):
     def __init__(self):
-        vd_printer_t.__init__(self)
+        ida_hexrays.vd_printer_t.__init__(self)
         self.block_ins = []
 
     def get_block_mc(self):
@@ -364,7 +383,7 @@ class block_printer(vd_printer_t):
 
 
 def write_mc_to_file(
-    mba: mbl_array_t, filename: pathlib.Path, mba_flags: int = 0
+    mba: ida_hexrays.mbl_array_t, filename: pathlib.Path, mba_flags: int = 0
 ) -> bool:
     if not mba:
         return False
@@ -379,7 +398,7 @@ def write_mc_to_file(
 
 
 def dump_microcode_for_debug(
-    mba: mbl_array_t, log_dir_path: pathlib.Path, name: str = ""
+    mba: ida_hexrays.mbl_array_t, log_dir_path: pathlib.Path, name: str = ""
 ):
     if isinstance(log_dir_path, str):
         log_dir_path = pathlib.Path(log_dir_path)
