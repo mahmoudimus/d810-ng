@@ -1,12 +1,18 @@
-"""Profile d810 deobfuscation performance on libobfuscated.dll.
+"""Profile d810 deobfuscation performance on libobfuscated binary.
 
 Run with:
     pytest tests/system/test_profile_libobfuscated.py -v -s
 
 This generates an HTML profile report in the test output.
+
+Supports both:
+- libobfuscated.dll (Windows PE)
+- libobfuscated.dylib (macOS x86_64)
 """
 
 from __future__ import annotations
+
+import platform
 
 import pytest
 
@@ -20,7 +26,15 @@ except ImportError:
     PYINSTRUMENT_AVAILABLE = False
 
 
-# Functions to profile from libobfuscated.dll
+def get_func_ea(name: str) -> int:
+    """Get function address by name, handling macOS underscore prefix."""
+    ea = idc.get_name_ea_simple(name)
+    if ea == idaapi.BADADDR:
+        ea = idc.get_name_ea_simple("_" + name)  # macOS prefix
+    return ea
+
+
+# Functions to profile from libobfuscated binary
 FUNCTIONS_TO_PROFILE = [
     "test_chained_add",
     "test_cst_simplification",
@@ -42,7 +56,8 @@ def libobfuscated_setup(ida_database, configure_hexrays, setup_libobfuscated_fun
 class TestProfileLibObfuscated:
     """Profile d810 deobfuscation performance."""
 
-    binary_name = "libobfuscated.dll"
+    # Use platform-appropriate binary
+    binary_name = "libobfuscated.dylib" if platform.system() == "Darwin" else "libobfuscated.dll"
 
     def test_profile_all_functions(self, libobfuscated_setup, d810_state):
         """Profile deobfuscation of all test functions."""
@@ -51,7 +66,7 @@ class TestProfileLibObfuscated:
         # Collect function addresses
         func_addresses = []
         for func_name in FUNCTIONS_TO_PROFILE:
-            func_ea = idc.get_name_ea_simple(func_name)
+            func_ea = get_func_ea(func_name)
             if func_ea != idaapi.BADADDR:
                 func_addresses.append((func_name, func_ea))
             else:
@@ -94,7 +109,7 @@ class TestProfileLibObfuscated:
 
     def test_profile_mba_guessing(self, libobfuscated_setup, d810_state):
         """Profile MBA guessing function specifically (heaviest workload)."""
-        func_ea = idc.get_name_ea_simple("test_mba_guessing")
+        func_ea = get_func_ea("test_mba_guessing")
         if func_ea == idaapi.BADADDR:
             pytest.skip("Function 'test_mba_guessing' not found")
 
@@ -123,7 +138,7 @@ class TestProfileLibObfuscated:
 
     def test_profile_xor(self, libobfuscated_setup, d810_state):
         """Profile XOR simplification specifically."""
-        func_ea = idc.get_name_ea_simple("test_xor")
+        func_ea = get_func_ea("test_xor")
         if func_ea == idaapi.BADADDR:
             pytest.skip("Function 'test_xor' not found")
 

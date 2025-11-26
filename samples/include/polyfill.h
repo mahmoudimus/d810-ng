@@ -3,6 +3,87 @@
 
 #include "ida_types.h"
 
+/* ============================================================================
+ * Windows API Stubs for Cross-Platform Compilation
+ * These allow code using Windows APIs to compile on non-Windows platforms.
+ * Functions are stubbed to return failure/NULL - only structure is preserved.
+ * ============================================================================ */
+
+#ifndef _WIN32
+
+/* Calling conventions */
+#define WINAPI
+#define CALLBACK
+#define __stdcall
+#define __cdecl
+
+/* Basic handle types */
+typedef void *HANDLE;
+typedef void *HMODULE;
+typedef void *HINSTANCE;
+typedef void *HINTERNET;
+typedef void *LPVOID;
+typedef const void *LPCVOID;
+
+/* Pointer-sized integer */
+#ifdef __LP64__
+typedef unsigned long long DWORD_PTR;
+typedef unsigned long long ULONG_PTR;
+typedef long long LONG_PTR;
+#else
+typedef unsigned long DWORD_PTR;
+typedef unsigned long ULONG_PTR;
+typedef long LONG_PTR;
+#endif
+
+/* String types */
+typedef char *LPSTR;
+typedef const char *LPCSTR;
+typedef wchar_t *LPWSTR;
+typedef const wchar_t *LPCWSTR;
+
+/* Wide character */
+typedef wchar_t WCHAR;
+
+/* Kernel32 stubs */
+static inline HMODULE LoadLibraryA(const char *name) { (void)name; return NULL; }
+static inline HMODULE LoadLibraryW(const wchar_t *name) { (void)name; return NULL; }
+static inline void *GetProcAddress(HMODULE mod, const char *name) { (void)mod; (void)name; return NULL; }
+static inline BOOL FreeLibrary(HMODULE mod) { (void)mod; return 0; }
+static inline void Sleep(DWORD ms) { (void)ms; }
+
+/* Boolean constants */
+#ifndef TRUE
+#define TRUE 1
+#endif
+#ifndef FALSE
+#define FALSE 0
+#endif
+
+/* WinHTTP constants */
+#define WINHTTP_ACCESS_TYPE_DEFAULT_PROXY 0
+#define WINHTTP_NO_PROXY_NAME NULL
+#define WINHTTP_NO_PROXY_BYPASS NULL
+#define INTERNET_DEFAULT_HTTPS_PORT 443
+#define WINHTTP_OPTION_CONNECT_TIMEOUT 3
+#define WINHTTP_OPTION_RECEIVE_TIMEOUT 6
+#define WINHTTP_OPTION_SEND_TIMEOUT 5
+#define WINHTTP_FLAG_SECURE 0x00800000
+#define WINHTTP_NO_REFERER NULL
+#define WINHTTP_DEFAULT_ACCEPT_TYPES NULL
+#define WINHTTP_NO_ADDITIONAL_HEADERS NULL
+
+/* WinHTTP function stubs */
+static inline HINTERNET WinHttpOpen(LPCWSTR agent, DWORD type, LPCWSTR proxy, LPCWSTR bypass, DWORD flags) {
+    (void)agent; (void)type; (void)proxy; (void)bypass; (void)flags; return NULL;
+}
+static inline HINTERNET WinHttpConnect(HINTERNET session, LPCWSTR server, DWORD port, DWORD reserved) {
+    (void)session; (void)server; (void)port; (void)reserved; return NULL;
+}
+static inline BOOL WinHttpCloseHandle(HINTERNET handle) { (void)handle; return 0; }
+
+#endif /* _WIN32 */
+
 /* 62 */
 enum AccessMask
 {

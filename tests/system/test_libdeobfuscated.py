@@ -1,18 +1,31 @@
-"""Tests for deobfuscation against libobfuscated.dll.
+"""Tests for deobfuscation against libobfuscated binary.
 
 This test suite verifies that d810 correctly deobfuscates various
 obfuscation patterns found in the test binary.
 
 Uses AST-based code comparison via CodeComparator for robust semantic
 equivalence checking that ignores formatting differences.
+
+Supports both:
+- libobfuscated.dll (Windows PE)
+- libobfuscated.dylib (macOS x86_64)
 """
 
+import platform
 import textwrap
 
 import pytest
 
 import idaapi
 import idc
+
+
+def get_func_ea(name: str) -> int:
+    """Get function address by name, handling macOS underscore prefix."""
+    ea = idc.get_name_ea_simple(name)
+    if ea == idaapi.BADADDR:
+        ea = idc.get_name_ea_simple("_" + name)  # macOS prefix
+    return ea
 
 
 @pytest.fixture(scope="class")
@@ -24,15 +37,16 @@ def libobfuscated_setup(ida_database, configure_hexrays, setup_libobfuscated_fun
 
 
 class TestLibDeobfuscated:
-    """Tests for deobfuscation against libobfuscated.dll."""
+    """Tests for deobfuscation against libobfuscated binary."""
 
-    binary_name = "libobfuscated.dll"
+    # Use platform-appropriate binary
+    binary_name = "libobfuscated.dylib" if platform.system() == "Darwin" else "libobfuscated.dll"
 
     def test_simplify_chained_add(
         self, libobfuscated_setup, d810_state, pseudocode_to_string, code_comparator
     ):
         """Test simplification of chained addition expressions."""
-        func_ea = idc.get_name_ea_simple("test_chained_add")
+        func_ea = get_func_ea("test_chained_add")
         assert func_ea != idaapi.BADADDR, "Function 'test_chained_add' not found"
 
         # Expected deobfuscated function (semantically equivalent forms accepted)
@@ -98,7 +112,7 @@ class TestLibDeobfuscated:
         self, libobfuscated_setup, d810_state, pseudocode_to_string, code_comparator
     ):
         """Test constant simplification."""
-        func_ea = idc.get_name_ea_simple("test_cst_simplification")
+        func_ea = get_func_ea("test_cst_simplification")
         assert func_ea != idaapi.BADADDR, "Function 'test_cst_simplification' not found"
 
         # Expected deobfuscated function with folded constants
@@ -157,7 +171,7 @@ class TestLibDeobfuscated:
         self, libobfuscated_setup, d810_state, pseudocode_to_string
     ):
         """Test opaque predicate removal."""
-        func_ea = idc.get_name_ea_simple("test_opaque_predicate")
+        func_ea = get_func_ea("test_opaque_predicate")
         assert func_ea != idaapi.BADADDR, "Function 'test_opaque_predicate' not found"
 
         with d810_state() as state:
@@ -187,7 +201,7 @@ class TestLibDeobfuscated:
 
     def test_simplify_xor(self, libobfuscated_setup, d810_state, pseudocode_to_string):
         """Test XOR pattern simplification."""
-        func_ea = idc.get_name_ea_simple("test_xor")
+        func_ea = get_func_ea("test_xor")
         assert func_ea != idaapi.BADADDR, "Function 'test_xor' not found in database"
 
         with d810_state() as state:
@@ -238,7 +252,7 @@ class TestLibDeobfuscated:
         self, libobfuscated_setup, d810_state, pseudocode_to_string, code_comparator
     ):
         """Test MBA (Mixed Boolean Arithmetic) pattern simplification."""
-        func_ea = idc.get_name_ea_simple("test_mba_guessing")
+        func_ea = get_func_ea("test_mba_guessing")
         assert func_ea != idaapi.BADADDR, "Function 'test_mba_guessing' not found"
 
         # Expected deobfuscated function - MBA should simplify to simple addition
@@ -309,7 +323,7 @@ class TestLibDeobfuscated:
         self, libobfuscated_setup, d810_state, pseudocode_to_string
     ):
         """Test Tigress control flow flattening deobfuscation."""
-        func_ea = idc.get_name_ea_simple("tigress_minmaxarray")
+        func_ea = get_func_ea("tigress_minmaxarray")
         assert func_ea != idaapi.BADADDR, "Function 'tigress_minmaxarray' not found"
 
         with d810_state() as state:

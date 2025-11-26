@@ -20,3 +20,4 @@ EXPORTS
     unwrap_loops_3
     while_switch_flattened
     NtCurrentTeb
+    _hodur_func

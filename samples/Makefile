@@ -40,7 +40,7 @@ endif
 # ----------------------------- User configurable options -----------------------------
 TARGET_OS    ?= windows          # windows | darwin | linux | native
 BUILD_ARCH   ?= x86_64           # x86_64 | x86 | arm64 | aarch64 | -m32 | -arch arm64 | etc.
-BINARY_NAME  ?= libobfuscated    # Set this to get clean name without host/arch suffix
+BINARY_NAME  ?= libobfuscated
 
 # ----------------------------- Normalize native -----------------------------
 ifeq ($(TARGET_OS),native)
