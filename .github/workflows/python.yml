@@ -41,6 +41,9 @@ jobs:
               run: |
                   pip install --upgrade pip setuptools wheel uv
                   uv pip install --system -e .[dev]
+            - name: Check package boundaries
+              run: |
+                  python scripts/check_package_boundaries.py
             - name: Python local tests (no IDA required)
               run: |
                   python tests/run_tests_local.py
