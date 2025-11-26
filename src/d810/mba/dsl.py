@@ -14,7 +14,7 @@ Example:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from d810.mba.constraints import ConstraintExpr
@@ -241,145 +241,6 @@ class SymbolicExpression:
     def __str__(self) -> str:
         """Return a string representation of this expression."""
         return repr(self)
-
-    # Backward compatibility: provide 'node' property that creates AstNode on demand
-    # This allows existing code to continue working during migration
-    @property
-    def node(self) -> Any:
-        """Backward compatibility: Convert to AstNode for legacy code.
-
-        This property creates an AstNode representation on demand. It will be
-        removed once all code is migrated to use visitors directly.
-        """
-        from d810.expr.ast import AstConstant, AstLeaf, AstNode
-        from d810.opcodes import (
-            M_ADD,
-            M_AND,
-            M_BNOT,
-            M_LNOT,
-            M_MUL,
-            M_NEG,
-            M_OR,
-            M_SAR,
-            M_SHL,
-            M_SHR,
-            M_SUB,
-            M_XOR,
-            d810_to_ida_opcode,
-        )
-
-        if self.is_leaf():
-            if self.is_constant():
-                return AstConstant(self.name, self.value)
-            return AstLeaf(self.name)
-
-        # Handle bool_to_int specially - converts ConstraintExpr to comparison opcode
-        if self.operation == "bool_to_int":
-            return self._constraint_to_node(self.constraint)
-
-        # Handle zext specially - converts to xdu (zero extend) opcode
-        if self.operation == "zext":
-            from d810.opcodes import M_XDU
-            # M_XDU is a unary operation that extends the operand
-            # self.left contains the expression, self.value contains target_width
-            left_node = self.left.node if self.left else None
-            return AstNode(d810_to_ida_opcode(M_XDU), left_node, None)
-
-        # Map operation strings to opcodes
-        op_map = {
-            "add": M_ADD,
-            "sub": M_SUB,
-            "mul": M_MUL,
-            "and": M_AND,
-            "or": M_OR,
-            "xor": M_XOR,
-            "shl": M_SHL,
-            "shr": M_SHR,
-            "sar": M_SAR,
-            "bnot": M_BNOT,
-            "neg": M_NEG,
-            "lnot": M_LNOT,
-        }
-
-        opcode = op_map.get(self.operation)
-        if opcode is None:
-            raise ValueError(f"Unknown operation: {self.operation}")
-
-        left_node = self.left.node if self.left else None
-        right_node = self.right.node if self.right else None
-
-        # Convert d810 opcode to IDA opcode for AstNode
-        ida_opcode = d810_to_ida_opcode(opcode)
-        return AstNode(ida_opcode, left_node, right_node)
-
-    def _constraint_to_node(self, constraint):
-        """Convert a ConstraintExpr to an AstNode for IDA pattern matching.
-
-        This handles the bool_to_int bridge by converting constraints to
-        appropriate IDA comparison opcodes (SETNZ, SETZ, etc.).
-
-        Args:
-            constraint: The ConstraintExpr to convert
-
-        Returns:
-            AstNode representing the comparison operation
-
-        Example:
-            (x != 0).to_int() → AstNode(M_SETNZ, x.node, None)
-            (x == y).to_int() → AstNode(M_SETZ, (x-y).node, None)  # SETZ(x-y)
-        """
-        from d810.expr.ast import AstNode
-        from d810.opcodes import M_SETAE, M_SETB, M_SETNZ, M_SETZ, M_SUB, d810_to_ida_opcode
-        from d810.mba.constraints import ComparisonConstraint, EqualityConstraint
-
-        if isinstance(constraint, ComparisonConstraint):
-            left_node = constraint.left.node
-            right_node = constraint.right.node if hasattr(constraint.right, 'node') else None
-
-            # Map comparison operators to SET opcodes
-            op_map = {
-                "ne": M_SETNZ,  # x != y → SETNZ(x - y)
-                "eq": M_SETZ,   # x == y → SETZ(x - y)
-                "lt": M_SETB,   # x < y → SETB(x, y)
-                "ge": M_SETAE,  # x >= y → SETAE(x, y)
-                # Add more as needed
-            }
-
-            opcode = op_map.get(constraint.op_name)
-            if opcode is None:
-                raise ValueError(f"Unsupported comparison for IDA pattern: {constraint.op_name}")
-
-            # Convert d810 opcode to IDA opcode
-            ida_opcode = d810_to_ida_opcode(opcode)
-            ida_sub = d810_to_ida_opcode(M_SUB)
-
-            # For != and ==, IDA uses SETNZ/SETZ with a single operand (difference)
-            # For <, >=, etc., use both operands
-            if constraint.op_name in ["ne", "eq"]:
-                # Check if comparing to zero
-                if isinstance(constraint.right, SymbolicExpression) and constraint.right.is_constant() and constraint.right.value == 0:
-                    return AstNode(ida_opcode, left_node, None)
-                # Otherwise, create subtraction first
-                diff_node = AstNode(ida_sub, left_node, right_node)
-                return AstNode(ida_opcode, diff_node, None)
-            else:
-                return AstNode(ida_opcode, left_node, right_node)
-
-        if isinstance(constraint, EqualityConstraint):
-            # x == y → SETZ(x - y)
-            left_node = constraint.left.node
-            right_node = constraint.right.node
-            ida_setz = d810_to_ida_opcode(M_SETZ)
-            ida_sub = d810_to_ida_opcode(M_SUB)
-
-            # Check if comparing to zero
-            if isinstance(constraint.right, SymbolicExpression) and constraint.right.is_constant() and constraint.right.value == 0:
-                return AstNode(ida_setz, left_node, None)
-
-            diff_node = AstNode(ida_sub, left_node, right_node)
-            return AstNode(ida_setz, diff_node, None)
-
-        raise ValueError(f"Unsupported constraint type for IDA pattern: {type(constraint)}")
 
 
 def Var(name: str) -> SymbolicExpression:
@@ -623,6 +484,7 @@ class ConstraintPredicate:
         Example:
             >>> CONSTRAINTS = [when.or_inequality("c_1", "c_2")]
         """
+
         def check(ctx):
             if var1 not in ctx or var2 not in ctx:
                 return False
@@ -631,6 +493,7 @@ class ConstraintPredicate:
         # Attach Z3 conversion
         def to_z3(z3_vars):
             import z3
+
             if var1 not in z3_vars or var2 not in z3_vars:
                 return None
             return (z3_vars[var1] | z3_vars[var2]) != z3_vars[var2]
@@ -652,6 +515,7 @@ class ConstraintPredicate:
         Example:
             >>> CONSTRAINTS = [when.and_inequality("c_1", "c_2")]
         """
+
         def check(ctx):
             if var1 not in ctx or var2 not in ctx:
                 return False
@@ -659,6 +523,7 @@ class ConstraintPredicate:
 
         def to_z3(z3_vars):
             import z3
+
             if var1 not in z3_vars or var2 not in z3_vars:
                 return None
             return (z3_vars[var1] & z3_vars[var2]) != z3_vars[var2]
@@ -681,15 +546,18 @@ class ConstraintPredicate:
         Example:
             >>> CONSTRAINTS = [when.equals_minus_two("val_fe")]
         """
+
         def check(ctx):
             if var not in ctx:
                 return False
             from d810.hexrays.hexrays_helpers import AND_TABLE
+
             # Check (val + 2) & mask == 0, which means val == -2 in two's complement
             return (ctx[var].value + 2) & AND_TABLE[ctx[var].size] == 0
 
         def to_z3(z3_vars):
             import z3
+
             if var not in z3_vars:
                 return None
             # For 32-bit: val == -2 is equivalent to val == 0xFFFFFFFE
