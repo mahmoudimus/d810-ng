@@ -155,6 +155,25 @@ from d810.expr.ast import _USING_CYTHON
 print(f"Cython enabled: {_USING_CYTHON}")
 ```
 
+### Performance Benchmarks
+
+Run the Cython vs Pure Python benchmarks inside IDA:
+
+```bash
+pytest tests/system/test_cython_benchmark.py -v -s
+```
+
+**Benchmark Results** (Apple M1 Pro, IDA 9.2, Python 3.13):
+
+| Benchmark | Cython | Pure Python | Speedup |
+|-----------|--------|-------------|---------|
+| AST Node Creation (1000 iter) | 2.1 ms | 2.3 ms | ~1.1x |
+| AST Clone (500 iter) | 2.1 ms | 2.4 ms | **1.2x** |
+| AST Get Pattern (500 iter) | 1.0 ms | 1.0 ms | ~1.0x |
+| AST Get Leaf List (500 iter) | 0.3 ms | 0.2 ms | 0.7x |
+
+> **Note**: Results vary by hardware and IDA version. The current Cython implementations focus on hot paths in the decompilation pipeline. AST operations show modest gains due to Python object overhead. Run the benchmark yourself with `pytest tests/system/test_cython_benchmark.py -v -s`.
+
 ### GitHub Actions CI/CD
 
 The repository includes automated wheel building for distribution. See `.github/workflows/build-cython.yml` for the CI/CD pipeline that builds platform-specific wheels for:
