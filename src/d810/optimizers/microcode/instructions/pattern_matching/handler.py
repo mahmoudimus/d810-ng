@@ -3,7 +3,7 @@ import dataclasses
 import itertools
 import typing
 
-from ida_hexrays import *
+import ida_hexrays
 
 from d810.core import getLogger
 from d810.expr.ast import AstBase, AstNode, minsn_to_ast
@@ -325,7 +325,7 @@ class PatternOptimizer(InstructionOptimizer):
                 pass
         return True
 
-    def get_optimized_instruction(self, blk: mblock_t, ins: minsn_t) -> minsn_t | None:
+    def get_optimized_instruction(self, blk: ida_hexrays.mblock_t, ins: ida_hexrays.minsn_t) -> ida_hexrays.minsn_t | None:
         if blk is not None:
             self.cur_maturity = blk.mba.maturity
         if self.cur_maturity not in self.maturities:
@@ -453,14 +453,14 @@ def get_addition_operands(ast_node):
     if not isinstance(ast_node, AstBase) or not ast_node.is_node():
         return [ast_node]
     ast_node = typing.cast(AstNode, ast_node)
-    if ast_node.opcode == m_add:
+    if ast_node.opcode == ida_hexrays.m_add:
         return get_addition_operands(ast_node.left) + get_addition_operands(
             ast_node.right
         )
-    elif ast_node.opcode == m_sub:
+    elif ast_node.opcode == ida_hexrays.m_sub:
         tmp = get_addition_operands(ast_node.left)
         for aaa in get_addition_operands(ast_node.right):
-            tmp.append(AstNode(m_neg, aaa))
+            tmp.append(AstNode(ida_hexrays.m_neg, aaa))
         return tmp
     else:
         return [ast_node]
@@ -489,14 +489,14 @@ def get_opcode_operands(ref_opcode: int, ast_node: AstBase) -> list[AstBase]:
 def get_similar_opcode_operands(ast_node: AstNode) -> list[AstNode]:
     if ast_node.opcode is None:
         return [ast_node]
-    if ast_node.opcode in [m_add, m_sub]:
+    if ast_node.opcode in [ida_hexrays.m_add, ida_hexrays.m_sub]:
         add_elts = get_addition_operands(ast_node)
         all_add_ordering = get_all_binary_tree_representation(add_elts)
         ast_res = []
         for leaf_ordering in all_add_ordering:
-            ast_res.append(generate_ast(m_add, leaf_ordering))
+            ast_res.append(generate_ast(ida_hexrays.m_add, leaf_ordering))
         return ast_res
-    elif ast_node.opcode in [m_xor, m_or, m_and, m_mul]:
+    elif ast_node.opcode in [ida_hexrays.m_xor, ida_hexrays.m_or, ida_hexrays.m_and, ida_hexrays.m_mul]:
         same_elts = get_opcode_operands(int(ast_node.opcode), ast_node)
         all_same_ordering = get_all_binary_tree_representation(same_elts)
         ast_res = []
@@ -512,17 +512,17 @@ def get_ast_variations_with_add_sub(
     opcode: int, left: AstNode, right: AstNode
 ) -> list[AstNode]:
     possible_ast = [AstNode(opcode, left, right)]
-    if opcode == m_add:
+    if opcode == ida_hexrays.m_add:
         if left.is_node() and right.is_node():
             left = typing.cast(AstNode, left)
             right = typing.cast(AstNode, right)
-            if (left.opcode == m_neg) and (right.opcode == m_neg):
+            if (left.opcode == ida_hexrays.m_neg) and (right.opcode == ida_hexrays.m_neg):
                 possible_ast.append(
-                    AstNode(m_neg, AstNode(m_add, left.left, right.left))
+                    AstNode(ida_hexrays.m_neg, AstNode(ida_hexrays.m_add, left.left, right.left))
                 )
-        if right.is_node() and (right.opcode == m_neg):
+        if right.is_node() and (right.opcode == ida_hexrays.m_neg):
             right = typing.cast(AstNode, right)
-            possible_ast.append(AstNode(m_sub, left, right.left))
+            possible_ast.append(AstNode(ida_hexrays.m_sub, left, right.left))
     return possible_ast
 
 
@@ -535,24 +535,24 @@ def ast_generator(ast_node: AstBase | None, excluded_opcodes=None) -> list[AstBa
     res_ast = []
     excluded_opcodes = excluded_opcodes if excluded_opcodes is not None else []
     if ast_node.opcode not in excluded_opcodes:
-        if ast_node.opcode in [m_add, m_sub]:
+        if ast_node.opcode in [ida_hexrays.m_add, ida_hexrays.m_sub]:
             similar_ast_list = get_similar_opcode_operands(ast_node)
             for similar_ast in similar_ast_list:
                 sub_ast_left_list = ast_generator(
-                    similar_ast.left, excluded_opcodes=[m_add, m_sub]
+                    similar_ast.left, excluded_opcodes=[ida_hexrays.m_add, ida_hexrays.m_sub]
                 )
                 sub_ast_right_list = ast_generator(
-                    similar_ast.right, excluded_opcodes=[m_add, m_sub]
+                    similar_ast.right, excluded_opcodes=[ida_hexrays.m_add, ida_hexrays.m_sub]
                 )
                 for sub_ast_left in sub_ast_left_list:
                     for sub_ast_right in sub_ast_right_list:
                         sub_ast_left = typing.cast(AstNode, sub_ast_left)
                         sub_ast_right = typing.cast(AstNode, sub_ast_right)
                         res_ast += get_ast_variations_with_add_sub(
-                            m_add, sub_ast_left, sub_ast_right
+                            ida_hexrays.m_add, sub_ast_left, sub_ast_right
                         )
             return res_ast
-        if ast_node.opcode in [m_xor, m_or, m_and, m_mul]:
+        if ast_node.opcode in [ida_hexrays.m_xor, ida_hexrays.m_or, ida_hexrays.m_and, ida_hexrays.m_mul]:
             similar_ast_list = get_similar_opcode_operands(ast_node)
             for similar_ast in similar_ast_list:
                 sub_ast_left_list = ast_generator(
@@ -570,7 +570,7 @@ def ast_generator(ast_node: AstBase | None, excluded_opcodes=None) -> list[AstBa
                                 int(ast_node.opcode), sub_ast_left, sub_ast_right
                             )
             return res_ast
-    if ast_node.opcode not in [m_add, m_sub, m_or, m_and, m_mul]:
+    if ast_node.opcode not in [ida_hexrays.m_add, ida_hexrays.m_sub, ida_hexrays.m_or, ida_hexrays.m_and, ida_hexrays.m_mul]:
         excluded_opcodes = []
     nb_operands = 0
     if ast_node.left is not None:
