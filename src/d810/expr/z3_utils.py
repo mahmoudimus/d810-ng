@@ -1,25 +1,93 @@
+"""IDA-specific Z3 utilities for microcode verification.
+
+This module provides Z3 verification for IDA Pro microcode (AstNode, mop_t, minsn_t).
+It is used at RUNTIME during deobfuscation to verify transformations are correct.
+
+=============================================================================
+ARCHITECTURE: Two Z3 Modules in d810
+=============================================================================
+
+There are TWO separate Z3 utility modules in d810, serving different purposes:
+
+1. d810.mba.backends.z3 (PURE - no IDA)
+   --------------------------------------
+   Purpose: Verify optimization rules using pure symbolic expressions.
+   Input:   d810.mba.dsl.SymbolicExpression (platform-independent DSL)
+   Use:     Unit tests, CI, TDD rule development, mathematical verification
+
+   Key exports:
+   - Z3VerificationVisitor: Converts SymbolicExpression → Z3 BitVec
+   - prove_equivalence(): Prove two SymbolicExpressions are equivalent
+   - verify_rule(): Verify a rule's PATTERN equals its REPLACEMENT
+
+2. THIS FILE: d810.expr.z3_utils (IDA-SPECIFIC)
+   ---------------------------------------------
+   Purpose: Z3 verification of actual IDA microcode during deobfuscation.
+   Input:   d810.expr.ast.AstNode (wraps IDA mop_t/minsn_t)
+   Use:     Runtime verification inside IDA Pro plugin
+
+   Key exports:
+   - ast_to_z3_expression(): Converts AstNode → Z3 BitVec
+   - z3_check_mop_equality(): Check if two mop_t are semantically equivalent
+   - z3_check_mop_inequality(): Check if two mop_t are NOT equivalent
+   - log_z3_instructions(): Debug logging for Z3 verification
+
+=============================================================================
+WHY TWO MODULES?
+=============================================================================
+
+The separation enables:
+1. Unit testing rules WITHOUT IDA Pro license
+2. CI/CD pipeline verification (GitHub Actions)
+3. TDD workflow: write rule → verify with Z3 → integrate with IDA
+4. Clear dependency boundaries (mba/ never imports IDA modules)
+
+If you need to verify a SymbolicExpression (from d810.mba.dsl), use:
+    from d810.mba.backends.z3 import prove_equivalence
+
+If you need to verify actual IDA microcode (AstNode/mop_t), use this module:
+    from d810.expr.z3_utils import z3_check_mop_equality
+
+=============================================================================
+TODO: Refactor to Visitor Pattern
+=============================================================================
+
+This module is technical debt. It uses procedural functions (ast_to_z3_expression,
+z3_prove_equivalence, etc.) instead of a clean visitor pattern like
+Z3VerificationVisitor in mba/backends/z3.py.
+
+The ideal architecture would be:
+
+    class AstNodeZ3Visitor:
+        '''Visitor that converts AstNode to Z3 for IDA microcode verification.'''
+        def visit(self, node: AstNode) -> z3.BitVecRef: ...
+
+This would:
+1. Mirror the clean design of Z3VerificationVisitor
+2. Make the code more maintainable and testable
+3. Allow easier extension for new opcodes
+4. Consolidate the scattered ast_to_z3_expression logic
+
+Low priority since this code works and is only used at runtime inside IDA.
+=============================================================================
+"""
+
 import functools
 import typing
 from typing import Dict, Tuple
 
-# Use platform-independent opcodes (no IDA dependency!)
-# Import as module to use qualified names in match statements
-import d810.opcodes as opc
-
-# Check if IDA is available (for interfacing, not for Z3 verification)
+# Check if IDA is available
 try:
     import ida_hexrays
     IDA_AVAILABLE = True
 except ImportError:
     IDA_AVAILABLE = False
     # Mock IDA types for function signatures only
-    class mop_t:  # type: ignore
-        pass
-    class minsn_t:  # type: ignore
-        pass
     class _MockIDAHexrays:  # type: ignore
-        mop_t = mop_t
-        minsn_t = minsn_t
+        class mop_t:
+            pass
+        class minsn_t:
+            pass
     ida_hexrays = _MockIDAHexrays()
 
 from d810.core import getLogger
@@ -127,9 +195,9 @@ def ast_to_z3_expression(ast: AstNode | AstLeaf | None, use_bitvecval=False):
     right = ast_to_z3_expression(ast.right, use_bitvecval) if ast.right else None
 
     match ast.opcode:
-        case opc.M_NEG:
+        case ida_hexrays.m_neg:
             return -left
-        case opc.M_LNOT:
+        case ida_hexrays.m_lnot:
             # Logical NOT (!) returns 1 when the operand is zero, otherwise 0.
             # Implemented via a 32-bit conditional expression to avoid casting the
             # symbolic BitVec to a Python bool (which would raise a Z3 exception).
@@ -138,62 +206,62 @@ def ast_to_z3_expression(ast: AstNode | AstLeaf | None, use_bitvecval=False):
                 z3.BitVecVal(1, 32),
                 z3.BitVecVal(0, 32),
             )
-        case opc.M_BNOT:
+        case ida_hexrays.m_bnot:
             return ~left
-        case opc.M_ADD:
+        case ida_hexrays.m_add:
             return left + right
-        case opc.M_SUB:
+        case ida_hexrays.m_sub:
             return left - right
-        case opc.M_MUL:
+        case ida_hexrays.m_mul:
             return left * right
-        case opc.M_UDIV:
+        case ida_hexrays.m_udiv:
             return z3.UDiv(
                 ast_to_z3_expression(ast.left, use_bitvecval=True),
                 ast_to_z3_expression(ast.right, use_bitvecval=True),
             )
-        case opc.M_SDIV:
+        case ida_hexrays.m_sdiv:
             return left / right
-        case opc.M_UMOD:
+        case ida_hexrays.m_umod:
             return z3.URem(left, right)
-        case opc.M_SMOD:
+        case ida_hexrays.m_smod:
             return left % right
-        case opc.M_OR:
+        case ida_hexrays.m_or:
             return left | right
-        case opc.M_AND:
+        case ida_hexrays.m_and:
             return left & right
-        case opc.M_XOR:
+        case ida_hexrays.m_xor:
             return left ^ right
-        case opc.M_SHL:
+        case ida_hexrays.m_shl:
             return left << right
-        case opc.M_SHR:
+        case ida_hexrays.m_shr:
             return z3.LShR(left, right)
-        case opc.M_SAR:
+        case ida_hexrays.m_sar:
             return left >> right
-        case opc.M_SETNZ:
+        case ida_hexrays.m_setnz:
             return z3.If(
                 left != z3.BitVecVal(0, 32), z3.BitVecVal(1, 32), z3.BitVecVal(0, 32)
             )
-        case opc.M_SETZ:
+        case ida_hexrays.m_setz:
             return z3.If(
                 left == z3.BitVecVal(0, 32), z3.BitVecVal(1, 32), z3.BitVecVal(0, 32)
             )
-        case opc.M_SETAE:
+        case ida_hexrays.m_setae:
             return z3.If(z3.UGE(left, right), z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case opc.M_SETB:
+        case ida_hexrays.m_setb:
             return z3.If(z3.ULT(left, right), z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case opc.M_SETA:
+        case ida_hexrays.m_seta:
             return z3.If(z3.UGT(left, right), z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case opc.M_SETBE:
+        case ida_hexrays.m_setbE:
             return z3.If(z3.ULE(left, right), z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case opc.M_SETG:
+        case ida_hexrays.m_setg:
             return z3.If(left > right, z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case opc.M_SETGE:
+        case ida_hexrays.m_setgE:
             return z3.If(left >= right, z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case opc.M_SETL:
+        case ida_hexrays.m_setl:
             return z3.If(left < right, z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case opc.M_SETLE:
+        case ida_hexrays.m_setlE:
             return z3.If(left <= right, z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case opc.M_SETP:
+        case ida_hexrays.m_setp:
             # 1) isolate the low byte
             lo_byte = typing.cast(z3.BitVecRef, z3.Extract(7, 0, left))
             # 2) XOR-reduce the eight single-bit slices to get 1 → odd, 0 → even
@@ -205,16 +273,16 @@ def ast_to_z3_expression(ast: AstNode | AstLeaf | None, use_bitvecval=False):
             pf_is_set = parity_bv == z3.BitVecVal(0, 1)  # Bool
             # 4) widen to 32-bit {1,0}
             return z3.If(pf_is_set, z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case opc.M_SETS:
+        case ida_hexrays.m_sets:
             val = left  # BitVec(32)
             is_negative = val < z3.BitVecVal(
                 0, 32
             )  # ordinary "<" is signed-less-than in Z3Py
             return z3.If(is_negative, z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
-        case opc.M_XDU | opc.M_XDS:
+        case ida_hexrays.m_xdu | ida_hexrays.m_xds:
             # Extend or keep the same width; in our simplified model we just forward.
             return left
-        case opc.M_LOW:
+        case ida_hexrays.m_low:
             # Extract the lower half (dest_size) bits of the operand.
             dest_bits = (ast.dest_size or 4) * 8  # default 32-bit
             # Ensure we do not attempt to extract beyond the source width
@@ -227,7 +295,7 @@ def ast_to_z3_expression(ast: AstNode | AstLeaf | None, use_bitvecval=False):
                     z3.BitVecRef, z3.ZeroExt(32 - extracted.size(), extracted)
                 )
             return extracted
-        case opc.M_HIGH:
+        case ida_hexrays.m_high:
             # Extract the upper half of the operand by shifting right by dest_bits
             dest_bits = (ast.dest_size or 4) * 8  # default 32-bit
             shifted = z3.LShR(left, dest_bits)

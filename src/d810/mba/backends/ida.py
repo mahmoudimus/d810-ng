@@ -38,30 +38,72 @@ class IDANodeVisitor:
         >>> ast_node = visitor.visit(pattern)
     """
 
+    # Map DSL operation strings to ida_hexrays attribute names (e.g., "m_add", "m_xor")
+    _OPERATION_TO_IDA_ATTR = {
+        "add": "m_add",
+        "sub": "m_sub",
+        "mul": "m_mul",
+        "and": "m_and",
+        "or": "m_or",
+        "xor": "m_xor",
+        "shl": "m_shl",
+        "shr": "m_shr",
+        "sar": "m_sar",
+        "bnot": "m_bnot",
+        "neg": "m_neg",
+        "lnot": "m_lnot",
+        "zext": "m_xdu",
+        # Comparison operations
+        "setnz": "m_setnz",
+        "setz": "m_setz",
+        "setae": "m_setae",
+        "setb": "m_setb",
+        "seta": "m_seta",
+        "setbe": "m_setbe",
+        "setg": "m_setg",
+        "setge": "m_setge",
+        "setl": "m_setl",
+        "setle": "m_setle",
+    }
+
     def visit(self, expr: SymbolicExpression) -> AstNode:
         """Convert a SymbolicExpression to an AstNode.
 
         Args:
-            expr: The SymbolicExpression to convert.
+            expr: The SymbolicExpression to convert. Can also be int for constants.
 
         Returns:
             An AstNode representing the same expression.
         """
-        # Import IDA-dependent modules lazily
-        from d810.expr.ast import AstNode, AstLeaf, AstConstant
+        from d810.expr.ast import AstNode, AstConstant
+        from d810.mba.dsl import SymbolicExpression
 
         if expr is None:
             return None
 
+        # Handle raw integers (e.g., from constant expressions)
+        if isinstance(expr, int):
+            return AstConstant(str(expr), expr)
+
+        # Ensure we have a SymbolicExpression
+        if not isinstance(expr, SymbolicExpression):
+            raise ValueError(f"Expected SymbolicExpression, got {type(expr).__name__}")
+
         if expr.is_leaf():
             return self._visit_leaf(expr)
+
+        # Handle bool_to_int specially - converts ConstraintExpr to comparison opcode
+        if expr.operation == "bool_to_int":
+            return self._visit_bool_to_int(expr)
 
         # Convert children recursively
         left = self.visit(expr.left) if expr.left else None
         right = self.visit(expr.right) if expr.right else None
 
-        # Create AstNode with the opcode
-        return AstNode(expr.opcode, left, right)
+        # Map operation string to IDA opcode
+        opcode = self._get_ida_opcode(expr.operation)
+
+        return AstNode(opcode, left, right)
 
     def _visit_leaf(self, expr: SymbolicExpression) -> AstLeaf:
         """Convert a leaf SymbolicExpression to an AstLeaf.
@@ -80,6 +122,124 @@ class IDANodeVisitor:
         else:
             # Variable or pattern-matching placeholder
             return AstLeaf(expr.name)
+
+    def _visit_bool_to_int(self, expr: SymbolicExpression) -> AstNode:
+        """Convert a bool_to_int operation to an AstNode.
+
+        This handles the bridge between boolean constraints (formulas) and
+        arithmetic expressions (terms). Converts to IDA's SET* comparison opcodes.
+
+        Args:
+            expr: SymbolicExpression with operation="bool_to_int" and constraint set.
+
+        Returns:
+            AstNode representing the comparison operation (SETNZ, SETZ, etc.)
+        """
+        import ida_hexrays
+        from d810.expr.ast import AstNode
+        from d810.mba.constraints import ComparisonConstraint, EqualityConstraint
+        from d810.mba.dsl import SymbolicExpression
+
+        constraint = expr.constraint
+        if constraint is None:
+            raise ValueError("bool_to_int operation requires a constraint")
+
+        if isinstance(constraint, ComparisonConstraint):
+            left_node = self._visit_constraint_operand(constraint.left)
+            right_node = self._visit_constraint_operand(constraint.right)
+
+            # Map comparison operators to IDA SET opcodes
+            op_map = {
+                "ne": ida_hexrays.m_setnz,  # x != y → SETNZ(x - y)
+                "eq": ida_hexrays.m_setz,   # x == y → SETZ(x - y)
+                "lt": ida_hexrays.m_setb,   # x < y → SETB(x, y)
+                "ge": ida_hexrays.m_setae,  # x >= y → SETAE(x, y)
+            }
+
+            ida_opcode = op_map.get(constraint.op_name)
+            if ida_opcode is None:
+                raise ValueError(f"Unsupported comparison for IDA pattern: {constraint.op_name}")
+
+            # For != and ==, IDA uses SETNZ/SETZ with a single operand (difference)
+            if constraint.op_name in ["ne", "eq"]:
+                # Check if comparing to zero
+                if (isinstance(constraint.right, SymbolicExpression)
+                    and constraint.right.is_constant()
+                    and constraint.right.value == 0):
+                    return AstNode(ida_opcode, left_node, None)
+                # Check if right is raw int zero
+                if constraint.right == 0:
+                    return AstNode(ida_opcode, left_node, None)
+                # Otherwise, create subtraction first
+                diff_node = AstNode(ida_hexrays.m_sub, left_node, right_node)
+                return AstNode(ida_opcode, diff_node, None)
+            else:
+                return AstNode(ida_opcode, left_node, right_node)
+
+        if isinstance(constraint, EqualityConstraint):
+            # x == y → SETZ(x - y)
+            left_node = self._visit_constraint_operand(constraint.left)
+            right_node = self._visit_constraint_operand(constraint.right)
+
+            # Check if comparing to zero
+            if (isinstance(constraint.right, SymbolicExpression)
+                and constraint.right.is_constant()
+                and constraint.right.value == 0):
+                return AstNode(ida_hexrays.m_setz, left_node, None)
+            # Check if right is raw int zero
+            if constraint.right == 0:
+                return AstNode(ida_hexrays.m_setz, left_node, None)
+
+            diff_node = AstNode(ida_hexrays.m_sub, left_node, right_node)
+            return AstNode(ida_hexrays.m_setz, diff_node, None)
+
+        raise ValueError(f"Unsupported constraint type for IDA pattern: {type(constraint)}")
+
+    def _visit_constraint_operand(self, operand) -> Optional[AstNode]:
+        """Visit a constraint operand, handling both SymbolicExpression and raw values.
+
+        Args:
+            operand: Either a SymbolicExpression or a raw value (int, etc.)
+
+        Returns:
+            AstNode for SymbolicExpression, AstConstant for raw values, None for None.
+        """
+        from d810.expr.ast import AstConstant
+        from d810.mba.dsl import SymbolicExpression
+
+        if operand is None:
+            return None
+        if isinstance(operand, SymbolicExpression):
+            return self.visit(operand)
+        if isinstance(operand, int):
+            return AstConstant(str(operand), operand)
+        # Fallback: try to visit it
+        return self.visit(operand)
+
+    def _get_ida_opcode(self, operation: str) -> int:
+        """Map a DSL operation string to an IDA opcode.
+
+        Args:
+            operation: The operation string (e.g., "add", "sub", "xor").
+
+        Returns:
+            The IDA opcode constant (e.g., ida_hexrays.m_add).
+
+        Raises:
+            ValueError: If the operation is not supported.
+        """
+        import ida_hexrays
+
+        ida_attr = self._OPERATION_TO_IDA_ATTR.get(operation)
+        if ida_attr is None:
+            raise ValueError(f"Unknown operation: {operation}")
+
+        # Get the IDA opcode directly from ida_hexrays
+        opcode = getattr(ida_hexrays, ida_attr, None)
+        if opcode is None:
+            raise ValueError(f"Opcode {ida_attr} not found in ida_hexrays")
+
+        return opcode
 
 
 class IDAPatternAdapter:
@@ -134,6 +294,11 @@ class IDAPatternAdapter:
     def maturities(self) -> list:
         """Return the maturities this rule applies to."""
         return getattr(self.rule, 'maturities', [])
+
+    @maturities.setter
+    def maturities(self, value: list) -> None:
+        """Set the maturities this rule applies to."""
+        self.rule.maturities = value
 
     @property
     def config(self) -> dict:
@@ -214,17 +379,32 @@ class IDAPatternAdapter:
         """Create a replacement instruction from a matched candidate.
 
         Args:
-            candidate: The matched AstNode candidate.
+            candidate: The matched AstNode or AstLeaf candidate.
 
         Returns:
             A new minsn_t instruction, or None if replacement failed.
         """
+        from d810.expr.ast import AstLeaf
+
         repl_pat = self.REPLACEMENT_PATTERN
         if not repl_pat:
             logger.debug(f"No replacement pattern for rule {self.name}")
             return None
 
-        is_ok = repl_pat.update_leafs_mop(candidate)
+        # Handle AstLeaf candidates specially - they don't have leafs_by_name
+        # Create a temporary dict for the single leaf
+        if isinstance(candidate, AstLeaf):
+            # For AstLeaf, create a simple wrapper with leafs_by_name
+            class _LeafWrapper:
+                def __init__(self, leaf):
+                    self.leafs_by_name = {leaf.name: leaf} if leaf.name else {}
+                    self.ea = leaf.ea
+                    self.dst_mop = leaf.mop
+            candidate_for_update = _LeafWrapper(candidate)
+            is_ok = repl_pat.update_leafs_mop(candidate_for_update)
+        else:
+            is_ok = repl_pat.update_leafs_mop(candidate)
+
         if not is_ok:
             logger.debug(f"Failed to update leaf mops for rule {self.name}")
             return None
