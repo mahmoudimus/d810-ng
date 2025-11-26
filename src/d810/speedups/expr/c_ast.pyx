@@ -12,12 +12,12 @@ import cython
 import ida_hexrays
 import idaapi
 
-import d810._compat as _compat
+from d810._vendor import typing_extensions as _compat
 from d810.core import getLogger
 from d810.errors import AstEvaluationException
-from d810.expr.utils import (
+from d810.core import (
     MOP_CONSTANT_CACHE,
-    MOP_TO_AST_CACHE
+    MOP_TO_AST_CACHE,
 )
 from d810.hexrays.hexrays_formatters import (
     format_minsn_t,
@@ -37,10 +37,22 @@ from d810.hexrays.hexrays_helpers import (
     is_rotate_helper_call,
     structural_mop_hash,
 )
-from d810.expr._ast_evaluate import AstEvaluator
+from d810.speedups.expr.c_ast_evaluate import AstEvaluator
 from d810.core import NOT_GIVEN
 
 logger = getLogger(__name__)
+
+
+# Pre-computed "N" signature lists for depth signatures.
+# _N_SIGS[k] == ["N"] * (2 ** k) for k in 0..7 (covers depths up to 8).
+cdef tuple _N_SIGS = tuple(["N"] * (2**k) for k in range(8))
+
+
+cdef inline list _get_n_sig(int k):
+    """Return cached ["N"] * (2**k) list, or compute if k >= 8."""
+    if k < 8:
+        return _N_SIGS[k]
+    return ["N"] * (2**k)
 
 
 def get_constant_mop(value: int, size: int) -> ida_hexrays.mop_t:
@@ -151,6 +163,7 @@ cdef class AstNode(AstBase):
     cdef public dict leafs_by_name
     cdef public object func_name
     cdef public bint _is_frozen
+    cdef public dict _depth_sig_cache  # Cache for get_depth_signature
 
 
     def __init__(
@@ -185,6 +198,7 @@ cdef class AstNode(AstBase):
 
         self.func_name = ""
         self._is_frozen = <bint>False  # All newly created nodes are mutable by default
+        self._depth_sig_cache = {}  # Cache for get_depth_signature
 
     @_compat.override
     def is_frozen(self) -> bool:
@@ -407,20 +421,35 @@ cdef class AstNode(AstBase):
     def evaluate(self, dict_index_to_value: dict[int, int]) -> int:
         return _DEFAULT_AST_EVALUATOR.evaluate(self, dict_index_to_value)
 
-    def get_depth_signature(self, depth):
+    def get_depth_signature(self, int depth):
+        # Check cache first (fast path for frozen nodes)
+        cdef list cached = self._depth_sig_cache.get(depth)
+        if cached is not None:
+            return cached
+
+        cdef list result
+        cdef list tmp
+        cdef int nb_operands
+
         if depth == 1:
-            return ["{0}".format(self.opcode)]
-        tmp = []
-        nb_operands = OPCODES_INFO[self.opcode]["nb_operands"]
-        if (nb_operands >= 1) and self.left is not None:
-            tmp += self.left.get_depth_signature(depth - 1)
+            result = [str(self.opcode)]
         else:
-            tmp += ["N"] * (2 ** (depth - 2))
-        if (nb_operands >= 2) and self.right is not None:
-            tmp += self.right.get_depth_signature(depth - 1)
-        else:
-            tmp += ["N"] * (2 ** (depth - 2))
-        return tmp
+            tmp = []
+            nb_operands = OPCODES_INFO[self.opcode]["nb_operands"]
+            if (nb_operands >= 1) and self.left is not None:
+                tmp += self.left.get_depth_signature(depth - 1)
+            else:
+                tmp += _get_n_sig(depth - 2)
+            if (nb_operands >= 2) and self.right is not None:
+                tmp += self.right.get_depth_signature(depth - 1)
+            else:
+                tmp += _get_n_sig(depth - 2)
+            result = tmp
+
+        # Cache the result for frozen nodes
+        if self._is_frozen:
+            self._depth_sig_cache[depth] = result
+        return result
 
     def __str__(self):
         try:
@@ -499,6 +528,7 @@ cdef class AstNode(AstBase):
         new_node.leafs_by_name = {}
         new_node.opcodes = []
         new_node.sub_ast_info_by_index = {}
+        new_node._depth_sig_cache = {}  # Fresh cache for cloned object
         new_node._is_frozen = <bint>False
         return new_node
 
@@ -521,6 +551,7 @@ cdef class AstLeaf(AstBase):
     cdef public object z3_var
     cdef public object z3_var_name
     cdef public bint _is_frozen
+    cdef public dict _depth_sig_cache  # Cache for get_depth_signature
 
     def __init__(self, name):
         self.name = name
@@ -534,6 +565,7 @@ cdef class AstLeaf(AstBase):
         self.ea = None
         self._is_frozen = <bint>False  # All newly created nodes are mutable by default
         self.sub_ast_info_by_index = {}
+        self._depth_sig_cache = {}  # Cache for get_depth_signature
 
     @_compat.override
     def is_frozen(self) -> bool:
@@ -573,6 +605,7 @@ cdef class AstLeaf(AstBase):
 
         # Initialize transient state
         new_leaf.z3_var = None
+        new_leaf._depth_sig_cache = {}  # Fresh cache for cloned object
         return new_leaf
 
     def __getitem__(self, name: str) -> AstLeaf:
@@ -709,13 +742,22 @@ cdef class AstLeaf(AstBase):
     def evaluate(self, dict_index_to_value):
         return _DEFAULT_AST_EVALUATOR.evaluate(self, dict_index_to_value)
 
-    def get_depth_signature(self, depth):
+    def get_depth_signature(self, int depth):
+        # Check cache first
+        cdef list cached = self._depth_sig_cache.get(depth)
+        if cached is not None:
+            return cached
+
+        cdef list result
         if depth == 1:
-            if self.is_constant():
-                return ["C"]
-            return ["L"]
+            result = ["C"] if self.is_constant() else ["L"]
         else:
-            return ["N"] * (2 ** (depth - 1))
+            result = _get_n_sig(depth - 1)
+
+        # Cache the result for frozen nodes
+        if self._is_frozen:
+            self._depth_sig_cache[depth] = result
+        return result
 
     def __str__(self):
         try:
@@ -785,11 +827,22 @@ cdef class AstConstant(AstLeaf):
             return self.mop.nnn.value
         return self.expected_value
 
-    def get_depth_signature(self, depth):
+    def get_depth_signature(self, int depth):
+        # Check cache first (inherited from AstLeaf)
+        cdef list cached = self._depth_sig_cache.get(depth)
+        if cached is not None:
+            return cached
+
+        cdef list result
         if depth == 1:
-            return ["C"]
+            result = ["C"]
         else:
-            return ["N"] * (2 ** (depth - 1))
+            result = _get_n_sig(depth - 1)
+
+        # Cache the result for frozen nodes
+        if self._is_frozen:
+            self._depth_sig_cache[depth] = result
+        return result
 
     @_compat.override
     def __str__(self):
@@ -824,6 +877,7 @@ cdef class AstConstant(AstLeaf):
         new_const.z3_var = None
         new_const.z3_var_name = NOT_GIVEN
         new_const.sub_ast_info_by_index = {}
+        new_const._depth_sig_cache = {}  # Fresh cache for cloned object
         new_const._is_frozen = <bint>False
         return new_const
 

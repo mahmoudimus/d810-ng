@@ -103,45 +103,50 @@ class RulePatternInfo:
     pattern: AstBase
 
 
-def signature_generator(ref_sig):
+# Frozenset for fast wildcard lookup in compatible() check
+_WILDCARDS = frozenset(("L", "C", "N"))
+
+# For signature_generator: only "L" and "N" should NOT generate variations.
+# Constants "C" MUST generate "L" variations so patterns with "L" can match instructions with "C".
+_SIG_GEN_TERMINALS = frozenset(("L", "N"))
+
+
+def signature_generator(ref_sig: tuple[str, ...]) -> typing.Iterator[tuple[str, ...]]:
+    """Generate all possible wildcard variations of a signature tuple."""
     for i, x in enumerate(ref_sig):
-        if x not in ["N", "L"]:
-            for sig_suffix in signature_generator(ref_sig[i + 1 :]):
-                yield ref_sig[:i] + ["L"] + sig_suffix
+        if x not in _SIG_GEN_TERMINALS:
+            for sig_suffix in signature_generator(ref_sig[i + 1:]):
+                yield ref_sig[:i] + ("L",) + sig_suffix
     yield ref_sig
 
 
 class PatternStorage(object):
     # The PatternStorage object is used to store patterns associated to rules
     # A PatternStorage contains a dictionary (next_layer_patterns) where:
-    #  - keys are the signature of a pattern at a specific depth (i.e. the opcodes, the variable and constant)
+    #  - keys are the signature of a pattern at a specific depth (tuples for fast hashing)
     #  - values are PatternStorage object for the next depth
     # Additionally, it stores the rule objects which are resolved for the PatternStorage depth
     def __init__(self, depth=1):
         self.depth = depth
-        self.next_layer_patterns: dict[str, tuple[list[str], PatternStorage]] = {}
-        self.rule_resolved = []
+        # Use tuple keys directly for O(1) lookup without string operations
+        self.next_layer_patterns: dict[tuple[str, ...], PatternStorage] = {}
+        self.rule_resolved: list[RulePatternInfo] = []
 
     def add_pattern_for_rule(self, pattern: AstBase, rule: InstructionOptimizationRule):
-        layer_signature = self.layer_signature_to_key(
-            pattern.get_depth_signature(self.depth)
-        )
-        if len(layer_signature.replace(",", "")) == (layer_signature.count("N")):
+        sig_list = pattern.get_depth_signature(self.depth)
+        sig_tuple = tuple(sig_list)
+        # Check if signature is all "N" (terminal case)
+        if all(x == "N" for x in sig_tuple):
             self.rule_resolved.append(RulePatternInfo(rule, pattern))
         else:
-            if layer_signature not in self.next_layer_patterns.keys():
-                split = layer_signature.split(",")
-                self.next_layer_patterns[layer_signature] = (
-                    split,
-                    PatternStorage(self.depth + 1),
-                )
-            self.next_layer_patterns[layer_signature][1].add_pattern_for_rule(
-                pattern, rule
-            )
+            if sig_tuple not in self.next_layer_patterns:
+                self.next_layer_patterns[sig_tuple] = PatternStorage(self.depth + 1)
+            self.next_layer_patterns[sig_tuple].add_pattern_for_rule(pattern, rule)
 
     @staticmethod
-    def layer_signature_to_key(sig: list[str]) -> str:
-        return ",".join(sig)
+    def layer_signature_to_key(sig: list[str]) -> tuple[str, ...]:
+        """Convert signature list to tuple key (for compatibility)."""
+        return tuple(sig)
 
     # @staticmethod
     # def is_layer_signature_compatible(
@@ -162,78 +167,80 @@ class PatternStorage(object):
     #     return True
 
     @staticmethod
-    def compatible(inst_sig: list[str], pat_sig: list[str]) -> bool:
+    def compatible(inst_sig: tuple[str, ...], pat_sig: tuple[str, ...]) -> bool:
+        """Check if instruction signature is compatible with pattern signature."""
         for i, p in zip(inst_sig, pat_sig):
-            if p not in ("L", "C", "N") and i != p:
+            if p not in _WILDCARDS and i != p:
                 return False
         return True
 
-    def get_matching_rule_pattern_info(self, pattern: AstBase):
+    def get_matching_rule_pattern_info(self, pattern: AstBase) -> list[RulePatternInfo]:
         if pattern_search_logger.debug_on:
             pattern_search_logger.debug("Searching for %s", pattern)
         return self.explore_one_level(pattern, 1)
 
-    def explore_one_level(self, searched_pattern: AstBase, cur_level: int):
+    def explore_one_level(self, searched_pattern: AstBase, cur_level: int) -> list[RulePatternInfo]:
         # We need to check if searched_pattern is in self.next_layer_patterns
         # Easy solution: try/except self.next_layer_patterns[searched_pattern]
         # Problem is that known patterns may not exactly match the microcode instruction, e.g.
-        #   -> Pattern layer 3 signature is ["L", "N", "15", "L"]
-        #   -> Multiple instruction can match that: ["L", "N", "15", "L"], ["C", "N", "15", "L"], ["C", "N", "15", "13"]
-        # This piece of code tries to handles that in a (semi) efficient way
-        if len(self.next_layer_patterns) == 0:
+        #   -> Pattern layer 3 signature is ("L", "N", "15", "L")
+        #   -> Multiple instruction can match that: ("L", "N", "15", "L"), ("C", "N", "15", "L"), etc.
+        # This piece of code handles that efficiently using tuple keys
+        if not self.next_layer_patterns:
             return []
-        searched_split = searched_pattern.get_depth_signature(cur_level)
-        nb_possible_signature = 2 ** (
-            len(searched_split) - searched_split.count("N") - searched_split.count("L")
-        )
+
+        sig_list = searched_pattern.get_depth_signature(cur_level)
+        searched_sig = tuple(sig_list)
+
+        # Count non-wildcard elements to determine number of variations
+        non_wildcard_count = sum(1 for x in searched_sig if x not in _WILDCARDS)
+        nb_possible_signature = 1 << non_wildcard_count  # 2 ** non_wildcard_count
+
         if pattern_search_logger.debug_on:
             pattern_search_logger.debug(
-                "  Layer {0}: {1} -> {2} variations (storage has {3} signature)".format(
-                    cur_level,
-                    searched_split,
-                    nb_possible_signature,
-                    len(self.next_layer_patterns),
-                )
+                "  Layer %d: %s -> %d variations (storage has %d signatures)",
+                cur_level,
+                searched_sig,
+                nb_possible_signature,
+                len(self.next_layer_patterns),
             )
-        matched_rule_pattern_info = []
-        if nb_possible_signature < len(self.next_layer_patterns):
-            if pattern_search_logger.debug_on:
-                pattern_search_logger.debug("  => Using method 1")
-            for possible_sig in signature_generator(searched_split):
-                try:
-                    test_sig = self.layer_signature_to_key(possible_sig)
-                    _, pattern_storage = self.next_layer_patterns[test_sig]
-                    if pattern_search_logger.debug_on:
-                        pattern_search_logger.debug(
-                            "    Compatible signature: %s -> resolved: %s",
-                            test_sig,
-                            pattern_storage.rule_resolved,
-                        )
 
-                    matched_rule_pattern_info += pattern_storage.rule_resolved
-                    matched_rule_pattern_info += pattern_storage.explore_one_level(
-                        searched_pattern, cur_level + 1
-                    )
-                except KeyError:
-                    pass
-        else:
+        matched_rule_pattern_info: list[RulePatternInfo] = []
+
+        if nb_possible_signature < len(self.next_layer_patterns):
+            # Method 1: Generate all possible wildcard variations and look them up
             if pattern_search_logger.debug_on:
-                pattern_search_logger.debug("  => Using method 2")
-            for test_sig, (
-                pat_sig_split,
-                pattern_storage,
-            ) in self.next_layer_patterns.items():
-                if self.compatible(searched_split, pat_sig_split):
+                pattern_search_logger.debug("  => Using method 1 (signature generation)")
+            for possible_sig in signature_generator(searched_sig):
+                pattern_storage = self.next_layer_patterns.get(possible_sig)
+                if pattern_storage is not None:
                     if pattern_search_logger.debug_on:
                         pattern_search_logger.debug(
                             "    Compatible signature: %s -> resolved: %s",
-                            test_sig,
+                            possible_sig,
                             pattern_storage.rule_resolved,
                         )
-                    matched_rule_pattern_info += pattern_storage.rule_resolved
-                    matched_rule_pattern_info += pattern_storage.explore_one_level(
-                        searched_pattern, cur_level + 1
+                    matched_rule_pattern_info.extend(pattern_storage.rule_resolved)
+                    matched_rule_pattern_info.extend(
+                        pattern_storage.explore_one_level(searched_pattern, cur_level + 1)
                     )
+        else:
+            # Method 2: Iterate through stored patterns and check compatibility
+            if pattern_search_logger.debug_on:
+                pattern_search_logger.debug("  => Using method 2 (linear scan)")
+            for pat_sig, pattern_storage in self.next_layer_patterns.items():
+                if self.compatible(searched_sig, pat_sig):
+                    if pattern_search_logger.debug_on:
+                        pattern_search_logger.debug(
+                            "    Compatible signature: %s -> resolved: %s",
+                            pat_sig,
+                            pattern_storage.rule_resolved,
+                        )
+                    matched_rule_pattern_info.extend(pattern_storage.rule_resolved)
+                    matched_rule_pattern_info.extend(
+                        pattern_storage.explore_one_level(searched_pattern, cur_level + 1)
+                    )
+
         return matched_rule_pattern_info
 
 

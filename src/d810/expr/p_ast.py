@@ -41,6 +41,18 @@ from d810.core import NOT_GIVEN, NotGiven
 logger = getLogger(__name__)
 
 
+# Pre-computed "N" signature lists for depth signatures.
+# _N_SIGS[k] == ["N"] * (2 ** k) for k in 0..7 (covers depths up to 8).
+_N_SIGS: tuple[list[str], ...] = tuple(["N"] * (2**k) for k in range(8))
+
+
+def _get_n_sig(k: int) -> list[str]:
+    """Return cached ["N"] * (2**k) list, or compute if k >= 8."""
+    if k < len(_N_SIGS):
+        return _N_SIGS[k]
+    return ["N"] * (2**k)
+
+
 def get_constant_mop(value: int, size: int) -> ida_hexrays.mop_t:
     """
     Returns a cached or new mop_t for a constant value.
@@ -147,6 +159,7 @@ class AstNode(AstBase):
 
         self.func_name: str = ""
         self._is_frozen = False  # All newly created nodes are mutable by default
+        self._depth_sig_cache: dict[int, list[str]] = {}  # Cache for get_depth_signature
 
     @property
     @typing.override
@@ -652,19 +665,30 @@ class AstNode(AstBase):
                 )
 
     def get_depth_signature(self, depth):
+        # Check cache first (fast path for frozen nodes)
+        cached = self._depth_sig_cache.get(depth)
+        if cached is not None:
+            return cached
+
         if depth == 1:
-            return ["{0}".format(self.opcode)]
-        tmp = []
-        nb_operands = OPCODES_INFO[self.opcode]["nb_operands"]
-        if (nb_operands >= 1) and self.left is not None:
-            tmp += self.left.get_depth_signature(depth - 1)
+            result = [str(self.opcode)]
         else:
-            tmp += ["N"] * (2 ** (depth - 2))
-        if (nb_operands >= 2) and self.right is not None:
-            tmp += self.right.get_depth_signature(depth - 1)
-        else:
-            tmp += ["N"] * (2 ** (depth - 2))
-        return tmp
+            tmp = []
+            nb_operands = OPCODES_INFO[self.opcode]["nb_operands"]
+            if (nb_operands >= 1) and self.left is not None:
+                tmp += self.left.get_depth_signature(depth - 1)
+            else:
+                tmp += _get_n_sig(depth - 2)
+            if (nb_operands >= 2) and self.right is not None:
+                tmp += self.right.get_depth_signature(depth - 1)
+            else:
+                tmp += _get_n_sig(depth - 2)
+            result = tmp
+
+        # Cache the result for frozen nodes
+        if self._is_frozen:
+            self._depth_sig_cache[depth] = result
+        return result
 
     def __str__(self):
         try:
@@ -728,6 +752,8 @@ class AstNode(AstBase):
         new_node.leafs_by_name = {}
         new_node.opcodes = []
         new_node.sub_ast_info_by_index = {}  # Start fresh
+        new_node._depth_sig_cache = {}  # Fresh cache for cloned object
+        new_node.func_name = ""
 
         # Cloned objects start mutable
         new_node._is_frozen = False
@@ -761,6 +787,7 @@ class AstLeaf(AstBase):
         self.ea = None
         self._is_frozen = False  # All newly created nodes are mutable by default
         self.sub_ast_info_by_index = {}
+        self._depth_sig_cache: dict[int, list[str]] = {}  # Cache for get_depth_signature
 
     @property
     @typing.override
@@ -804,6 +831,7 @@ class AstLeaf(AstBase):
         new_leaf.z3_var = None
         new_leaf.z3_var_name = NOT_GIVEN
         new_leaf.sub_ast_info_by_index = {}  # Start fresh
+        new_leaf._depth_sig_cache = {}  # Fresh cache for cloned object
 
         # Cloned objects start mutable by definition
         new_leaf._is_frozen = False
@@ -953,12 +981,20 @@ class AstLeaf(AstBase):
         return dict_index_to_value.get(self.ast_index)
 
     def get_depth_signature(self, depth):
+        # Check cache first
+        cached = self._depth_sig_cache.get(depth)
+        if cached is not None:
+            return cached
+
         if depth == 1:
-            if self.is_constant():
-                return ["C"]
-            return ["L"]
+            result = ["C"] if self.is_constant() else ["L"]
         else:
-            return ["N"] * (2 ** (depth - 1))
+            result = _get_n_sig(depth - 1)
+
+        # Cache the result for frozen nodes
+        if self._is_frozen:
+            self._depth_sig_cache[depth] = result
+        return result
 
     def __str__(self):
         try:
@@ -1026,10 +1062,20 @@ class AstConstant(AstLeaf):
         return self.expected_value
 
     def get_depth_signature(self, depth):
+        # Check cache first (inherited from AstLeaf)
+        cached = self._depth_sig_cache.get(depth)
+        if cached is not None:
+            return cached
+
         if depth == 1:
-            return ["C"]
+            result = ["C"]
         else:
-            return ["N"] * (2 ** (depth - 1))
+            result = _get_n_sig(depth - 1)
+
+        # Cache the result for frozen nodes
+        if self._is_frozen:
+            self._depth_sig_cache[depth] = result
+        return result
 
     @typing.override
     def __str__(self):

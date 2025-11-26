@@ -8,7 +8,7 @@ import ida_hexrays
 
 from d810.core import getLogger
 from d810.errors import AstEvaluationException
-from d810.expr.utils import (
+from d810.core.bits import (
     get_add_cf,
     get_add_of,
     get_parity_flag,
@@ -20,7 +20,7 @@ from d810.hexrays.hexrays_helpers import AND_TABLE
 
 logger = getLogger(__name__)
 
-from d810.expr._ast import AstConstant, AstLeaf, AstNode, AstProxy
+from d810.expr.p_ast import AstConstant, AstLeaf, AstNode, AstProxy
 
 
 cdef object _BINARY_OPCODES = frozenset((

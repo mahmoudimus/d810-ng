@@ -13,15 +13,36 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+import ida_hexrays
+
 from d810.core import getLogger
+from d810.expr.ast import AstNode, AstLeaf, AstConstant, minsn_to_ast
+from d810.mba.dsl import SymbolicExpression
+from d810.mba.constraints import (
+    ComparisonConstraint,
+    EqualityConstraint,
+    is_constraint_expr,
+)
 
 logger = getLogger(__name__)
 
-# Type hints only - avoid importing IDA at module level
+# Type hints only
 if TYPE_CHECKING:
-    from d810.mba.dsl import SymbolicExpression
     from d810.mba.rules import VerifiableRule
-    from d810.expr.ast import AstNode, AstLeaf
+
+
+class _LeafWrapper:
+    """Lightweight wrapper to give AstLeaf nodes a leafs_by_name interface.
+
+    Used by IDAPatternAdapter.get_replacement() to handle AstLeaf candidates
+    that don't natively have leafs_by_name attribute.
+    """
+    __slots__ = ('leafs_by_name', 'ea', 'dst_mop')
+
+    def __init__(self, leaf: AstLeaf):
+        self.leafs_by_name = {leaf.name: leaf} if leaf.name else {}
+        self.ea = leaf.ea
+        self.dst_mop = leaf.mop
 
 
 class IDANodeVisitor:
@@ -75,9 +96,6 @@ class IDANodeVisitor:
         Returns:
             An AstNode representing the same expression.
         """
-        from d810.expr.ast import AstNode, AstConstant
-        from d810.mba.dsl import SymbolicExpression
-
         if expr is None:
             return None
 
@@ -114,8 +132,6 @@ class IDANodeVisitor:
         Returns:
             An AstLeaf or AstConstant representing the leaf.
         """
-        from d810.expr.ast import AstLeaf, AstConstant
-
         if expr.is_constant():
             # Concrete constant (has a value)
             return AstConstant(expr.name, expr.value)
@@ -135,11 +151,6 @@ class IDANodeVisitor:
         Returns:
             AstNode representing the comparison operation (SETNZ, SETZ, etc.)
         """
-        import ida_hexrays
-        from d810.expr.ast import AstNode
-        from d810.mba.constraints import ComparisonConstraint, EqualityConstraint
-        from d810.mba.dsl import SymbolicExpression
-
         constraint = expr.constraint
         if constraint is None:
             raise ValueError("bool_to_int operation requires a constraint")
@@ -204,9 +215,6 @@ class IDANodeVisitor:
         Returns:
             AstNode for SymbolicExpression, AstConstant for raw values, None for None.
         """
-        from d810.expr.ast import AstConstant
-        from d810.mba.dsl import SymbolicExpression
-
         if operand is None:
             return None
         if isinstance(operand, SymbolicExpression):
@@ -228,8 +236,6 @@ class IDANodeVisitor:
         Raises:
             ValueError: If the operation is not supported.
         """
-        import ida_hexrays
-
         ida_attr = self._OPERATION_TO_IDA_ATTR.get(operation)
         if ida_attr is None:
             raise ValueError(f"Unknown operation: {operation}")
@@ -274,6 +280,7 @@ class IDAPatternAdapter:
         """
         self.rule = rule
         self._pattern_candidates_cache: Optional[List[AstNode]] = None
+        self._replacement_pattern_cache: Optional[AstNode] = None
         self._visitor = IDANodeVisitor()
 
     # ==========================================================================
@@ -335,11 +342,15 @@ class IDAPatternAdapter:
 
     @property
     def REPLACEMENT_PATTERN(self) -> Optional[AstNode]:
-        """Get the replacement as an AstNode (PatternMatchingRule interface)."""
-        replacement = self.rule.replacement
-        if replacement is not None:
-            return self._visitor.visit(replacement)
-        return None
+        """Get the replacement as an AstNode (PatternMatchingRule interface).
+
+        Cached for performance - conversion only happens once.
+        """
+        if self._replacement_pattern_cache is None:
+            replacement = self.rule.replacement
+            if replacement is not None:
+                self._replacement_pattern_cache = self._visitor.visit(replacement)
+        return self._replacement_pattern_cache
 
     def get_valid_candidates(self, instruction, stop_early: bool = True) -> list:
         """Match the instruction against this rule's patterns.
@@ -351,8 +362,6 @@ class IDAPatternAdapter:
         Returns:
             List of matched candidate AstNodes.
         """
-        from d810.expr.ast import minsn_to_ast
-
         valid_candidates = []
         tmp = minsn_to_ast(instruction)
         if tmp is None:
@@ -384,22 +393,13 @@ class IDAPatternAdapter:
         Returns:
             A new minsn_t instruction, or None if replacement failed.
         """
-        from d810.expr.ast import AstLeaf
-
         repl_pat = self.REPLACEMENT_PATTERN
         if not repl_pat:
             logger.debug(f"No replacement pattern for rule {self.name}")
             return None
 
         # Handle AstLeaf candidates specially - they don't have leafs_by_name
-        # Create a temporary dict for the single leaf
         if isinstance(candidate, AstLeaf):
-            # For AstLeaf, create a simple wrapper with leafs_by_name
-            class _LeafWrapper:
-                def __init__(self, leaf):
-                    self.leafs_by_name = {leaf.name: leaf} if leaf.name else {}
-                    self.ea = leaf.ea
-                    self.dst_mop = leaf.mop
             candidate_for_update = _LeafWrapper(candidate)
             is_ok = repl_pat.update_leafs_mop(candidate_for_update)
         else:
@@ -508,7 +508,6 @@ class IDAPatternAdapter:
         for constraint in constraints:
             try:
                 # Check if this is a ConstraintExpr
-                from d810.mba.constraints import is_constraint_expr
                 if is_constraint_expr(constraint):
                     if not constraint.check(match_context):
                         return False
