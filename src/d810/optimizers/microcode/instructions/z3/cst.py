@@ -1,6 +1,6 @@
 import typing
 
-from ida_hexrays import *
+import ida_hexrays
 
 from d810.core import typing
 from d810.core import getLogger
@@ -28,7 +28,7 @@ class Z3ConstantOptimization(Z3Rule):
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
-        return AstNode(m_mov, AstConstant("c_res"))
+        return AstNode(ida_hexrays.m_mov, AstConstant("c_res"))
 
     @typing.override
     def configure(self, kwargs):
@@ -39,7 +39,7 @@ class Z3ConstantOptimization(Z3Rule):
             self.min_nb_constant = kwargs["min_nb_constant"]
 
     @typing.override
-    def check_and_replace(self, blk: mblock_t, instruction: minsn_t) -> minsn_t | None:
+    def check_and_replace(self, blk: ida_hexrays.mblock_t, instruction: ida_hexrays.minsn_t) -> ida_hexrays.minsn_t | None:
         tmp = minsn_to_ast(instruction)
         if tmp is None:
             return None
@@ -74,7 +74,7 @@ class Z3ConstantOptimization(Z3Rule):
             #   tmp.compute_sub_ast()
             #   new_instruction = self.get_replacement(typing.cast(AstNode, tmp))
             #   return new_instruction
-            c_res_mop = mop_t()
+            c_res_mop = ida_hexrays.mop_t()
             c_res_mop.make_number(val_0, tmp.mop.size or 1)
             if z3_check_mop_equality(tmp.mop, c_res_mop):
                 if logger.debug_on:

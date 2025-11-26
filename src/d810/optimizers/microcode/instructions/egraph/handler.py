@@ -31,7 +31,7 @@ import copy
 import dataclasses
 import typing
 
-from ida_hexrays import *  # noqa: F401,F403
+import ida_hexrays  # noqa: F401,F403
 
 from d810.core import getLogger
 from d810.expr.ast import AstBase, AstConstant, AstLeaf, AstNode, minsn_to_ast
@@ -61,7 +61,7 @@ optimizer_logger = getLogger("D810.optimizer")
 pattern_search_logger = getLogger("D810.pattern_search")
 
 
-COMMUTATIVE_OPCODES = {m_add, m_mul, m_or, m_and, m_xor}
+COMMUTATIVE_OPCODES = {ida_hexrays.m_add, ida_hexrays.m_mul, ida_hexrays.m_or, ida_hexrays.m_and, ida_hexrays.m_xor}
 
 
 def _flatten_operands(node: AstNode, opcode: int) -> list[AstBase]:
@@ -165,7 +165,7 @@ def canonicalize_ast(node: AstBase | None) -> AstBase | None:
         )
         return _build_balanced_tree(opcode, operands)
     # Rewrite subtraction into addition of a negated operand
-    if opcode == m_sub:
+    if opcode == ida_hexrays.m_sub:
         # canonicalise children first
         left = canonicalize_ast(ast.left) if ast.left is not None else None
         right = canonicalize_ast(ast.right) if ast.right is not None else None
@@ -174,27 +174,27 @@ def canonicalize_ast(node: AstBase | None) -> AstBase | None:
         if (
             isinstance(right, AstBase)
             and right.is_node()
-            and typing.cast(AstNode, right).opcode == m_neg
+            and typing.cast(AstNode, right).opcode == ida_hexrays.m_neg
         ):
             # -(y) negated again becomes y
             inner = typing.cast(AstNode, right)
             neg_right = canonicalize_ast(inner.left)
         else:
-            neg_right = AstNode(m_neg, right)
+            neg_right = AstNode(ida_hexrays.m_neg, right)
         # Recursively canonicalise the resulting addition
-        return canonicalize_ast(AstNode(m_add, left, neg_right))
+        return canonicalize_ast(AstNode(ida_hexrays.m_add, left, neg_right))
     # Simplify double negation
-    if opcode == m_neg:
+    if opcode == ida_hexrays.m_neg:
         sub = canonicalize_ast(ast.left) if ast.left is not None else None
         # If the child is itself a negation, collapse them
         if (
             isinstance(sub, AstBase)
             and sub.is_node()
-            and typing.cast(AstNode, sub).opcode == m_neg
+            and typing.cast(AstNode, sub).opcode == ida_hexrays.m_neg
         ):
             inner = typing.cast(AstNode, sub)
             return canonicalize_ast(inner.left)
-        return AstNode(m_neg, sub)
+        return AstNode(ida_hexrays.m_neg, sub)
     # Default case: recursively canonicalise left and right children
     left = canonicalize_ast(ast.left) if ast.left is not None else None
     right = canonicalize_ast(ast.right) if ast.right is not None else None
@@ -422,7 +422,7 @@ class PatternOptimizer2(InstructionOptimizer):  # type: ignore[misc]
         self.rules.append(rule)
         return True
 
-    def get_optimized_instruction(self, blk: mblock_t | None, ins: minsn_t) -> minsn_t | None:  # type: ignore[override]
+    def get_optimized_instruction(self, blk: ida_hexrays.mblock_t | None, ins: ida_hexrays.minsn_t) -> ida_hexrays.minsn_t | None:  # type: ignore[override]
         # Respect the current maturity as in the original implementation
         if blk is not None:
             self.cur_maturity = blk.mba.maturity
@@ -526,14 +526,14 @@ class Add_HackersDelightRule_1(CanonicalPatternRule):
     def PATTERN(self) -> AstNode:
         # x - (~y + 1) → x + y
         return AstNode(
-            m_sub,
+            ida_hexrays.m_sub,
             AstLeaf("x_0"),
-            AstNode(m_add, AstNode(m_bnot, AstLeaf("x_1")), AstConstant("1", 1)),
+            AstNode(ida_hexrays.m_add, AstNode(ida_hexrays.m_bnot, AstLeaf("x_1")), AstConstant("1", 1)),
         )
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
-        return AstNode(m_add, AstLeaf("x_0"), AstLeaf("x_1"))
+        return AstNode(ida_hexrays.m_add, AstLeaf("x_0"), AstLeaf("x_1"))
 
 
 class Add_HackersDelightRule_2(CanonicalPatternRule):
@@ -541,18 +541,18 @@ class Add_HackersDelightRule_2(CanonicalPatternRule):
     def PATTERN(self) -> AstNode:
         # (x XOR y) + 2*(x & y) → x + y
         return AstNode(
-            m_add,
-            AstNode(m_xor, AstLeaf("x_0"), AstLeaf("x_1")),
+            ida_hexrays.m_add,
+            AstNode(ida_hexrays.m_xor, AstLeaf("x_0"), AstLeaf("x_1")),
             AstNode(
-                m_mul,
+                ida_hexrays.m_mul,
                 AstConstant("2", 2),
-                AstNode(m_and, AstLeaf("x_0"), AstLeaf("x_1")),
+                AstNode(ida_hexrays.m_and, AstLeaf("x_0"), AstLeaf("x_1")),
             ),
         )
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
-        return AstNode(m_add, AstLeaf("x_0"), AstLeaf("x_1"))
+        return AstNode(ida_hexrays.m_add, AstLeaf("x_0"), AstLeaf("x_1"))
 
 
 class Add_HackersDelightRule_3(CanonicalPatternRule):
@@ -560,14 +560,14 @@ class Add_HackersDelightRule_3(CanonicalPatternRule):
     def PATTERN(self) -> AstNode:
         # (x OR y) + (x & y) → x + y
         return AstNode(
-            m_add,
-            AstNode(m_or, AstLeaf("x_0"), AstLeaf("x_1")),
-            AstNode(m_and, AstLeaf("x_0"), AstLeaf("x_1")),
+            ida_hexrays.m_add,
+            AstNode(ida_hexrays.m_or, AstLeaf("x_0"), AstLeaf("x_1")),
+            AstNode(ida_hexrays.m_and, AstLeaf("x_0"), AstLeaf("x_1")),
         )
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
-        return AstNode(m_add, AstLeaf("x_0"), AstLeaf("x_1"))
+        return AstNode(ida_hexrays.m_add, AstLeaf("x_0"), AstLeaf("x_1"))
 
 
 class Add_HackersDelightRule_4(CanonicalPatternRule):
@@ -575,18 +575,18 @@ class Add_HackersDelightRule_4(CanonicalPatternRule):
     def PATTERN(self) -> AstNode:
         # 2*(x OR y) - (x XOR y) → x + y
         return AstNode(
-            m_sub,
+            ida_hexrays.m_sub,
             AstNode(
-                m_mul,
+                ida_hexrays.m_mul,
                 AstConstant("2", 2),
-                AstNode(m_or, AstLeaf("x_0"), AstLeaf("x_1")),
+                AstNode(ida_hexrays.m_or, AstLeaf("x_0"), AstLeaf("x_1")),
             ),
-            AstNode(m_xor, AstLeaf("x_0"), AstLeaf("x_1")),
+            AstNode(ida_hexrays.m_xor, AstLeaf("x_0"), AstLeaf("x_1")),
         )
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
-        return AstNode(m_add, AstLeaf("x_0"), AstLeaf("x_1"))
+        return AstNode(ida_hexrays.m_add, AstLeaf("x_0"), AstLeaf("x_1"))
 
 
 class Add_HackersDelightRule_5(CanonicalPatternRule):
@@ -594,25 +594,25 @@ class Add_HackersDelightRule_5(CanonicalPatternRule):
     def PATTERN(self) -> AstNode:
         # 2*( (x OR y) OR z ) - (x XOR (y OR z)) → x + (y OR z)
         return AstNode(
-            m_sub,
+            ida_hexrays.m_sub,
             AstNode(
-                m_mul,
+                ida_hexrays.m_mul,
                 AstConstant("2", 2),
                 AstNode(
-                    m_or,
-                    AstNode(m_or, AstLeaf("x_0"), AstLeaf("x_1")),
+                    ida_hexrays.m_or,
+                    AstNode(ida_hexrays.m_or, AstLeaf("x_0"), AstLeaf("x_1")),
                     AstLeaf("x_2"),
                 ),
             ),
             AstNode(
-                m_xor, AstLeaf("x_0"), AstNode(m_or, AstLeaf("x_1"), AstLeaf("x_2"))
+                ida_hexrays.m_xor, AstLeaf("x_0"), AstNode(ida_hexrays.m_or, AstLeaf("x_1"), AstLeaf("x_2"))
             ),
         )
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
         return AstNode(
-            m_add, AstLeaf("x_0"), AstNode(m_or, AstLeaf("x_1"), AstLeaf("x_2"))
+            ida_hexrays.m_add, AstLeaf("x_0"), AstNode(ida_hexrays.m_or, AstLeaf("x_1"), AstLeaf("x_2"))
         )
 
 
@@ -625,18 +625,18 @@ class Add_SpecialConstantRule_1(CanonicalPatternRule):
     def PATTERN(self) -> AstNode:
         # (x XOR c1) + 2*(x & c2) → x + c1  where c1 == c2 ignoring size
         return AstNode(
-            m_add,
-            AstNode(m_xor, AstLeaf("x_0"), AstConstant("c_1")),
+            ida_hexrays.m_add,
+            AstNode(ida_hexrays.m_xor, AstLeaf("x_0"), AstConstant("c_1")),
             AstNode(
-                m_mul,
+                ida_hexrays.m_mul,
                 AstConstant("2", 2),
-                AstNode(m_and, AstLeaf("x_0"), AstConstant("c_2")),
+                AstNode(ida_hexrays.m_and, AstLeaf("x_0"), AstConstant("c_2")),
             ),
         )
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
-        return AstNode(m_add, AstLeaf("x_0"), AstConstant("c_1"))
+        return AstNode(ida_hexrays.m_add, AstLeaf("x_0"), AstConstant("c_1"))
 
 
 class Add_SpecialConstantRule_2(CanonicalPatternRule):
@@ -648,24 +648,24 @@ class Add_SpecialConstantRule_2(CanonicalPatternRule):
     def PATTERN(self) -> AstNode:
         # ((x & 0xFF) XOR c1) + 2*(x & c2) → (x & 0xFF) + c1  with constraint above
         return AstNode(
-            m_add,
+            ida_hexrays.m_add,
             AstNode(
-                m_xor,
-                AstNode(m_and, AstLeaf("x_0"), AstConstant("val_ff", 0xFF)),
+                ida_hexrays.m_xor,
+                AstNode(ida_hexrays.m_and, AstLeaf("x_0"), AstConstant("val_ff", 0xFF)),
                 AstConstant("c_1"),
             ),
             AstNode(
-                m_mul,
+                ida_hexrays.m_mul,
                 AstConstant("2", 2),
-                AstNode(m_and, AstLeaf("x_0"), AstConstant("c_2")),
+                AstNode(ida_hexrays.m_and, AstLeaf("x_0"), AstConstant("c_2")),
             ),
         )
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
         return AstNode(
-            m_add,
-            AstNode(m_and, AstLeaf("x_0"), AstConstant("val_ff", 0xFF)),
+            ida_hexrays.m_add,
+            AstNode(ida_hexrays.m_and, AstLeaf("x_0"), AstConstant("val_ff", 0xFF)),
             AstConstant("c_1"),
         )
 
@@ -686,18 +686,18 @@ class Add_SpecialConstantRule_3(CanonicalPatternRule):
     def PATTERN(self) -> AstNode:
         # (x XOR c1) + 2*(x OR c2) → x + (c2 - 1)  when c1 == ~c2
         return AstNode(
-            m_add,
-            AstNode(m_xor, AstLeaf("x_0"), AstConstant("c_1")),
+            ida_hexrays.m_add,
+            AstNode(ida_hexrays.m_xor, AstLeaf("x_0"), AstConstant("c_1")),
             AstNode(
-                m_mul,
+                ida_hexrays.m_mul,
                 AstConstant("2", 2),
-                AstNode(m_or, AstLeaf("x_0"), AstConstant("c_2")),
+                AstNode(ida_hexrays.m_or, AstLeaf("x_0"), AstConstant("c_2")),
             ),
         )
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
-        return AstNode(m_add, AstLeaf("x_0"), AstConstant("val_res"))
+        return AstNode(ida_hexrays.m_add, AstLeaf("x_0"), AstConstant("val_res"))
 
 
 class Add_OllvmRule_1(CanonicalPatternRule):
@@ -710,20 +710,20 @@ class Add_OllvmRule_1(CanonicalPatternRule):
     def PATTERN(self) -> AstNode:
         # ~(x XOR y) + 2*(x OR y) → (x + y) - 1
         return AstNode(
-            m_add,
-            AstNode(m_bnot, AstNode(m_xor, AstLeaf("x_0"), AstLeaf("x_1"))),
+            ida_hexrays.m_add,
+            AstNode(ida_hexrays.m_bnot, AstNode(ida_hexrays.m_xor, AstLeaf("x_0"), AstLeaf("x_1"))),
             AstNode(
-                m_mul,
+                ida_hexrays.m_mul,
                 AstConstant("2", 2),
-                AstNode(m_or, AstLeaf("x_1"), AstLeaf("x_0")),
+                AstNode(ida_hexrays.m_or, AstLeaf("x_1"), AstLeaf("x_0")),
             ),
         )
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
         return AstNode(
-            m_sub,
-            AstNode(m_add, AstLeaf("x_0"), AstLeaf("x_1")),
+            ida_hexrays.m_sub,
+            AstNode(ida_hexrays.m_add, AstLeaf("x_0"), AstLeaf("x_1")),
             AstConstant("val_1"),
         )
 
@@ -740,20 +740,20 @@ class Add_OllvmRule_2(CanonicalPatternRule):
     def PATTERN(self) -> AstNode:
         # ~(x XOR y) - val_fe*(x OR y) → (x + y) - 1  when constraint holds
         return AstNode(
-            m_sub,
-            AstNode(m_bnot, AstNode(m_xor, AstLeaf("x_0"), AstLeaf("x_1"))),
+            ida_hexrays.m_sub,
+            AstNode(ida_hexrays.m_bnot, AstNode(ida_hexrays.m_xor, AstLeaf("x_0"), AstLeaf("x_1"))),
             AstNode(
-                m_mul,
+                ida_hexrays.m_mul,
                 AstConstant("val_fe"),
-                AstNode(m_or, AstLeaf("x_0"), AstLeaf("x_1")),
+                AstNode(ida_hexrays.m_or, AstLeaf("x_0"), AstLeaf("x_1")),
             ),
         )
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
         return AstNode(
-            m_sub,
-            AstNode(m_add, AstLeaf("x_0"), AstLeaf("x_1")),
+            ida_hexrays.m_sub,
+            AstNode(ida_hexrays.m_add, AstLeaf("x_0"), AstLeaf("x_1")),
             AstConstant("val_1"),
         )
 
@@ -763,18 +763,18 @@ class Add_OllvmRule_3(CanonicalPatternRule):
     def PATTERN(self) -> AstNode:
         # (x XOR y) + 2*(x & y) → x + y
         return AstNode(
-            m_add,
-            AstNode(m_xor, AstLeaf("x_0"), AstLeaf("x_1")),
+            ida_hexrays.m_add,
+            AstNode(ida_hexrays.m_xor, AstLeaf("x_0"), AstLeaf("x_1")),
             AstNode(
-                m_mul,
+                ida_hexrays.m_mul,
                 AstConstant("2", 2),
-                AstNode(m_and, AstLeaf("x_0"), AstLeaf("x_1")),
+                AstNode(ida_hexrays.m_and, AstLeaf("x_0"), AstLeaf("x_1")),
             ),
         )
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
-        return AstNode(m_add, AstLeaf("x_0"), AstLeaf("x_1"))
+        return AstNode(ida_hexrays.m_add, AstLeaf("x_0"), AstLeaf("x_1"))
 
 
 class Add_OllvmRule_4(CanonicalPatternRule):
@@ -782,18 +782,18 @@ class Add_OllvmRule_4(CanonicalPatternRule):
     def PATTERN(self) -> AstNode:
         # (x XOR y) - val_fe*(x & y) → x + y
         return AstNode(
-            m_sub,
-            AstNode(m_xor, AstLeaf("x_0"), AstLeaf("x_1")),
+            ida_hexrays.m_sub,
+            AstNode(ida_hexrays.m_xor, AstLeaf("x_0"), AstLeaf("x_1")),
             AstNode(
-                m_mul,
+                ida_hexrays.m_mul,
                 AstConstant("val_fe"),
-                AstNode(m_and, AstLeaf("x_0"), AstLeaf("x_1")),
+                AstNode(ida_hexrays.m_and, AstLeaf("x_0"), AstLeaf("x_1")),
             ),
         )
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
-        return AstNode(m_add, AstLeaf("x_0"), AstLeaf("x_1"))
+        return AstNode(ida_hexrays.m_add, AstLeaf("x_0"), AstLeaf("x_1"))
 
 
 class AddXor_Rule_1(CanonicalPatternRule):
@@ -808,20 +808,20 @@ class AddXor_Rule_1(CanonicalPatternRule):
     def PATTERN(self) -> AstNode:
         # (x0 - x1) - 2*(x0 OR ~x1) → (x0 XOR x1) + 2
         return AstNode(
-            m_sub,
-            AstNode(m_sub, AstLeaf("x_0"), AstLeaf("x_1")),
+            ida_hexrays.m_sub,
+            AstNode(ida_hexrays.m_sub, AstLeaf("x_0"), AstLeaf("x_1")),
             AstNode(
-                m_mul,
+                ida_hexrays.m_mul,
                 AstConstant("2", 2),
-                AstNode(m_or, AstLeaf("x_0"), AstLeaf("bnot_x_1")),
+                AstNode(ida_hexrays.m_or, AstLeaf("x_0"), AstLeaf("bnot_x_1")),
             ),
         )
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
         return AstNode(
-            m_add,
-            AstNode(m_xor, AstLeaf("x_0"), AstLeaf("x_1")),
+            ida_hexrays.m_add,
+            AstNode(ida_hexrays.m_xor, AstLeaf("x_0"), AstLeaf("x_1")),
             AstConstant("val_2"),
         )
 
@@ -838,19 +838,19 @@ class AddXor_Rule_2(CanonicalPatternRule):
     def PATTERN(self) -> AstNode:
         # (x0 - x1) - 2*~( (~x0) & x1 ) → (x0 XOR x1) + 2
         return AstNode(
-            m_sub,
-            AstNode(m_sub, AstLeaf("x_0"), AstLeaf("x_1")),
+            ida_hexrays.m_sub,
+            AstNode(ida_hexrays.m_sub, AstLeaf("x_0"), AstLeaf("x_1")),
             AstNode(
-                m_mul,
+                ida_hexrays.m_mul,
                 AstConstant("2", 2),
-                AstNode(m_bnot, AstNode(m_and, AstLeaf("bnot_x_0"), AstLeaf("x_1"))),
+                AstNode(ida_hexrays.m_bnot, AstNode(ida_hexrays.m_and, AstLeaf("bnot_x_0"), AstLeaf("x_1"))),
             ),
         )
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
         return AstNode(
-            m_add,
-            AstNode(m_xor, AstLeaf("x_0"), AstLeaf("x_1")),
+            ida_hexrays.m_add,
+            AstNode(ida_hexrays.m_xor, AstLeaf("x_0"), AstLeaf("x_1")),
             AstLeaf("val_2"),
         )

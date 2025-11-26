@@ -1,6 +1,6 @@
 from typing import Any, Optional
 
-from ida_hexrays import *
+import ida_hexrays
 from idaapi import (
     SEGPERM_READ,
     SEGPERM_WRITE,
@@ -43,11 +43,11 @@ class SetGlobalVariablesToZero(EarlyRule):
     @property
     def PATTERN(self) -> AstNode:
         """Return the pattern to match."""
-        return AstNode(m_mov, AstLeaf("ro_dword"))
+        return AstNode(ida_hexrays.m_mov, AstLeaf("ro_dword"))
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
-        return AstNode(m_mov, AstConstant("val_res"))
+        return AstNode(ida_hexrays.m_mov, AstConstant("val_res"))
 
     def __init__(self):
         super().__init__()
@@ -72,7 +72,7 @@ class SetGlobalVariablesToZero(EarlyRule):
         mop = leaf.mop
         if mop is None:
             return False
-        if getattr(mop, "t", None) != mop_v:
+        if getattr(mop, "t", None) != ida_hexrays.mop_v:
             return False
         mem_read_address = getattr(mop, "g", None)
         if mem_read_address is None:
@@ -92,11 +92,11 @@ class SetGlobalVariablesToZeroIfDetectedReadOnly(EarlyRule):
     @property
     def PATTERN(self) -> AstNode:
         """Return the pattern to match."""
-        return AstNode(m_mov, AstLeaf("ro_dword"))
+        return AstNode(ida_hexrays.m_mov, AstLeaf("ro_dword"))
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
-        return AstNode(m_mov, AstConstant("val_res"))
+        return AstNode(ida_hexrays.m_mov, AstConstant("val_res"))
 
     def __init__(self):
         super().__init__()
@@ -104,7 +104,7 @@ class SetGlobalVariablesToZeroIfDetectedReadOnly(EarlyRule):
         # 'mov     &($dword_10020CC8).4, eoff.4' by 'mov     #0.4, eoff.4'
         # and this will lead to incorrect decompilation where MEMORY[0] is used
         # Thus, we explicitly specify the MMAT_PREOPTIMIZED maturity.
-        self.maturities = [MMAT_PREOPTIMIZED]
+        self.maturities = [ida_hexrays.MMAT_PREOPTIMIZED]
 
     def check_candidate(self, candidate):
         leaf = candidate["ro_dword"]
@@ -114,11 +114,11 @@ class SetGlobalVariablesToZeroIfDetectedReadOnly(EarlyRule):
         if mop is None:
             return False
         mem_read_address: Optional[int] = None
-        if mop.t == mop_v:
+        if mop.t == ida_hexrays.mop_v:
             mem_read_address = mop.g
-        elif mop.t == mop_a and mop.a is not None:
+        elif mop.t == ida_hexrays.mop_a and mop.a is not None:
             inner = mop.a
-            if inner.t == mop_v:
+            if inner.t == ida_hexrays.mop_v:
                 mem_read_address = inner.g
 
         if mem_read_address is None:
@@ -137,34 +137,34 @@ class ReplaceReadonlyAddressOfWithImmediate(EarlyRule):
 
     @property
     def PATTERN(self) -> AstNode:
-        return AstNode(m_mov, AstLeaf("ro_addr"))
+        return AstNode(ida_hexrays.m_mov, AstLeaf("ro_addr"))
 
     @property
     def REPLACEMENT_PATTERN(self) -> AstNode:
-        return AstNode(m_mov, AstConstant("val_res"))
+        return AstNode(ida_hexrays.m_mov, AstConstant("val_res"))
 
     def __init__(self) -> None:
         super().__init__()
         # Run early to avoid creating bogus MEMORY[0] later when addresses fold late
-        self.maturities = [MMAT_PREOPTIMIZED]
+        self.maturities = [ida_hexrays.MMAT_PREOPTIMIZED]
 
-    def _resolve_address_from_mop(self, mop_obj: mop_t | None) -> int | None:
+    def _resolve_address_from_mop(self, mop_obj: ida_hexrays.mop_t | None) -> int | None:
         if mop_obj is None:
             return None
         t = mop_obj.t
-        if t == mop_a:
+        if t == ida_hexrays.mop_a:
             inner = mop_obj.a
             if inner is None:
                 return None
             it = inner.t
-            if it == mop_v:
+            if it == ida_hexrays.mop_v:
                 return inner.g
-            if it == mop_S:
+            if it == ida_hexrays.mop_S:
                 # Prefer concrete address in `off`, fallback to `start_ea`
                 return getattr(inner.s, "off", None) or getattr(
                     inner.s, "start_ea", None
                 )
-        elif t == mop_v:
+        elif t == ida_hexrays.mop_v:
             return mop_obj.g
         return None
 
@@ -172,7 +172,7 @@ class ReplaceReadonlyAddressOfWithImmediate(EarlyRule):
         leaf = candidate["ro_addr"]
         if leaf is None:
             return False
-        mop_obj: mop_t | None = leaf.mop
+        mop_obj: ida_hexrays.mop_t | None = leaf.mop
         if mop_obj is None:
             return False
         addr = self._resolve_address_from_mop(mop_obj)
