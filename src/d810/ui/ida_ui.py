@@ -10,13 +10,18 @@ import typing
 import ida_kernwin
 import idaapi
 
-from d810.qt_shim import QtCore, QtWidgets, qt_flag_or
+if idaapi.is_idaq():
+    from d810.qt_shim import QtCore, QtWidgets, qt_flag_or
 
 if typing.TYPE_CHECKING:
     from d810.manager import D810State
 
-from d810.core import ProjectConfiguration, RuleConfiguration
-from d810.core import LoggerConfigurator, getLogger
+from d810.core import (
+    LoggerConfigurator,
+    ProjectConfiguration,
+    RuleConfiguration,
+    getLogger,
+)
 from d810.ui.testbed import TestRunnerForm
 
 logger = getLogger("D810.ui")

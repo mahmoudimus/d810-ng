@@ -9,40 +9,38 @@ import pstats
 import time
 import typing
 
+# Import IDA module for user directory - only used at initialization
+import idaapi
+
 from d810.core import (
-    D810Configuration,
-    ProjectConfiguration,
     CythonMode,
+    D810Configuration,
+    EventEmitter,
+    OptimizationStatistics,
+    ProjectConfiguration,
+    ProjectManager,
+    SingletonMeta,
     clear_logs,
     configure_loggers,
     getLogger,
-    ProjectManager,
-    EventEmitter,
-    SingletonMeta,
-    OptimizationStatistics,
 )
 
-# Import IDA module for user directory - only used at initialization
-try:
-    import ida_diskio
-    _IDA_USER_DIR: str | None = ida_diskio.get_user_idadir()
-except ImportError:
-    # Fallback for headless/test mode - let D810Configuration use its default
-    _IDA_USER_DIR = None
-from d810.optimizers.caching import MOP_CONSTANT_CACHE, MOP_TO_AST_CACHE
+_IDA_USER_DIR: str | None = idaapi.get_user_idadir()
+
 from d810.hexrays.hexrays_hooks import (
     BlockOptimizerManager,
     DecompilationEvent,
     HexraysDecompilationHook,
     InstructionOptimizerManager,
 )
+from d810.optimizers.caching import MOP_CONSTANT_CACHE, MOP_TO_AST_CACHE
 from d810.optimizers.microcode.flow.handler import FlowOptimizationRule
 from d810.optimizers.microcode.instructions.handler import InstructionOptimizationRule
 
 # Import GUI only when needed (not in headless/test mode)
-try:
+if idaapi.is_idaq():
     from d810.ui.ida_ui import D810GUI
-except (ImportError, NotImplementedError):
+else:
     D810GUI = None  # type: ignore
 
 try:
@@ -281,7 +279,9 @@ class D810State(metaclass=SingletonMeta):
 
     def reset(self) -> None:
         self._initialized: bool = False
-        self.d810_config: D810Configuration = D810Configuration(ida_user_dir=_IDA_USER_DIR)
+        self.d810_config: D810Configuration = D810Configuration(
+            ida_user_dir=_IDA_USER_DIR
+        )
         # manage projects via ProjectManager
         self.project_manager = ProjectManager(self.d810_config)
         self.current_project_index: int = 0

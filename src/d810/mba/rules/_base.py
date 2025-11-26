@@ -164,13 +164,34 @@ class VerifiableRule(SymbolicRule, Registrant):
         """Resolve lazy rules and instantiate all registered rules.
 
         This acts as the replacement for RuleRegistry.instantiate_all().
-        It is safe to call even if IDA is not ready, provided the __init__ 
+        It is safe to call even if IDA is not ready, provided the __init__
         of the rules checks for environment availability.
+
+        Note:
+            Classes without a valid pattern (e.g., test base classes) are skipped.
+            This prevents test classes that inherit from VerifiableRule but don't
+            define PATTERN from polluting the rule list.
         """
         cls.resolve_lazy_rules()
 
         instances: List[Self] = []
         for rule_cls in cls.registry.values():
+            # Skip abstract classes
+            if isabstract(rule_cls):
+                logger.debug(f"Skipping abstract class: {rule_cls.__name__}")
+                continue
+
+            # Skip classes without a valid pattern definition
+            # These are typically test base classes that inherit VerifiableRule
+            # but don't define PATTERN/REPLACEMENT
+            has_pattern = (
+                hasattr(rule_cls, '_dsl_pattern') or
+                ('PATTERN' in rule_cls.__dict__ and isinstance(rule_cls.__dict__['PATTERN'], SymbolicExpression))
+            )
+            if not has_pattern:
+                logger.debug(f"Skipping class without pattern: {rule_cls.__name__}")
+                continue
+
             try:
                 instance = rule_cls()
                 instances.append(instance)

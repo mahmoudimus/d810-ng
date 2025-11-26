@@ -13,12 +13,14 @@ from typing import TextIO
 from unittest import loader, runner, suite
 
 import ida_kernwin
+import idaapi
 
 from d810.core import getLogger
 
-# Import Qt classes through qt_shim for compatibility
-# All compatibility shims are automatically set up by qt_shim
-from d810.qt_shim import QtCore, QtGui, QtWidgets, get_text_margins_as_tuple
+if idaapi.is_idaq():
+    # Import Qt classes through qt_shim for compatibility
+    # All compatibility shims are automatically set up by qt_shim
+    from d810.qt_shim import QtCore, QtGui, QtWidgets, get_text_margins_as_tuple
 
 # Configure a logger for the script
 LOGGER = getLogger(__name__)

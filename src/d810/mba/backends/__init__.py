@@ -34,19 +34,16 @@ __version__ = "0.1.0"
 
 # Z3 backend (requires z3-solver)
 try:
-    from d810.mba.backends.z3 import (
+    from d810.mba.backends.z3 import (  # VerificationEngine implementation; Pure SymbolicExpression verification (no IDA needed); Z3 variable creation; Constraint conversion (ConstraintExpr → Z3)
         Z3_INSTALLED,
-        # VerificationEngine implementation
         Z3VerificationEngine,
-        # Pure SymbolicExpression verification (no IDA needed)
         Z3VerificationVisitor,
+        constraint_to_z3,
+        create_z3_variables,
         prove_equivalence,
         verify_rule,
-        # Z3 variable creation
-        create_z3_variables,
-        # Constraint conversion (ConstraintExpr → Z3)
-        constraint_to_z3,
     )
+
     __all__ = [
         "Z3_INSTALLED",
         "Z3VerificationEngine",
@@ -59,19 +56,36 @@ try:
 except ImportError:
     Z3_INSTALLED = False
     __all__ = ["Z3_INSTALLED"]
+else:
+    Z3_AVAILABLE = True
+    __all__.extend(
+        [
+            "Z3_AVAILABLE",
+        ]
+    )
 
-# IDA backend (requires IDA Pro)
-# These imports are lazy (inside functions) so won't fail without IDA
-from d810.mba.backends.ida import (
-    IDANodeVisitor,
-    IDAPatternAdapter,
-    adapt_rules,
-)
-__all__.extend([
-    "IDANodeVisitor",
-    "IDAPatternAdapter",
-    "adapt_rules",
-])
+
+try:
+    # IDA backend (requires IDA Pro)
+    # These imports are lazy (inside functions) so won't fail without IDA
+    from d810.mba.backends.ida import IDANodeVisitor, IDAPatternAdapter, adapt_rules
+except ImportError:
+    IDA_AVAILABLE = False
+    __all__.extend(
+        [
+            "IDA_AVAILABLE",
+        ]
+    )
+else:
+    IDA_AVAILABLE = True
+    __all__.extend(
+        [
+            "IDA_AVAILABLE",
+            "IDANodeVisitor",
+            "IDAPatternAdapter",
+            "adapt_rules",
+        ]
+    )
 
 # Future: E-graph backend
 # from d810.mba.backends.egraph import EGraphSimplifier
