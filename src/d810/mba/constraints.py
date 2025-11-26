@@ -149,14 +149,80 @@ class EqualityConstraint(ConstraintExpr):
         return (None, None)
 
     def check(self, candidate: dict[str, Any]) -> bool:
-        """Check if left == right with concrete values."""
+        """Check if left == right with concrete values or structural equality.
+
+        For constraints like `bnot_y == ~y`, this performs structural checking
+        using IDA's equal_bnot_mop function instead of value-based comparison.
+        """
+        from d810.mba.dsl import SymbolicExpression
+
+        # Check if this is a structural BNOT constraint: left == ~right
+        # This needs special handling because we compare AST structure, not values
+        if (isinstance(self.right, SymbolicExpression)
+            and self.right.operation == "bnot"
+            and self.right.left is not None):
+            return self._check_bnot_constraint(candidate)
+
+        # Regular value-based equality check
         try:
             left_val = self._eval_expr(self.left, candidate)
             right_val = self._eval_expr(self.right, candidate)
             return left_val == right_val
         except (KeyError, ValueError, AttributeError):
-            # Can't evaluate - skip check (might be defining constraint)
-            return True
+            # Can't evaluate - constraint FAILS (not skipped!)
+            # Previously this returned True which caused incorrect matches
+            return False
+
+    def _check_bnot_constraint(self, candidate: dict[str, Any]) -> bool:
+        """Check structural BNOT constraint: left == ~right.
+
+        Uses IDA's equal_bnot_mop for proper structural comparison.
+
+        Args:
+            candidate: Dictionary mapping variable names to matched AstNodes.
+
+        Returns:
+            True if left is structurally ~right, False otherwise.
+        """
+        from d810.mba.dsl import SymbolicExpression
+
+        # Get the variable names involved
+        # left should be a simple variable (e.g., "bnot_y")
+        # right should be ~variable (e.g., ~y)
+        if not self._is_simple_constant(self.left):
+            return False
+
+        left_name = self._get_name(self.left)
+        if left_name not in candidate:
+            return False
+
+        # Get the operand of the BNOT (e.g., "y" from ~y)
+        bnot_operand = self.right.left
+        if not isinstance(bnot_operand, SymbolicExpression) or not bnot_operand.is_leaf():
+            return False
+
+        operand_name = bnot_operand.name
+        if operand_name not in candidate:
+            return False
+
+        # Get the matched AstNodes
+        left_node = candidate[left_name]
+        right_node = candidate[operand_name]
+
+        # Extract mops from AstNodes (if they have them)
+        left_mop = getattr(left_node, 'mop', None)
+        right_mop = getattr(right_node, 'mop', None)
+
+        if left_mop is None or right_mop is None:
+            return False
+
+        # Use IDA's structural BNOT comparison
+        try:
+            from d810.hexrays.hexrays_helpers import equal_bnot_mop
+            return equal_bnot_mop(left_mop, right_mop)
+        except ImportError:
+            # IDA not available - can't check structural constraint
+            return False
 
     def _is_simple_constant(self, expr) -> bool:
         """Check if expression is a simple constant (not compound)."""

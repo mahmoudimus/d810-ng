@@ -8,6 +8,7 @@ import ida_hexrays
 import idaapi
 
 from d810.core import getLogger
+from d810.core import bits as rotate_helpers
 from d810.core.bits import (
     get_add_cf,
     get_add_of,
@@ -552,7 +553,15 @@ class MicroCodeInterpreter(object):
             emulator_log.debug("Call helper for %s", helper_name)
         # and we support only __RORX__/__ROLX__
         if helper_name.startswith("__ROR") or helper_name.startswith("__ROL"):
-            shift_count = int(helper_name.split("__")[1])
+            # Helper name is already complete, e.g., "__ROL8__" or "__ROR4__"
+            helper_func = getattr(rotate_helpers, helper_name, None)
+            if helper_func is None:
+                if emulator_log.debug_on:
+                    emulator_log.debug(
+                        "Call helper for %s: helper not found in rotate_helpers",
+                        helper_name,
+                    )
+                return None
             data_1 = self.eval(args_list.f.args[0], environment)
             data_2 = self.eval(args_list.f.args[1], environment)
             if data_1 is None or data_2 is None:
@@ -564,7 +573,6 @@ class MicroCodeInterpreter(object):
                         data_2,
                     )
                 return None
-            helper_func = getattr(utils, f"{helper_name}{shift_count}__")
             return helper_func(data_1, data_2) & res_mask
         elif helper_name in ("__readfsqword", "__readgsqword"):
             # These helpers read from FS/GS: they are known to be non-null in practice.

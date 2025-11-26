@@ -8,6 +8,7 @@ import ida_hexrays
 
 from d810.core import typing
 from d810.core import getLogger
+from d810.core import bits as rotate_helpers
 from d810.hexrays.hexrays_formatters import format_mop_t, opcode_to_string, sanitize_ea
 from d810.hexrays.hexrays_helpers import AND_TABLE  # already maps size→mask
 from d810.hexrays.hexrays_helpers import extract_literal_from_mop, is_rotate_helper_call
@@ -15,7 +16,7 @@ from d810.optimizers.microcode.instructions.peephole.handler import (
     PeepholeSimplificationRule,
 )
 
-logger = getLogger(__name__)
+logger = getLogger(__name__, logging.DEBUG)
 
 
 def example(msg: str) -> typing.Callable:
@@ -112,7 +113,11 @@ class ConstantCallResultFoldRule(PeepholeSimplificationRule):
                 ins.d.size,
             )
 
-        helper_func = getattr(utils, helper_name)
+        helper_func = getattr(rotate_helpers, helper_name, None)
+        if helper_func is None:
+            if logger.debug_on:
+                logger.debug("[const-call] helper %s not found in rotate_helpers", helper_name)
+            return None
         result = helper_func(lhs_val, rhs_val) & AND_TABLE[ins.d.size]
 
         new = ida_hexrays.minsn_t(sanitize_ea(ins.ea))

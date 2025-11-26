@@ -44,6 +44,7 @@ class SymbolicExpression:
         name: str | None = None,
         value: int | None = None,
         constraint: ConstraintExpr | None = None,
+        is_pattern_constant: bool = False,
     ):
         """Initialize a symbolic expression.
 
@@ -54,6 +55,7 @@ class SymbolicExpression:
             name: Name for variables/constants.
             value: Concrete value for constants, None for variables/symbolic constants.
             constraint: Boolean constraint (only for "bool_to_int" operation).
+            is_pattern_constant: True if this is a pattern-matching constant (created via Const()).
         """
         self.operation = operation
         self.left = left
@@ -61,6 +63,7 @@ class SymbolicExpression:
         self.name = name
         self.value = value
         self.constraint = constraint
+        self.is_pattern_constant = is_pattern_constant
 
     def is_leaf(self) -> bool:
         """Check if this is a leaf node (variable or constant)."""
@@ -282,7 +285,7 @@ def Const(name: str, value: int | None = None) -> SymbolicExpression:
         >>> one = Const("ONE", 1)  # Matches only value 1
         >>> pattern = x + Const("c_1")  # x plus any constant
     """
-    return SymbolicExpression(name=name, value=value)
+    return SymbolicExpression(name=name, value=value, is_pattern_constant=True)
 
 
 def Zext(expr: SymbolicExpression, target_width: int) -> SymbolicExpression:

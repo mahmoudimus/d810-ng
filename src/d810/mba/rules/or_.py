@@ -76,6 +76,26 @@ class Or_MbaRule_1(VerifiableRule):
     REFERENCE = "Mixed Boolean-Arithmetic, OR identity"
 
 
+class Or_MbaRule_1_Commuted(VerifiableRule):
+    """Simplify: (x ^ y) + (x & y) => x | y
+
+    Commutative variant of Or_MbaRule_1.
+    IDA's decompiler may produce operands in either order.
+
+    Proof:
+        x | y = (x ^ y) + (x & y)    (OR definition, addition is commutative)
+
+    Example:
+        (a ^ b) + (a & b) => a | b
+    """
+
+    PATTERN = (x ^ y) + (x & y)
+    REPLACEMENT = x | y
+
+    DESCRIPTION = "Simplify MBA expression to OR (commuted)"
+    REFERENCE = "Mixed Boolean-Arithmetic, OR identity (commutative variant)"
+
+
 class Or_MbaRule_2(VerifiableRule):
     """Simplify: ((x + y) + 1) + ~(x & y) => x | y
 

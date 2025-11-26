@@ -11,6 +11,7 @@ the rule definitions in d810.mba.rules pure and backend-agnostic.
 
 from __future__ import annotations
 
+import itertools
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import ida_hexrays
@@ -24,11 +25,165 @@ from d810.mba.constraints import (
     is_constraint_expr,
 )
 
+# Import egglog pattern generation (optional - graceful fallback if not available)
+try:
+    from d810.mba.backends.egglog_backend import (
+        EGGLOG_AVAILABLE,
+        PatternExpr,
+        verify_pattern_equivalence,
+    )
+except ImportError:
+    EGGLOG_AVAILABLE = False
+    PatternExpr = None
+    verify_pattern_equivalence = None
+
 logger = getLogger(__name__)
 
 # Type hints only
 if TYPE_CHECKING:
     from d810.mba.rules import VerifiableRule
+
+
+# =============================================================================
+# Egglog-based Pattern Generation Helpers
+# =============================================================================
+
+# Map DSL operation names to commutative status
+# Note: DSL uses "and", "or" (not "and_", "or_")
+_COMMUTATIVE_OPS = {"add", "mul", "and", "or", "xor"}
+
+
+def _symbolic_to_pattern_expr(expr: SymbolicExpression) -> "PatternExpr":
+    """Convert a SymbolicExpression to a PatternExpr for egglog verification.
+
+    Args:
+        expr: The SymbolicExpression from the DSL.
+
+    Returns:
+        PatternExpr suitable for egglog equivalence checking.
+    """
+    if not EGGLOG_AVAILABLE:
+        raise ImportError("egglog not available")
+
+    # Note: is_variable() and is_constant() are methods, not properties
+    if expr.is_variable():
+        return PatternExpr.var(expr.name)
+
+    if expr.is_constant():
+        # Constants are treated as variables for pattern matching
+        return PatternExpr.var(f"const_{expr.value}")
+
+    # Binary operations
+    op = expr.operation
+    left = _symbolic_to_pattern_expr(expr.left)
+    right = _symbolic_to_pattern_expr(expr.right) if expr.right else None
+
+    if op == "add":
+        return left + right
+    elif op == "sub":
+        return left - right
+    elif op == "mul":
+        return left * right
+    elif op == "and":
+        return left & right
+    elif op == "or":
+        return left | right
+    elif op == "xor":
+        return left ^ right
+    elif op == "neg":
+        return -left
+    elif op == "bnot":
+        return ~left
+    else:
+        # Unsupported operations (shl, shr, sar, lnot, etc.) raise ValueError
+        # This is handled gracefully by _filter_equivalent_patterns
+        raise ValueError(f"Unsupported operation for egglog pattern gen: {op}")
+
+
+def _generate_commutative_permutations(expr: SymbolicExpression) -> List[SymbolicExpression]:
+    """Generate all commutative permutations of a SymbolicExpression.
+
+    This recursively generates all permutations where commutative operators
+    have their operands swapped.
+
+    Args:
+        expr: The base expression.
+
+    Returns:
+        List of all commutative permutations (including the original).
+    """
+    # Note: is_variable() and is_constant() are methods, not properties
+    if expr.is_variable() or expr.is_constant():
+        return [expr]
+
+    # Unary operations
+    if expr.right is None:
+        left_perms = _generate_commutative_permutations(expr.left)
+        return [
+            SymbolicExpression(expr.operation, left=lp, right=None)
+            for lp in left_perms
+        ]
+
+    # Binary operations
+    left_perms = _generate_commutative_permutations(expr.left)
+    right_perms = _generate_commutative_permutations(expr.right)
+
+    results = []
+    for lp, rp in itertools.product(left_perms, right_perms):
+        # Original order
+        results.append(SymbolicExpression(expr.operation, left=lp, right=rp))
+
+        # Swapped order (if commutative)
+        if expr.operation in _COMMUTATIVE_OPS:
+            results.append(SymbolicExpression(expr.operation, left=rp, right=lp))
+
+    return results
+
+
+def _filter_equivalent_patterns(
+    base_expr: SymbolicExpression,
+    candidates: List[SymbolicExpression],
+) -> List[SymbolicExpression]:
+    """Use egglog to filter patterns that are equivalent to the base.
+
+    Args:
+        base_expr: The base expression.
+        candidates: Candidate permutations to check.
+
+    Returns:
+        List of candidates verified equivalent to base_expr.
+    """
+    if not EGGLOG_AVAILABLE or verify_pattern_equivalence is None:
+        # Fallback: return all candidates without verification
+        logger.debug("egglog not available, skipping equivalence verification")
+        return candidates
+
+    # Try to convert base pattern - if it fails (unsupported op), return all
+    try:
+        base_pattern = _symbolic_to_pattern_expr(base_expr)
+    except ValueError as e:
+        logger.debug(
+            "Pattern contains unsupported operation for egglog, "
+            "returning all permutations: %s", e
+        )
+        return candidates
+
+    verified = [base_expr]
+
+    for candidate in candidates:
+        if candidate is base_expr:
+            continue
+        try:
+            candidate_pattern = _symbolic_to_pattern_expr(candidate)
+            if verify_pattern_equivalence(base_pattern, candidate_pattern):
+                verified.append(candidate)
+        except ValueError:
+            # Unsupported operation - include anyway (commutative perms are correct)
+            verified.append(candidate)
+        except Exception as e:
+            logger.debug("Failed to verify pattern: %s", e)
+
+    return verified
 
 
 class _LeafWrapper:
@@ -135,6 +290,10 @@ class IDANodeVisitor:
         if expr.is_constant():
             # Concrete constant (has a value)
             return AstConstant(expr.name, expr.value)
+        elif getattr(expr, 'is_pattern_constant', False):
+            # Pattern-matching constant (value computed from constraints)
+            # Use AstConstant so it can receive computed value and create mop_n
+            return AstConstant(expr.name, None)
         else:
             # Variable or pattern-matching placeholder
             return AstLeaf(expr.name)
@@ -322,14 +481,49 @@ class IDAPatternAdapter:
 
         This property lazily converts the DSL SymbolicExpression to AstNode
         only when accessed in IDA context.
+
+        Pattern Generation Strategy:
+        1. Generate all commutative permutations of the base pattern
+        2. Use egglog (if available) to verify which permutations are equivalent
+        3. Convert all verified equivalent patterns to AstNode format
+        4. Return them all as candidates for pattern matching
+
+        This eliminates the need for manually defined *_Commuted rule variants.
+        The egglog verification runs ONCE at startup (lazy on first access),
+        not during decompilation, so performance overhead is minimal.
         """
         if self._pattern_candidates_cache is None:
             pattern = self.rule.pattern
-            if pattern is not None:
-                ast_node = self._visitor.visit(pattern)
-                self._pattern_candidates_cache = [ast_node] if ast_node else []
-            else:
+            if pattern is None:
                 self._pattern_candidates_cache = []
+                return self._pattern_candidates_cache
+
+            # Generate all commutative permutations
+            permutations = _generate_commutative_permutations(pattern)
+            logger.debug(
+                "Rule %s: Generated %d commutative permutations",
+                self.name, len(permutations)
+            )
+
+            # Use egglog to filter only equivalent patterns
+            # (Falls back to returning all permutations if egglog unavailable)
+            equivalent_patterns = _filter_equivalent_patterns(pattern, permutations)
+            logger.debug(
+                "Rule %s: %d patterns verified equivalent by egglog",
+                self.name, len(equivalent_patterns)
+            )
+
+            # Convert to AstNode format
+            candidates = []
+            for expr in equivalent_patterns:
+                try:
+                    ast_node = self._visitor.visit(expr)
+                    if ast_node is not None:
+                        candidates.append(ast_node)
+                except Exception as e:
+                    logger.debug("Failed to convert pattern to AstNode: %s", e)
+
+            self._pattern_candidates_cache = candidates
         return self._pattern_candidates_cache
 
     @property

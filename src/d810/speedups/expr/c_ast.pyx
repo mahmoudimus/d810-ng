@@ -683,12 +683,29 @@ cdef class AstLeaf(AstBase):
         return new_mop  # duplicates the C++ object
 
     def update_leafs_mop(self, other: AstNode, other2: AstNode | None = None):
+        source_leaf = None
         if other is not None and self.name in other.leafs_by_name:
-            self.mop = other.leafs_by_name[self.name].mop
-            return True
+            source_leaf = other.leafs_by_name[self.name]
         elif other2 is not None and self.name in other2.leafs_by_name:
-            self.mop = other2.leafs_by_name[self.name].mop
+            source_leaf = other2.leafs_by_name[self.name]
+
+        if source_leaf is None:
+            return False
+
+        # Copy mop if available
+        if source_leaf.mop is not None:
+            self.mop = source_leaf.mop
             return True
+
+        # For computed constants (e.g., c_res from constraints), copy the value
+        # so that create_mop can generate a constant mop
+        source_value = getattr(source_leaf, 'value', None)
+        if source_value is None:
+            source_value = getattr(source_leaf, 'expected_value', None)
+        if source_value is not None:
+            self.value = source_value
+            return True
+
         return False
 
     def check_pattern_and_copy_mops(self, ast, read_only: bool = False):
@@ -789,8 +806,10 @@ cdef class AstConstant(AstLeaf):
 
     @property
     def value(self):
-        assert self.mop is not None and self.mop.t == ida_hexrays.mop_n
-        return self.mop.nnn.value
+        if self.mop is not None and self.mop.t == ida_hexrays.mop_n:
+            return self.mop.nnn.value
+        # Fall back to expected_value for computed constants (e.g., c_res from constraints)
+        return self.expected_value
 
     @_compat.override
     def is_constant(self) -> bool:
@@ -859,6 +878,42 @@ cdef class AstConstant(AstLeaf):
     @_compat.override
     def __repr__(self):
         return f"AstConstant({str(self)})"
+
+    def update_leafs_mop(self, other: AstNode, other2: AstNode | None = None):
+        """Override to store computed value in expected_value instead of value."""
+        source_leaf = None
+        if other is not None and self.name in other.leafs_by_name:
+            source_leaf = other.leafs_by_name[self.name]
+        elif other2 is not None and self.name in other2.leafs_by_name:
+            source_leaf = other2.leafs_by_name[self.name]
+
+        if source_leaf is None:
+            return False
+
+        # Copy mop if available
+        if source_leaf.mop is not None:
+            self.mop = source_leaf.mop
+            # Also update expected_value from the mop
+            if source_leaf.mop.t == ida_hexrays.mop_n:
+                self.expected_value = source_leaf.mop.nnn.value
+                self.expected_size = source_leaf.mop.size
+            return True
+
+        # For computed constants, copy to expected_value
+        source_value = getattr(source_leaf, 'value', None)
+        if source_value is None:
+            source_value = getattr(source_leaf, 'expected_value', None)
+        if source_value is not None:
+            self.expected_value = source_value
+            # Try to get size too
+            source_size = getattr(source_leaf, 'expected_size', None)
+            if source_size is None:
+                source_size = getattr(source_leaf, 'dest_size', None)
+            if source_size is not None:
+                self.expected_size = source_size
+            return True
+
+        return False
 
     cpdef AstConstant clone(self):
         """Fast, C-level cloner for AstConstant instances."""
