@@ -148,9 +148,9 @@ class TestLibDeobfuscated:
             state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
 
     @pytest.mark.skip(
-        reason="Test was based on broken Or_Rule_1 matching without proper BNOT constraint checking. "
-        "The patterns in test_cst_simplification don't actually match Or_Rule_1's constraint (~x & y) | x. "
-        "Needs proper rule that matches the actual pattern to be re-enabled."
+        reason="Test patterns don't match existing rules after proper BNOT constraint checking. "
+        "The MBA patterns like (x & c1 | c2) + (~x & c1 | c3) need specific rules to handle. "
+        "Also shows 'AstConstant(c_res) mop is None' errors during replacement."
     )
     def test_cst_simplification(
         self,
