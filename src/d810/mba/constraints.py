@@ -195,10 +195,12 @@ class EqualityConstraint(ConstraintExpr):
         # left should be a simple variable (e.g., "bnot_y")
         # right should be ~variable (e.g., ~y)
         if not self._is_simple_constant(self.left):
+            logger.debug("_check_bnot_constraint: left is not simple constant")
             return False
 
         left_name = self._get_name(self.left)
         if left_name not in candidate:
+            logger.debug(f"_check_bnot_constraint: {left_name} not in candidate keys {list(candidate.keys())}")
             return False
 
         # Get the operand of the BNOT (e.g., "y" from ~y)
@@ -207,10 +209,12 @@ class EqualityConstraint(ConstraintExpr):
             not isinstance(bnot_operand, SymbolicExpression)
             or not bnot_operand.is_leaf()
         ):
+            logger.debug("_check_bnot_constraint: bnot_operand is not a leaf")
             return False
 
         operand_name = bnot_operand.name
         if operand_name not in candidate:
+            logger.debug(f"_check_bnot_constraint: {operand_name} not in candidate keys {list(candidate.keys())}")
             return False
 
         # Get the matched AstNodes

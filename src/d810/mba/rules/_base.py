@@ -356,18 +356,25 @@ class VerifiableRule(SymbolicRule, Registrant):
             True if all constraints are satisfied, False otherwise
         """
         # Build match context from candidate's matched variables
-        # The candidate has a dictionary mapping variable names to matched mops
-        if not hasattr(candidate, "get_z3_vars") and not hasattr(candidate, "mop_dict"):
-            # If candidate doesn't have variable bindings yet, assume it's valid
-            # The actual constraint checking will happen during replacement
-            return True
-
-        # Get the variable bindings from the candidate
+        # AstNode stores matched leaves in leafs_by_name after pattern matching
+        # Also support legacy mop_dict and get_z3_vars interfaces
         match_context = {}
-        if hasattr(candidate, "mop_dict"):
+        if hasattr(candidate, "leafs_by_name") and candidate.leafs_by_name:
+            match_context = candidate.leafs_by_name
+        elif hasattr(candidate, "mop_dict"):
             match_context = candidate.mop_dict
         elif hasattr(candidate, "get_z3_vars"):
             match_context = candidate.get_z3_vars({})
+
+        # If no variable bindings are available, we can't check constraints
+        # This happens when the pattern is checked in read_only mode before mops are populated
+        if not match_context:
+            # If this rule has CONSTRAINTS, we need bindings to check them
+            # Return False to force the caller to populate bindings first
+            if hasattr(self, "CONSTRAINTS") and self.CONSTRAINTS:
+                return False
+            # No constraints to check, pattern match is sufficient
+            return True
 
         # CRITICAL: Add the candidate itself so constraints/providers can inspect it
         # This enables context-aware constraints like when.dst.is_high_half

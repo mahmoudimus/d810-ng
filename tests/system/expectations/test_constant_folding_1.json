@@ -1,0 +1,16 @@
+{
+  "cfg_rule_usages": {},
+  "instruction_rule_matches": {
+    "Or_HackersDelightRule_1": 6
+  },
+  "optimizer_matches": {
+    "PatternOptimizer": 6
+  },
+  "rule_executions": {
+    "or_hackersdelightrule_1": {
+      "match_count": 6,
+      "rule_name": "Or_HackersDelightRule_1"
+    }
+  },
+  "total_rule_firings": 6
+}

@@ -1,0 +1,36 @@
+{
+  "cfg_rule_usages": {
+    "JumpFixer": [
+      true
+    ]
+  },
+  "instruction_rule_matches": {
+    "BnotOr_FactorRule_1": 1,
+    "Bnot_XorRule_1": 1,
+    "Xor_HackersDelightRule_1": 1,
+    "Z3ConstantOptimization": 2
+  },
+  "optimizer_matches": {
+    "PatternOptimizer": 3,
+    "Z3Optimizer": 2
+  },
+  "rule_executions": {
+    "bnot_xorrule_1": {
+      "match_count": 1,
+      "rule_name": "Bnot_XorRule_1"
+    },
+    "bnotor_factorrule_1": {
+      "match_count": 1,
+      "rule_name": "BnotOr_FactorRule_1"
+    },
+    "xor_hackersdelightrule_1": {
+      "match_count": 1,
+      "rule_name": "Xor_HackersDelightRule_1"
+    },
+    "z3constantoptimization": {
+      "match_count": 2,
+      "rule_name": "Z3ConstantOptimization"
+    }
+  },
+  "total_rule_firings": 5
+}

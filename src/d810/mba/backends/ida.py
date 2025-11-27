@@ -564,14 +564,16 @@ class IDAPatternAdapter:
         for candidate_pattern in self.pattern_candidates:
             if not candidate_pattern:
                 continue
-            # Use a read-only check first
+            # Use a read-only check first for structural matching (no mops copied)
             if not candidate_pattern.check_pattern_and_copy_mops(tmp, read_only=True):
                 continue
-            if not self._check_candidate(candidate_pattern):
-                continue
-            # If the read-only check passes, create a mutable copy
+            # Create a mutable copy and populate mops
             mutable_candidate = candidate_pattern.clone()
             if not mutable_candidate.check_pattern_and_copy_mops(tmp):
+                continue
+            # Check constraints AFTER mops are populated
+            # This ensures constraint checks have access to the matched mops
+            if not self._check_candidate(mutable_candidate):
                 continue
             valid_candidates.append(mutable_candidate)
             if stop_early:
@@ -689,8 +691,11 @@ class IDAPatternAdapter:
             return True
 
         # Build match context from candidate's matched variables
+        # AstNode stores matched leaves in leafs_by_name after pattern matching
         match_context = {}
-        if hasattr(candidate, 'mop_dict'):
+        if hasattr(candidate, 'leafs_by_name') and candidate.leafs_by_name:
+            match_context = candidate.leafs_by_name
+        elif hasattr(candidate, 'mop_dict'):
             match_context = candidate.mop_dict
         elif hasattr(candidate, 'get_z3_vars'):
             match_context = candidate.get_z3_vars({})
