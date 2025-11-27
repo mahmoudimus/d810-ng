@@ -63,8 +63,31 @@ def block_serial_path(self) -> list[int]:
 8. **Abstract interpretation** - merge paths early, avoid concrete enumeration
 9. **Incremental emulation** - checkpoint at branch points
 
+## Implemented Optimizations
+
+### Phase 1: V2 Rule with Predecessor Caching (1.5x speedup)
+- Created `fix_pred_cond_jump_block_v2.py` with `PredecessorAnalysisCache`
+- Added lazy logging to avoid formatting overhead
+- Reduced time from 8.3s → ~5.5s
+
+### Phase 2: MopHistory Serial Caching (Expected 2-3x additional)
+- Added `_serial_cache` and `_serial_set_cache` to `MopHistory` class
+- `block_serial_path` property now cached (was 102K calls creating new lists)
+- Added `block_serial_set` property for O(1) membership testing
+- Added `contains_block_serial()` method replacing O(n) `in` check
+- Cache invalidated on `insert_block_in_path` and `replace_block_in_path`
+- Cache copied during `get_copy()` for structural sharing
+
+### Phase 3: Extracted Components (In `tracker_components.py`)
+- `ImmutableBlockInfo`: frozen dataclass for copy-free sharing
+- `CachedBlockPath`: cached serials with O(1) membership
+- `MopSet`: hash-based mop lookup
+
 ## Files Generated
 
 - `/tmp/hodur_profile.html` - Pyinstrument flame graph
 - `/tmp/hodur_cprofile.prof` - cProfile binary stats (use `snakeviz` to view)
 - `scripts/profile_unflattening.py` - Profiling script
+- `scripts/profile_unflattening_v2.py` - V1 vs V2 comparison script
+- `src/d810/hexrays/tracker_components.py` - Extracted optimized components
+- `src/d810/optimizers/microcode/flow/flattening/fix_pred_cond_jump_block_v2.py` - Optimized V2 rule
