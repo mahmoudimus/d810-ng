@@ -75,3 +75,27 @@ bd automatically syncs with git:
 - Run `bd sync` at end of sessions
 - Do NOT create markdown TODO lists
 - Do NOT commit `.beads/beads.db` (JSONL only)
+
+### Known Issues & Workarounds
+
+#### `bd sync` fails with "prefix mismatch" error (bd 0.25.1)
+
+**Symptom:**
+```
+Import failed: prefix mismatch detected: database uses 'd810-ng-' but found issues with prefixes: [d810- (4 issues)]
+```
+
+**Cause:** Bug in bd 0.25.1 where hyphenated prefixes (like `d810-ng-`) are incorrectly parsed during the pull/import step. It splits `d810-ng-e68` as prefix `d810-` + suffix `ng-e68` instead of `d810-ng-` + `e68`.
+
+**Workaround:** Use `--no-pull` flag:
+```bash
+bd sync --no-pull
+```
+
+This is safe when there's no remote beads data to pull yet. The issue may self-resolve once beads data is established on the remote branch or when bd is updated.
+
+**Manual sync alternative:**
+```bash
+bd export --no-daemon
+bd import --no-daemon
+```
