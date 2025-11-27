@@ -981,7 +981,6 @@ class TestLibDeobfuscated:
                 )
                 state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
 
-    @pytest.mark.skip(reason="Hodur deobfuscation is .. way too slow")
     def test_hodur_func(self, libobfuscated_setup, d810_state, pseudocode_to_string):
         """Test Hodur C2 control flow flattening deobfuscation.
 
@@ -989,12 +988,14 @@ class TestLibDeobfuscated:
         the Hodur malware family, which uses state machine dispatchers with
         encrypted strings and dynamic API resolution.
         """
-        func_ea = get_func_ea("_hodur_func")
+        # Try all known naming conventions (double underscore, single underscore, no prefix)
+        func_ea = get_func_ea("__hodur_func")
         if func_ea == idaapi.BADADDR:
-            # Also try without underscore prefix
+            func_ea = get_func_ea("_hodur_func")
+        if func_ea == idaapi.BADADDR:
             func_ea = get_func_ea("hodur_func")
         if func_ea == idaapi.BADADDR:
-            pytest.skip("Function '_hodur_func' not found in this binary")
+            pytest.skip("Function '__hodur_func' not found in this binary")
 
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
