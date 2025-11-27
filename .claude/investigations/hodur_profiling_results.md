@@ -83,7 +83,37 @@ def block_serial_path(self) -> list[int]:
 - `block_serial_path`: 1.32s → 0.48s (64% reduction)
 - New `block_serial_set` + `contains_block_serial`: 0.55s for O(1) lookup
 
-### Phase 3: Extracted Components (In `tracker_components.py`)
+### Phase 3: Immutable BlockInfo with Structural Sharing (IMPLEMENTED!)
+**Measured Results (Nov 26):**
+- Total time: 6.2s → 5.43s (12% faster, 35% faster than original 8.3s)
+- `MopHistory.get_copy`: 0.76s → 0.455s (40% reduction)
+- `BlockInfo.get_copy`: 0.55s → ~0s (eliminated - returns self, immutable)
+- `block_serial_path`: 0.475s (cached, 64% reduction from 1.32s)
+
+**Implementation:**
+- Made `BlockInfo.ins_list` a tuple instead of list (immutable)
+- Added `with_prepended_ins()`, `with_appended_ins()`, `with_new_blk()` methods for copy-on-write
+- `MopHistory.get_copy()` now does shallow copy of history list (BlockInfo objects are shared)
+- Mutations create new BlockInfo objects via copy-on-write methods
+
+**Remaining bottlenecks:**
+- Generator expressions for serial cache: 0.39s combined
+- `MicroCodeEnvironment.get_copy`: 0.28s
+- `minsn_t__print`: 0.24s (reduced from 0.40s via lazy logging)
+
+### Phase 5: Lazy Logging Guards (IMPLEMENTED!)
+**Measured Results (Nov 26):**
+- Total time: 5.43s → 3.5s (35% faster, 58% faster than original 8.3s)
+- `_execute_microcode`: 1.36s → 0.52s (62% reduction)
+- `minsn_t__print`: 0.40s → 0.24s (40% reduction)
+- `str.format`: eliminated from hot path
+
+**Implementation:**
+- Added `if logger.debug_on:` guards before all expensive formatting in tracker.py
+- Key areas: `_execute_microcode`, `search_backward`, `update_history`
+- Uses `d810.core.logging.LevelFlag` for O(1) level check
+
+### Phase 3 prototype: Extracted Components (In `tracker_components.py`)
 - `ImmutableBlockInfo`: frozen dataclass for copy-free sharing
 - `CachedBlockPath`: cached serials with O(1) membership
 - `MopSet`: hash-based mop lookup
