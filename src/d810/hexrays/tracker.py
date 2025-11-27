@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 import ida_hexrays
 
@@ -22,6 +23,9 @@ from d810.hexrays.hexrays_helpers import (
     get_blk_index,
     get_mop_index,
 )
+
+if TYPE_CHECKING:
+    from typing import Union
 
 # This module can be use to find the instruction that define the value of a mop. Basically, you:
 # 1 - Create a MopTracker object with the list of mops to search
@@ -375,6 +379,110 @@ def get_standard_and_memory_mop_lists(mop_in: ida_hexrays.mop_t) -> tuple[list[i
 cur_mop_tracker_nb_path = 0
 
 
+class SearchContext:
+    """Context for a single search_backward operation with memoization.
+
+    This class manages state across recursive search_backward calls to:
+    1. Track visited (block, state) pairs to avoid redundant exploration
+    2. Cache results for memoization
+    3. Track statistics for debugging
+
+    The key insight is that path explosion happens when the same (block, unresolved_mops)
+    state is explored via multiple paths. By caching these, we avoid the 113x amplification.
+    """
+    __slots__ = ('visited_states', 'result_cache', 'stats_hits', 'stats_misses', 'stats_skipped')
+
+    def __init__(self):
+        # Set of (block_serial, unresolved_state_hash) that have been visited
+        self.visited_states: set[tuple[int, int]] = set()
+        # Cache: (block_serial, unresolved_state_hash) -> list of histories
+        self.result_cache: dict[tuple[int, int], list] = {}
+        # Statistics
+        self.stats_hits = 0
+        self.stats_misses = 0
+        self.stats_skipped = 0
+
+    def make_state_hash(self, unresolved_mops: list, memory_unresolved_mops: list) -> int:
+        """Create a hashable representation of the unresolved state.
+
+        Uses the mop type and value for hashing to identify equivalent states.
+        """
+        # Build tuple of (mop_type, mop_repr) for each unresolved mop
+        state_parts = []
+        for mop in unresolved_mops:
+            # Use type and string representation for uniqueness
+            state_parts.append((mop.t, format_mop_t(mop)))
+        for mop in memory_unresolved_mops:
+            state_parts.append((-1, format_mop_t(mop)))  # -1 to distinguish memory mops
+        return hash(tuple(sorted(state_parts)))
+
+    def check_and_mark_visited(self, blk_serial: int, state_hash: int) -> bool:
+        """Check if state was visited; if not, mark it visited.
+
+        Returns True if this is a new state (should explore).
+        Returns False if already visited (should skip).
+        """
+        key = (blk_serial, state_hash)
+        if key in self.visited_states:
+            self.stats_skipped += 1
+            return False
+        self.visited_states.add(key)
+        return True
+
+    def get_cached(self, blk_serial: int, state_hash: int) -> list | None:
+        """Get cached result if available."""
+        key = (blk_serial, state_hash)
+        result = self.result_cache.get(key)
+        if result is not None:
+            self.stats_hits += 1
+        else:
+            self.stats_misses += 1
+        return result
+
+    def cache_result(self, blk_serial: int, state_hash: int, histories: list) -> None:
+        """Cache the result for future lookups."""
+        key = (blk_serial, state_hash)
+        self.result_cache[key] = histories
+
+
+# Global search context for the current search operation
+_current_search_context: SearchContext | None = None
+
+
+def get_search_statistics() -> dict[str, int]:
+    """Get statistics from the most recent search_backward operation.
+
+    Returns a dict with:
+    - visited_states: Number of unique (block, state) pairs explored
+    - skipped: Number of states skipped due to memoization
+    - cache_hits: Number of times cached results were used
+    - cache_misses: Number of times cache lookup failed
+    - reduction_factor: Ratio of skipped to total (higher = more savings)
+
+    This is useful for profiling and debugging search performance.
+    """
+    if _current_search_context is None:
+        return {
+            'visited_states': 0,
+            'skipped': 0,
+            'cache_hits': 0,
+            'cache_misses': 0,
+            'reduction_factor': 0.0,
+        }
+
+    ctx = _current_search_context
+    total = len(ctx.visited_states) + ctx.stats_skipped
+    reduction = ctx.stats_skipped / total if total > 0 else 0.0
+
+    return {
+        'visited_states': len(ctx.visited_states),
+        'skipped': ctx.stats_skipped,
+        'cache_hits': ctx.stats_hits,
+        'cache_misses': ctx.stats_misses,
+        'reduction_factor': reduction,
+    }
+
+
 class MopTracker(object):
     def __init__(
         self,
@@ -382,6 +490,7 @@ class MopTracker(object):
         max_nb_block=-1,
         max_path=-1,
         dispatcher_info=None,
+        _search_context: SearchContext | None = None,
     ):
         self.mba: ida_hexrays.mba_t
         self._unresolved_mops = []
@@ -397,11 +506,14 @@ class MopTracker(object):
         self.call_detected = False
         self.constant_mops = []
         self.dispatcher_info = dispatcher_info
+        # Search context for memoization (shared across recursive calls)
+        self._search_context = _search_context
 
     @staticmethod
     def reset():
-        global cur_mop_tracker_nb_path
+        global cur_mop_tracker_nb_path, _current_search_context
         cur_mop_tracker_nb_path = 0
+        _current_search_context = None
 
     def add_mop_definition(self, mop: ida_hexrays.mop_t, cst_value: int):
         self.constant_mops.append([mop, cst_value])
@@ -410,7 +522,8 @@ class MopTracker(object):
     def get_copy(self) -> MopTracker:
         global cur_mop_tracker_nb_path
         new_mop_tracker = MopTracker(
-            self._unresolved_mops, self.max_nb_block, self.max_path
+            self._unresolved_mops, self.max_nb_block, self.max_path,
+            _search_context=self._search_context  # Share context across copies
         )
         new_mop_tracker._memory_unresolved_mops = [
             x for x in self._memory_unresolved_mops
@@ -423,11 +536,19 @@ class MopTracker(object):
     def search_backward(
         self,
         blk: ida_hexrays.mblock_t,
-        ins: ida_hexrays.minsn_t | None,
+        ins: ida_hexrays.minsn_t | None = None,
         avoid_list=None,
         must_use_pred=None,
         stop_at_first_duplication=False,
     ) -> list[MopHistory]:
+        global _current_search_context
+
+        # Initialize search context for top-level call
+        is_top_level = self._search_context is None
+        if is_top_level:
+            self._search_context = SearchContext()
+            _current_search_context = self._search_context
+
         if logger.debug_on:
             logger.debug(
                 "Searching backward (reg): %s",
@@ -443,6 +564,22 @@ class MopTracker(object):
             )
         self.mba = blk.mba
         self.avoid_list = avoid_list if avoid_list else []
+
+        # Compute state hash for memoization
+        state_hash = self._search_context.make_state_hash(
+            self._unresolved_mops, self._memory_unresolved_mops
+        )
+
+        # Check if we've already visited this (block, state) pair
+        if not self._search_context.check_and_mark_visited(blk.serial, state_hash):
+            if logger.debug_on:
+                logger.debug(
+                    "Skipping already-visited state: block %d, state_hash %d",
+                    blk.serial, state_hash
+                )
+            # Return empty list since this state was already explored
+            return []
+
         blk_with_multiple_pred = self.search_until_multiple_predecessor(blk, ins)
         if self.is_resolved():
             if logger.debug_on:
