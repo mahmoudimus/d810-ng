@@ -38,8 +38,11 @@ else
 endif
 
 # ----------------------------- User configurable options -----------------------------
-TARGET_OS    ?= windows          # windows | darwin | linux | native
-BUILD_ARCH   ?= x86_64           # x86_64 | x86 | arm64 | aarch64 | -m32 | -arch arm64 | etc.
+# windows | darwin | linux | native
+TARGET_OS    ?= windows
+# x86_64 | x86 | arm64 | aarch64 | -m32 | -arch arm64 | etc.
+BUILD_ARCH   ?= x86_64
+# libobfuscated by default
 BINARY_NAME  ?= libobfuscated
 
 # ----------------------------- Normalize native -----------------------------
@@ -58,22 +61,27 @@ NORM_ARCH := $(strip \
     $(if $(findstring 32,$(RAW_ARCH)),x86,\
     $(if $(findstring x86,$(RAW_ARCH)),x86,x86_64))))))
 
-# Convert to real compiler flags Clang understands everywhere
-ifeq ($(filter -%,$(RAW_ARCH)),)
-    # User gave a plain name → pick the correct flag for the host OS
-    ifeq ($(UNAME_S),Darwin)
-        NORM_FLAG_x86_64 := -arch x86_64
-        NORM_FLAG_x86     := -arch i386
-        NORM_FLAG_arm64   := -arch arm64
-    else
-        NORM_FLAG_x86_64 := -m64
-        NORM_FLAG_x86     := -m32
-        NORM_FLAG_arm64   :=
-    endif
-    ARCH_FLAGS := $(NORM_FLAG_$(NORM_ARCH))
-else
-    # User already gave explicit flags (e.g. "-arch arm64" or "-m32") → trust them
+# Convert to real compiler flags Clang understands, per target OS
+# If the user gave explicit flags (e.g. "-m32" or "-arch arm64"), trust them.
+ARCH_FLAGS :=
+ifneq ($(filter -%,$(RAW_ARCH)),)
     ARCH_FLAGS := $(RAW_ARCH)
+else
+    # Plain architecture name → choose flags based on TARGET_OS
+    ifeq ($(TARGET_OS),darwin)
+        NORM_FLAG_x86_64 := -arch x86_64
+        NORM_FLAG_x86    := -arch i386
+        NORM_FLAG_arm64  := -arch arm64
+        ARCH_FLAGS := $(NORM_FLAG_$(NORM_ARCH))
+    else ifeq ($(TARGET_OS),linux)
+        NORM_FLAG_x86_64 := -m64
+        NORM_FLAG_x86    := -m32
+        ARCH_FLAGS := $(NORM_FLAG_$(NORM_ARCH))
+    else ifeq ($(TARGET_OS),windows)
+        # For MinGW cross, the architecture is encoded in the triple
+        # (i686-w64-mingw32 vs x86_64-w64-mingw32), so we leave ARCH_FLAGS empty.
+        ARCH_FLAGS :=
+    endif
 endif
 
 # Prevent Make's built-in rules from injecting garbage
@@ -106,6 +114,15 @@ ifeq ($(TARGET_OS),windows)
         LD  := $(CC_BASE)
     endif
     OUTPUT_EXT := dll
+    # Optional: point to a MinGW / llvm-mingw sysroot when cross-compiling
+    # Example: make TARGET_OS=windows MINGW_SYSROOT=/opt/llvm-mingw
+    MINGW_SYSROOT ?=
+    ifneq ($(MINGW_SYSROOT),)
+        CC := $(CC) --sysroot=$(MINGW_SYSROOT)
+        LD := $(LD) --sysroot=$(MINGW_SYSROOT)
+        MINGW_INCLUDEDIR ?= $(MINGW_SYSROOT)/include
+        MINGW_LIBDIR     ?= $(MINGW_SYSROOT)/lib
+    endif
 else ifeq ($(TARGET_OS),darwin)
     CC  := $(CC_BASE)
     LD  := $(CC_BASE)
@@ -128,7 +145,7 @@ else
 endif
 
 # ----------------------------- Compiler & Linker flags (your exact debug setup) -----------------------------
-CFLAGS_BASE := -Wall -Wextra $(ARCH_FLAGS) \
+CFLAGS_BASE := -Wall -Wextra \
                -O0 -g -Iinclude \
                -fno-inline -fno-builtin \
                -fno-vectorize -fno-slp-vectorize \
@@ -141,15 +158,21 @@ ifeq ($(TARGET_OS),windows)
         LDFLAGS := /DLL /DEBUG:FULL /FORCE:UNRESOLVED
     else
         # Cross-compile with Clang → MinGW
-        CFLAGS  := $(CFLAGS_BASE)                       # no -fPIC for Windows DLLs
+        CFLAGS  := $(CFLAGS_BASE)
+        ifneq ($(MINGW_INCLUDEDIR),)
+            CFLAGS  += -I$(MINGW_INCLUDEDIR)
+        endif
         LDFLAGS := -shared -fuse-ld=lld \
                    -Wl,--export-all-symbols \
                    -Wl,--enable-auto-import \
-                   -Wl,--unresolved-symbols=ignore-all   # strongest lld option
+                   -Wl,--unresolved-symbols=ignore-all
+        ifneq ($(MINGW_LIBDIR),)
+            LDFLAGS += -L$(MINGW_LIBDIR)
+        endif
     endif
 else
     # Linux / macOS
-    CFLAGS  := $(CFLAGS_BASE) -fPIC
+    CFLAGS  := $(CFLAGS_BASE) -fPIC $(ARCH_FLAGS)
 
     ifeq ($(TARGET_OS),darwin)
         LDFLAGS := -shared -undefined dynamic_lookup $(ARCH_FLAGS)
