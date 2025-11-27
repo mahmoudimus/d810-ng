@@ -10,10 +10,9 @@ import typing
 import ida_kernwin
 import idaapi
 
-if idaapi.is_idaq():
-    from d810.qt_shim import QtCore, QtWidgets, qt_flag_or
-    from d810.ui.testbed import TestRunnerForm
-    
+from d810.qt_shim import QtCore, QtWidgets, qt_flag_or
+from d810.ui.testbed import TestRunnerForm
+
 if typing.TYPE_CHECKING:
     from d810.manager import D810State
 
