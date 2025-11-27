@@ -209,7 +209,6 @@ class JumpFixer(FlowOptimizationRule):
         # Auto-register all JumpOptimizationRule subclasses
         for rule_cls in JumpOptimizationRule.registry.values():
             self.register_rule(rule_cls())
-        JumpOptimizationRule.registry.clear()
 
     def register_rule(self, rule: JumpOptimizationRule):
         self.known_rules.append(rule)
