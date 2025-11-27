@@ -191,9 +191,9 @@ def dump_dispatcher_info(disp_info: Any) -> Dict[str, Any]:
     """
     entry_serial = None
     if getattr(disp_info, "entry_block", None) is not None:
-        entry_serial = getattr(disp_info.entry_block.blk, "serial", None)
-    internal_serials = [b.blk.serial for b in getattr(disp_info, "dispatcher_internal_blocks", [])]
-    exit_serials = [b.blk.serial for b in getattr(disp_info, "dispatcher_exit_blocks", [])]
+        entry_serial = getattr(disp_info.entry_block, "serial", None)
+    internal_serials = [b.serial for b in getattr(disp_info, "dispatcher_internal_blocks", [])]
+    exit_serials = [b.serial for b in getattr(disp_info, "dispatcher_exit_blocks", [])]
     comparison_values = list(getattr(disp_info, "comparison_values", []))
     return {
         "entry_block_serial": entry_serial,

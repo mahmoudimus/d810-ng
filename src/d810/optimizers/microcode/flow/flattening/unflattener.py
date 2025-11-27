@@ -215,11 +215,11 @@ class OllvmDispatcherInfo(GenericDispatcherInfo):
     def _explore_children(self, father_info: OllvmDispatcherBlockInfo):
         for child_serial in father_info.blk.succset:
             if child_serial in [
-                blk_info.blk.serial for blk_info in self.dispatcher_internal_blocks
+                blk_info.serial for blk_info in self.dispatcher_internal_blocks
             ]:
                 return
             if child_serial in [
-                blk_info.blk.serial for blk_info in self.dispatcher_exit_blocks
+                blk_info.serial for blk_info in self.dispatcher_exit_blocks
             ]:
                 return
             child_blk = self.mba.get_mblock(child_serial)
@@ -237,7 +237,7 @@ class OllvmDispatcherInfo(GenericDispatcherInfo):
         self, block_info: OllvmDispatcherBlockInfo
     ) -> list[ida_hexrays.mblock_t]:
         internal_serials = [
-            blk_info.blk.serial for blk_info in self.dispatcher_internal_blocks
+            blk_info.serial for blk_info in self.dispatcher_internal_blocks
         ]
         external_fathers = [
             blk_father
@@ -249,7 +249,7 @@ class OllvmDispatcherInfo(GenericDispatcherInfo):
     def _get_dispatcher_blocks_with_external_father(self) -> list[ida_hexrays.mblock_t]:
         dispatcher_blocks_with_external_father = []
         for blk_info in self.dispatcher_internal_blocks:
-            if blk_info.blk.serial != self.entry_block.blk.serial:
+            if blk_info.serial != self.entry_block.serial:
                 external_fathers = self._get_external_fathers(blk_info)
                 if len(external_fathers) > 0:
                     dispatcher_blocks_with_external_father.append(blk_info)

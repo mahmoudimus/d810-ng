@@ -104,17 +104,22 @@ class BlockInfo(object):
     Uses tuple for ins_list to enable copy-free sharing between MopHistory instances.
     When mutation is needed, use with_prepended_ins/with_appended_ins to create
     a new BlockInfo with the change.
+
+    The serial is cached to avoid repeated SWIG attribute access overhead
+    (profiled at 1.9M accesses taking 0.39s in generator expressions).
     """
-    __slots__ = ('blk', 'ins_list')
+    __slots__ = ('blk', 'ins_list', 'serial')
 
     def __init__(self, blk: ida_hexrays.mblock_t, ins=None):
         self.blk = blk
+        self.serial: int = blk.serial  # Cache serial to avoid SWIG overhead
         self.ins_list: tuple[ida_hexrays.minsn_t, ...] = (ins,) if ins is not None else ()
 
     def with_prepended_ins(self, ins: ida_hexrays.minsn_t) -> BlockInfo:
         """Return new BlockInfo with instruction prepended (copy-on-write)."""
         new_info = BlockInfo.__new__(BlockInfo)
         new_info.blk = self.blk
+        new_info.serial = self.serial
         new_info.ins_list = (ins,) + self.ins_list
         return new_info
 
@@ -122,6 +127,7 @@ class BlockInfo(object):
         """Return new BlockInfo with instruction appended (copy-on-write)."""
         new_info = BlockInfo.__new__(BlockInfo)
         new_info.blk = self.blk
+        new_info.serial = self.serial
         new_info.ins_list = self.ins_list + (ins,)
         return new_info
 
@@ -129,6 +135,7 @@ class BlockInfo(object):
         """Return new BlockInfo with different block (copy-on-write)."""
         new_info = BlockInfo.__new__(BlockInfo)
         new_info.blk = new_blk
+        new_info.serial = new_blk.serial  # Update serial for new block
         new_info.ins_list = self.ins_list
         return new_info
 
@@ -193,18 +200,26 @@ class MopHistory(object):
 
     @property
     def block_serial_path(self) -> list[int]:
-        """Get list of block serials (cached)."""
+        """Get list of block serials (cached).
+
+        Uses cached serial from BlockInfo to avoid SWIG attribute access overhead.
+        """
         if self._serial_cache is None:
-            self._serial_cache = tuple(blk_info.blk.serial for blk_info in self.history)
+            # Use cached serial from BlockInfo (avoids 1.9M SWIG calls)
+            self._serial_cache = tuple(blk_info.serial for blk_info in self.history)
         return list(self._serial_cache)
 
     @property
     def block_serial_set(self) -> frozenset[int]:
-        """Get frozenset of block serials for O(1) membership testing (cached)."""
+        """Get frozenset of block serials for O(1) membership testing (cached).
+
+        Uses cached serial from BlockInfo to avoid SWIG attribute access overhead.
+        """
         if self._serial_set_cache is None:
             # Ensure serial_cache is populated first
             if self._serial_cache is None:
-                self._serial_cache = tuple(blk_info.blk.serial for blk_info in self.history)
+                # Use cached serial from BlockInfo (avoids 1.9M SWIG calls)
+                self._serial_cache = tuple(blk_info.serial for blk_info in self.history)
             self._serial_set_cache = frozenset(self._serial_cache)
         return self._serial_set_cache
 
@@ -265,7 +280,7 @@ class MopHistory(object):
             for blk_ins in blk_info.ins_list:
                 if logger.debug_on:
                     logger.debug(
-                        "Executing: %d.%s", blk_info.blk.serial, format_minsn_t(blk_ins)
+                        "Executing: %d.%s", blk_info.serial, format_minsn_t(blk_ins)
                     )
                 if not self._mc_interpreter.eval_instruction(
                     blk_info.blk, blk_ins, self._mc_current_environment
@@ -337,7 +352,7 @@ class MopHistory(object):
                 for blk_ins in blk_info.ins_list:
                     logger.info(
                         "   {0}.{1}".format(
-                            blk_info.blk.serial, format_minsn_t(blk_ins)
+                            blk_info.serial, format_minsn_t(blk_ins)
                         )
                     )
 

@@ -32,7 +32,7 @@ class TigressSwitchDispatcherInfo(GenericDispatcherInfo):
         for possible_values, target_block_serial in zip(
             mcases.c.values, mcases.c.targets
         ):
-            if target_block_serial == self.entry_block.blk.serial:
+            if target_block_serial == self.entry_block.serial:
                 continue
             exit_block = TigressSwitchDispatcherBlockInfo(
                 blk.mba.get_mblock(target_block_serial), self.entry_block

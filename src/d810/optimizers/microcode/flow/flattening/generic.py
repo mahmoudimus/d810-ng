@@ -49,6 +49,7 @@ class GenericDispatcherBlockInfo(object):
 
     def __init__(self, blk, father=None):
         self.blk = blk
+        self._serial: int = blk.serial  # Cache serial to avoid SWIG overhead
         self.ins = []
         self.use_list = []
         self.use_before_def_list = []
@@ -63,7 +64,7 @@ class GenericDispatcherBlockInfo(object):
 
     @property
     def serial(self) -> int:
-        return self.blk.serial
+        return self._serial
 
     def register_father(self, father: GenericDispatcherBlockInfo):
         self.father = father
@@ -120,15 +121,15 @@ class GenericDispatcherBlockInfo(object):
 
     def show_history(self):
         full_father_list = self.recursive_get_father()
-        unflat_logger.info("    Show history of Block %s", self.blk.serial)
+        unflat_logger.info("    Show history of Block %s", self.serial)
         for father in full_father_list[:-1]:
             for ins in father.ins:
                 unflat_logger.info(
-                    "      %s.%s", father.blk.serial, format_minsn_t(ins)
+                    "      %s.%s", father.serial, format_minsn_t(ins)
                 )
 
     def print_info(self):
-        unflat_logger.info("Block %s information:", self.blk.serial)
+        unflat_logger.info("Block %s information:", self.serial)
         unflat_logger.info("  USE list: %s", format_mop_list(self.use_list))
         unflat_logger.info("  DEF list: %s", format_mop_list(self.def_list))
         unflat_logger.info(
@@ -172,10 +173,10 @@ class GenericDispatcherInfo(object):
         self, other_dispatcher: GenericDispatcherInfo
     ) -> list[ida_hexrays.mblock_t]:
         my_dispatcher_block_serial = [
-            blk_info.blk.serial for blk_info in self.dispatcher_internal_blocks
+            blk_info.serial for blk_info in self.dispatcher_internal_blocks
         ]
         other_dispatcher_block_serial = [
-            blk_info.blk.serial
+            blk_info.serial
             for blk_info in other_dispatcher.dispatcher_internal_blocks
         ]
         return [
@@ -230,7 +231,7 @@ class GenericDispatcherInfo(object):
 
         unflat_logger.info(
             "Executing dispatcher %s with: %s",
-            self.entry_block.blk.serial,
+            self.entry_block.serial,
             ", ".join(dispatcher_input_info),
         )
 
@@ -261,7 +262,7 @@ class GenericDispatcherInfo(object):
         unflat_logger.info("Dispatcher information: ")
         unflat_logger.info(
             "  Entry block: %s.%s: ",
-            self.entry_block.blk.serial,
+            self.entry_block.serial,
             format_minsn_t(self.entry_block.blk.tail),
         )
         unflat_logger.info(
@@ -280,26 +281,26 @@ class GenericDispatcherInfo(object):
         unflat_logger.info(
             "  Number of internal blocks: %s (%s)",
             len(self.dispatcher_internal_blocks),
-            [blk_info.blk.serial for blk_info in self.dispatcher_internal_blocks],
+            [blk_info.serial for blk_info in self.dispatcher_internal_blocks],
         )
         if verbose:
             for disp_blk in self.dispatcher_internal_blocks:
                 unflat_logger.info(
                     "    Internal block: %s.%s ",
-                    disp_blk.blk.serial,
+                    disp_blk.serial,
                     format_minsn_t(disp_blk.blk.tail),
                 )
                 disp_blk.show_history()
         unflat_logger.info(
             "  Number of Exit blocks: %s (%s)",
             len(self.dispatcher_exit_blocks),
-            [blk_info.blk.serial for blk_info in self.dispatcher_exit_blocks],
+            [blk_info.serial for blk_info in self.dispatcher_exit_blocks],
         )
         if verbose:
             for exit_blk in self.dispatcher_exit_blocks:
                 unflat_logger.info(
                     "    Exit block: %s.%s ",
-                    exit_blk.blk.serial,
+                    exit_blk.serial,
                     format_minsn_t(exit_blk.blk.head),
                 )
                 exit_blk.show_history()
@@ -334,7 +335,7 @@ class GenericDispatcherCollector(ida_hexrays.minsn_visitor_t):
     def specific_checks(self, disp_info: GenericDispatcherInfo) -> bool:
         unflat_logger.debug(
             "DispatcherInfo %s : %s internals, %s exits, %s comparison",
-            self.blk.serial,
+            self.serial,
             len(disp_info.dispatcher_internal_blocks),
             len(disp_info.dispatcher_exit_blocks),
             len(set(disp_info.comparison_values)),
@@ -352,9 +353,9 @@ class GenericDispatcherCollector(ida_hexrays.minsn_visitor_t):
         return True
 
     def visit_minsn(self):
-        if self.blk.serial in self.explored_blk_serials:
+        if self.serial in self.explored_blk_serials:
             return 0
-        self.explored_blk_serials.append(self.blk.serial)
+        self.explored_blk_serials.append(self.serial)
         disp_info = self.DISPATCHER_CLASS(self.blk.mba)
         # Pass entropy thresholds if available
         kwargs = {}

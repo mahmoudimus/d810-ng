@@ -188,11 +188,11 @@ class MicrocodeUnflattenPipeline:
             patch_recorder = PatchRecorder()
             for disp in getattr(rule, "dispatcher_list", []):
                 try:
-                    entry_serial = disp.entry_block.blk.serial
+                    entry_serial = disp.entry_block.serial
                     # If there is at least one exit block, record a replace
                     # action from the entry block to the first exit block
                     if disp.dispatcher_exit_blocks:
-                        target_serial = disp.dispatcher_exit_blocks[0].blk.serial
+                        target_serial = disp.dispatcher_exit_blocks[0].serial
                         patch_recorder.record_replace(entry_serial, target_serial)
                 except Exception:
                     pass

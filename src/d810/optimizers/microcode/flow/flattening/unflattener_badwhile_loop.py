@@ -177,9 +177,9 @@ class BadWhileLoopCollector(GenericDispatcherCollector):
     def visit_minsn(self):
         """Override to pass min/max constant parameters to explore."""
 
-        if self.blk.serial in self.explored_blk_serials:
+        if self.serial in self.explored_blk_serials:
             return 0
-        self.explored_blk_serials.append(self.blk.serial)
+        self.explored_blk_serials.append(self.serial)
         if self.curins.opcode not in FLATTENING_JUMP_OPCODES:
             return 0
         disp_info = self.DISPATCHER_CLASS(self.blk.mba)
