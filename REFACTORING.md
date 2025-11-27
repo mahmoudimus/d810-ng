@@ -842,12 +842,11 @@ The infrastructure for composition-based refactoring has been created but is not
 
 #### 1. **Implement Service Methods**
 
-**PathEmulator.resolve_target()** (lines 110-151 in services.py):
-```python
-# TODO: Implement using existing MopTracker and MicroCodeInterpreter
-# from d810.hexrays.tracker import MopTracker
-# from d810.expr.emulator import MicroCodeInterpreter
-```
+**PathEmulator** ✅ COMPLETE (lines 94-290 in services.py):
+- `resolve_target()` - Simple method returning target block or None
+- `emulate_with_history()` - Full emulation with detailed EmulationResult
+- Wraps MopTracker, MicroCodeInterpreter, MicroCodeEnvironment
+- New EmulationResult dataclass for structured results
 
 **CFGPatcher** ✅ COMPLETE (lines 154-427 in services.py):
 - `redirect_edge()` - Handles 0-way, 1-way, and 2-way blocks
@@ -936,11 +935,11 @@ The infrastructure for composition-based refactoring has been created but is not
 | Service Protocols | ✅ Complete | 271 | 100% |
 | Refactored Coordinator | ✅ Skeleton | 284 | 40% |
 | CFGPatcher Implementation | ✅ Complete | 178 | 100% |
-| PathEmulator Implementation | ❌ TODO | 0/150 | 0% |
+| PathEmulator Implementation | ✅ Complete | 147 | 100% |
 | OLLVMDispatcherFinder | ❌ TODO | 0/250 | 0% |
 | Unit Tests | ❌ TODO | 0/300 | 0% |
 | Integration | ❌ TODO | 0/150 | 0% |
-| **TOTAL** | **In Progress** | **877/1727** | **51%** |
+| **TOTAL** | **In Progress** | **1024/1727** | **59%** |
 
 ### 🎯 Next Steps
 
@@ -951,12 +950,12 @@ The infrastructure for composition-based refactoring has been created but is not
    - Immediate testability improvement
    - No complex logic
 
-2. **Next: PathEmulator** (medium risk, high value)
+2. ~~**PathEmulator**~~ ✅ COMPLETE
    - Core functionality needed for unflattening
    - Reuses existing emulation logic
    - Enables end-to-end testing
 
-3. **Finally OLLVMDispatcherFinder** (high complexity, necessary)
+3. **Next: OLLVMDispatcherFinder** (high complexity, necessary)
    - Most complex extraction work
    - Requires understanding existing detection heuristics
    - Unlocks full refactored unflattener
