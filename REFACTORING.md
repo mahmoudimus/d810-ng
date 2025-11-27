@@ -822,12 +822,12 @@ The infrastructure for composition-based refactoring has been created but is not
   - `PatternMatchingRule` - ABC for pattern-based rules
 
 #### 2. **Service Layer Created** ✓
-- **File**: `src/d810/optimizers/microcode/flow/flattening/services.py` (271 LOC)
+- **File**: `src/d810/optimizers/microcode/flow/flattening/services.py` (427 LOC)
 - **Created**:
   - `Dispatcher` - Immutable dataclass replacing `GenericDispatcherInfo`
   - `DispatcherFinder` - Protocol for finding dispatchers
   - `PathEmulator` - Service for resolving state variables (SKELETON ONLY)
-  - `CFGPatcher` - Service for modifying control flow graph (SKELETON ONLY)
+  - `CFGPatcher` - Service for modifying control flow graph (✅ IMPLEMENTED)
 
 #### 3. **Refactored Coordinator** ✓
 - **File**: `src/d810/optimizers/microcode/flow/flattening/unflattener_refactored.py` (284 LOC)
@@ -849,22 +849,12 @@ The infrastructure for composition-based refactoring has been created but is not
 # from d810.expr.emulator import MicroCodeInterpreter
 ```
 
-**CFGPatcher.redirect_edge()** (lines 166-199):
-```python
-# TODO: Implement using existing cfg_utils
-# from d810.hexrays.cfg_utils import change_1way_block_successor
-```
-
-**CFGPatcher.insert_intermediate_block()** (lines 201-238):
-```python
-# TODO: Implement using existing cfg_utils.create_block
-```
-
-**CFGPatcher.ensure_unconditional_predecessor()** (lines 240-270):
-```python
-# TODO: Implement using existing cfg_utils
-# from d810.hexrays.cfg_utils import ensure_child_has_an_unconditional_father
-```
+**CFGPatcher** ✅ COMPLETE (lines 154-427 in services.py):
+- `redirect_edge()` - Handles 0-way, 1-way, and 2-way blocks
+- `insert_intermediate_block()` - Creates blocks with instructions
+- `ensure_unconditional_predecessor()` - Ensures unconditional jumps
+- `duplicate_block()` - Block duplication
+- `clean_cfg()` - CFG cleanup via mba_deep_cleaning
 
 #### 2. **Implement DispatcherFinder**
 
@@ -888,12 +878,13 @@ The infrastructure for composition-based refactoring has been created but is not
 
 #### Phase 1: Implement Core Services (High Priority)
 
-1. **Implement CFGPatcher methods** (Easiest - simple wrappers)
-   - `redirect_edge()` → wrap `change_1way_block_successor()`
-   - `insert_intermediate_block()` → wrap `create_block()`
-   - `ensure_unconditional_predecessor()` → wrap `ensure_child_has_an_unconditional_father()`
-   - **Estimated**: 50-100 LOC, 2-3 hours
-   - **Dependencies**: `d810.hexrays.cfg_utils`
+1. **CFGPatcher** ✅ COMPLETE
+   - `redirect_edge()` → wraps `change_0way/1way_block_successor()`, `make_2way_block_goto()`
+   - `insert_intermediate_block()` → wraps `create_block()`, `change_1way_block_successor()`
+   - `ensure_unconditional_predecessor()` → wraps `ensure_child_has_an_unconditional_father()`
+   - `duplicate_block()` → wraps `duplicate_block()`
+   - `clean_cfg()` → wraps `mba_deep_cleaning()`
+   - **Actual**: 178 LOC added
 
 2. **Implement PathEmulator.resolve_target()** (Medium complexity)
    - Extract emulation logic from `GenericDispatcherUnflatteningRule.emulate_dispatcher_with_father_history()`
@@ -944,23 +935,23 @@ The infrastructure for composition-based refactoring has been created but is not
 | Core Abstractions | ✅ Complete | 144 | 100% |
 | Service Protocols | ✅ Complete | 271 | 100% |
 | Refactored Coordinator | ✅ Skeleton | 284 | 40% |
-| CFGPatcher Implementation | ❌ TODO | 0/100 | 0% |
+| CFGPatcher Implementation | ✅ Complete | 178 | 100% |
 | PathEmulator Implementation | ❌ TODO | 0/150 | 0% |
 | OLLVMDispatcherFinder | ❌ TODO | 0/250 | 0% |
 | Unit Tests | ❌ TODO | 0/300 | 0% |
 | Integration | ❌ TODO | 0/150 | 0% |
-| **TOTAL** | **In Progress** | **699/1649** | **42%** |
+| **TOTAL** | **In Progress** | **877/1727** | **51%** |
 
 ### 🎯 Next Steps
 
 **Recommended order**:
 
-1. **Start with CFGPatcher** (low risk, high value)
+1. ~~**Start with CFGPatcher**~~ ✅ COMPLETE
    - Simple wrappers around existing functions
    - Immediate testability improvement
    - No complex logic
 
-2. **Then PathEmulator** (medium risk, high value)
+2. **Next: PathEmulator** (medium risk, high value)
    - Core functionality needed for unflattening
    - Reuses existing emulation logic
    - Enables end-to-end testing
