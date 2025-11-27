@@ -335,7 +335,7 @@ class GenericDispatcherCollector(ida_hexrays.minsn_visitor_t):
     def specific_checks(self, disp_info: GenericDispatcherInfo) -> bool:
         unflat_logger.debug(
             "DispatcherInfo %s : %s internals, %s exits, %s comparison",
-            self.serial,
+            self.blk.serial,
             len(disp_info.dispatcher_internal_blocks),
             len(disp_info.dispatcher_exit_blocks),
             len(set(disp_info.comparison_values)),
@@ -353,9 +353,9 @@ class GenericDispatcherCollector(ida_hexrays.minsn_visitor_t):
         return True
 
     def visit_minsn(self):
-        if self.serial in self.explored_blk_serials:
+        if self.blk.serial in self.explored_blk_serials:
             return 0
-        self.explored_blk_serials.append(self.serial)
+        self.explored_blk_serials.append(self.blk.serial)
         disp_info = self.DISPATCHER_CLASS(self.blk.mba)
         # Pass entropy thresholds if available
         kwargs = {}

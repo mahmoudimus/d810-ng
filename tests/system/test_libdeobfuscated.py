@@ -981,7 +981,14 @@ class TestLibDeobfuscated:
                 )
                 state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
 
-    def test_hodur_func(self, libobfuscated_setup, d810_state, pseudocode_to_string):
+    def test_hodur_func(
+        self,
+        libobfuscated_setup,
+        d810_state,
+        pseudocode_to_string,
+        capture_stats,
+        load_expected_stats,
+    ):
         """Test Hodur C2 control flow flattening deobfuscation.
 
         This tests deobfuscation of control flow flattening patterns found in
@@ -1034,6 +1041,15 @@ class TestLibDeobfuscated:
                     assert (
                         switch_after <= switch_before
                     ), f"Should reduce switch cases ({switch_before} -> {switch_after})"
+
+                # Capture and verify rule statistics
+                stats_dict = capture_stats(state.stats)
+                expected = load_expected_stats()
+                if expected is None:
+                    pytest.skip(
+                        "Run: pytest tests/system/test_libdeobfuscated.py::TestLibDeobfuscated::test_hodur_func --capture-stats"
+                    )
+                state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
 
     def test_constant_folding_1(
         self,
