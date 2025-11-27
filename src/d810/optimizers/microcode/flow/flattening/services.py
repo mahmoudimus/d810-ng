@@ -161,6 +161,12 @@ class CFGPatcher:
 
     All methods are static because they don't need instance state - they
     operate purely on the provided mba and blocks.
+
+    Implementation notes:
+        This class wraps the low-level functions from d810.hexrays.cfg_utils,
+        providing a clean interface that fits the composition-based architecture.
+        The underlying implementations handle all the complex bookkeeping
+        (predecessor/successor lists, block types, verification).
     """
 
     @staticmethod
@@ -183,20 +189,47 @@ class CFGPatcher:
         Returns:
             The number of changes made (typically 1 if successful, 0 if no-op).
 
+        Raises:
+            RuntimeError: If the CFG modification fails verification.
+
         Example:
             >>> # Unflatten: block_5 -> dispatcher -> block_42
             >>> # Becomes:   block_5 -> block_42
             >>> changes = CFGPatcher.redirect_edge(context, block_5, block_42)
         """
-        # This would use the existing cfg_utils functions
-        # from d810.hexrays.cfg_utils import change_1way_block_successor
+        from d810.hexrays.cfg_utils import (
+            change_0way_block_successor,
+            change_1way_block_successor,
+            make_2way_block_goto,
+        )
+
         context.logger.debug(
             "Redirecting block %s to %s",
             from_block.serial,
             to_block.serial
         )
-        # TODO: Implement using existing cfg_utils
-        return 0
+
+        nsucc = from_block.nsucc()
+
+        if nsucc == 0:
+            # Block has no successors (e.g., ends with indirect jump or return)
+            # We can still redirect by adding a goto
+            success = change_0way_block_successor(from_block, to_block.serial)
+        elif nsucc == 1:
+            # Single successor - most common case
+            success = change_1way_block_successor(from_block, to_block.serial)
+        elif nsucc == 2:
+            # Conditional block - convert to unconditional goto
+            success = make_2way_block_goto(from_block, to_block.serial)
+        else:
+            context.logger.warning(
+                "Cannot redirect block %s with %d successors",
+                from_block.serial,
+                nsucc
+            )
+            return 0
+
+        return 1 if success else 0
 
     @staticmethod
     def insert_intermediate_block(
@@ -204,7 +237,7 @@ class CFGPatcher:
         before_block: ida_hexrays.mblock_t,
         after_block: ida_hexrays.mblock_t,
         instructions: List[ida_hexrays.minsn_t]
-    ) -> ida_hexrays.mblock_t:
+    ) -> ida_hexrays.mblock_t | None:
         """Insert a new block between two existing blocks.
 
         Sometimes the dispatcher performs computations that need to be
@@ -218,7 +251,10 @@ class CFGPatcher:
             instructions: The instructions to place in the new block.
 
         Returns:
-            The newly created block.
+            The newly created block, or None if creation failed.
+
+        Raises:
+            RuntimeError: If the CFG modification fails verification.
 
         Example:
             >>> # The dispatcher does: x = x + 1; jump to block_42
@@ -226,45 +262,165 @@ class CFGPatcher:
             >>> new_blk = CFGPatcher.insert_intermediate_block(
             ...     context, block_5, block_42, [add_instruction])
         """
-        # This would use the existing create_block function
-        # from d810.hexrays.cfg_utils import create_block
+        from d810.hexrays.cfg_utils import (
+            change_1way_block_successor,
+            create_block,
+        )
+
         context.logger.debug(
             "Inserting intermediate block between %s and %s with %d instructions",
             before_block.serial,
             after_block.serial,
             len(instructions)
         )
-        # TODO: Implement using existing cfg_utils.create_block
-        return before_block  # Placeholder
+
+        # Create a new block with the instructions
+        # The new block will initially point to the next block after before_block
+        new_block = create_block(before_block, instructions, is_0_way=False)
+
+        if new_block is None:
+            context.logger.error(
+                "Failed to create intermediate block between %s and %s",
+                before_block.serial,
+                after_block.serial
+            )
+            return None
+
+        # Redirect the new block to point to after_block
+        success = change_1way_block_successor(new_block, after_block.serial)
+        if not success:
+            context.logger.error(
+                "Failed to redirect new block %s to %s",
+                new_block.serial,
+                after_block.serial
+            )
+            return None
+
+        context.logger.debug(
+            "Created intermediate block %s between %s and %s",
+            new_block.serial,
+            before_block.serial,
+            after_block.serial
+        )
+
+        return new_block
 
     @staticmethod
     def ensure_unconditional_predecessor(
         context: OptimizationContext,
-        child: ida_hexrays.mblock_t
+        father_block: ida_hexrays.mblock_t,
+        child_block: ida_hexrays.mblock_t
     ) -> int:
-        """Ensure all predecessors of a block are unconditional jumps.
+        """Ensure a predecessor block has an unconditional jump to child.
 
         Some optimizations require that predecessor blocks end with
         unconditional jumps (goto) rather than conditional jumps.
-        This method transforms the CFG to meet that requirement.
+        This method transforms the CFG to meet that requirement by
+        inserting an intermediate block if necessary.
 
         Args:
             context: The optimization context.
-            child: The block whose predecessors should be made unconditional.
+            father_block: The predecessor block to check/modify.
+            child_block: The child block that father should jump to unconditionally.
 
         Returns:
-            The number of changes made.
+            The number of changes made (0 if already unconditional, 1 if modified).
+
+        Raises:
+            RuntimeError: If the CFG modification fails verification.
 
         Example:
             >>> # Before: block_5 ends with conditional jump to dispatcher
             >>> # After:  block_5 -> new_block (unconditional) -> dispatcher
-            >>> changes = CFGPatcher.ensure_unconditional_predecessor(context, dispatcher_block)
+            >>> changes = CFGPatcher.ensure_unconditional_predecessor(
+            ...     context, block_5, dispatcher_block)
         """
-        # This would use ensure_child_has_an_unconditional_father
-        # from d810.hexrays.cfg_utils
+        from d810.hexrays.cfg_utils import ensure_child_has_an_unconditional_father
+
+        if father_block is None:
+            return 0
+
         context.logger.debug(
-            "Ensuring unconditional predecessors for block %s",
-            child.serial
+            "Ensuring block %s has unconditional jump to block %s",
+            father_block.serial,
+            child_block.serial
         )
-        # TODO: Implement using existing cfg_utils
-        return 0
+
+        return ensure_child_has_an_unconditional_father(father_block, child_block)
+
+    @staticmethod
+    def duplicate_block(
+        context: OptimizationContext,
+        block: ida_hexrays.mblock_t
+    ) -> Tuple[ida_hexrays.mblock_t, ida_hexrays.mblock_t | None]:
+        """Duplicate a block in the CFG.
+
+        Creates a copy of a block at the end of the block array. If the
+        original block ends with a conditional jump, also creates a
+        default successor block.
+
+        Args:
+            context: The optimization context.
+            block: The block to duplicate.
+
+        Returns:
+            A tuple of (duplicated_block, default_block).
+            default_block is None if the original wasn't conditional.
+
+        Raises:
+            RuntimeError: If the CFG modification fails verification.
+
+        Example:
+            >>> dup, default = CFGPatcher.duplicate_block(context, dispatcher_block)
+            >>> # dup is the new copy of dispatcher_block
+        """
+        from d810.hexrays.cfg_utils import duplicate_block
+
+        context.logger.debug("Duplicating block %s", block.serial)
+
+        dup_block, dup_default = duplicate_block(block)
+
+        context.logger.debug(
+            "Duplicated block %s -> %s (default: %s)",
+            block.serial,
+            dup_block.serial,
+            dup_default.serial if dup_default else None
+        )
+
+        return dup_block, dup_default
+
+    @staticmethod
+    def clean_cfg(
+        context: OptimizationContext,
+        mba: ida_hexrays.mba_t,
+        merge_blocks: bool = False
+    ) -> int:
+        """Clean up the CFG by removing empty blocks and simple gotos.
+
+        After unflattening, the CFG may contain unnecessary blocks
+        (empty blocks, simple goto chains). This method cleans them up.
+
+        Args:
+            context: The optimization context.
+            mba: The microcode block array to clean.
+            merge_blocks: Whether to merge consecutive blocks (can be unstable).
+
+        Returns:
+            The number of changes made.
+
+        Note:
+            The merge_blocks option calls mba.merge_blocks() which can cause
+            crashes in some scenarios. Use with caution.
+
+        Example:
+            >>> changes = CFGPatcher.clean_cfg(context, mba)
+        """
+        from d810.hexrays.cfg_utils import mba_deep_cleaning
+
+        context.logger.debug(
+            "Cleaning CFG (merge_blocks=%s, maturity=%s)",
+            merge_blocks,
+            mba.maturity
+        )
+
+        return mba_deep_cleaning(mba, call_mba_combine_block=merge_blocks)
