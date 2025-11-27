@@ -417,3 +417,94 @@ def assert_code_not_contains():
             pytest.fail(fail_msg)
 
     return _assert
+
+
+# =============================================================================
+# Pytest Fixtures - Statistics Capture
+# =============================================================================
+
+
+@pytest.fixture
+def capture_stats(request):
+    """Fixture for capturing and optionally saving deobfuscation statistics.
+
+    Usage:
+        def test_something(self, d810_state, capture_stats):
+            with d810_state() as state:
+                state.start_d810()
+                decompiled = idaapi.decompile(func_ea)
+                # Capture stats after decompilation
+                stats = capture_stats(state.stats)
+                # stats is now a dict you can assert on
+
+    To generate expectation files, run pytest with --capture-stats:
+        pytest tests/system/test_libdeobfuscated.py --capture-stats
+
+    The captured stats will be saved to tests/system/expectations/<test_name>.json
+    """
+    import json
+
+    capture_mode = request.config.getoption("--capture-stats", default=False)
+    test_name = request.node.name
+
+    def _capture(stats):
+        """Capture statistics and optionally save to file."""
+        stats_dict = stats.to_dict()
+
+        if capture_mode:
+            # Save to expectations file
+            expectations_dir = pathlib.Path(__file__).parent / "expectations"
+            expectations_dir.mkdir(exist_ok=True)
+            expectation_file = expectations_dir / f"{test_name}.json"
+
+            with open(expectation_file, "w") as f:
+                json.dump(stats_dict, f, indent=2, sort_keys=True)
+
+            logger.info(f"Saved expectations to {expectation_file}")
+
+        return stats_dict
+
+    return _capture
+
+
+@pytest.fixture
+def load_expected_stats(request):
+    """Fixture for loading expected statistics from JSON files.
+
+    Usage:
+        def test_something(self, d810_state, load_expected_stats):
+            expected = load_expected_stats()  # Loads from expectations/<test_name>.json
+            with d810_state() as state:
+                state.start_d810()
+                decompiled = idaapi.decompile(func_ea)
+                state.stats.assert_matches(expected)
+    """
+    import json
+
+    test_name = request.node.name
+
+    def _load(filename: str = None):
+        """Load expected statistics from JSON file."""
+        if filename is None:
+            filename = f"{test_name}.json"
+
+        expectations_dir = pathlib.Path(__file__).parent / "expectations"
+        expectation_file = expectations_dir / filename
+
+        if not expectation_file.exists():
+            return None
+
+        with open(expectation_file) as f:
+            return json.load(f)
+
+    return _load
+
+
+def pytest_addoption(parser):
+    """Add custom pytest options."""
+    parser.addoption(
+        "--capture-stats",
+        action="store_true",
+        default=False,
+        help="Capture deobfuscation statistics to expectation files",
+    )

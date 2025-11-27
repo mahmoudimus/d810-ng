@@ -67,14 +67,17 @@ class GenericPatternRule(InstructionOptimizationRule):
         for candidate_pattern in self.pattern_candidates:
             if not candidate_pattern:
                 continue
-            # Use a read-only check first
+            # Use a read-only check first for structural matching (no mops copied)
             if not candidate_pattern.check_pattern_and_copy_mops(tmp, read_only=True):
                 continue
-            if not self.check_candidate(candidate_pattern):
-                continue
             # If the read-only check passes, then we can create a mutable copy
+            # and populate mops
             mutable_candidate = candidate_pattern.clone()
             if not mutable_candidate.check_pattern_and_copy_mops(tmp):
+                continue
+            # Check candidate AFTER mops are populated, since check_candidate
+            # may need to access leaf mops (e.g., to check segment permissions)
+            if not self.check_candidate(mutable_candidate):
                 continue
             valid_candidates.append(mutable_candidate)
             if stop_early:

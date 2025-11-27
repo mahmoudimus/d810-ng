@@ -119,6 +119,15 @@ class MopHistory(object):
         self._mc_current_environment = self._mc_initial_environment.get_copy()
         self._is_dirty = True
 
+        # Cached serial path for O(1) lookup - invalidated on history changes
+        self._serial_cache: tuple[int, ...] | None = None
+        self._serial_set_cache: frozenset[int] | None = None
+
+    def _invalidate_serial_cache(self) -> None:
+        """Invalidate the serial path cache after history changes."""
+        self._serial_cache = None
+        self._serial_set_cache = None
+
     def add_mop_initial_value(self, mop: ida_hexrays.mop_t, value: int):
         self._is_dirty = True
         self._mc_initial_environment.define(mop, value)
@@ -133,6 +142,9 @@ class MopHistory(object):
         new_mop_history._mc_current_environment = (
             new_mop_history._mc_initial_environment.get_copy()
         )
+        # Copy the serial cache if valid (same history structure)
+        new_mop_history._serial_cache = self._serial_cache
+        new_mop_history._serial_set_cache = self._serial_set_cache
         return new_mop_history
 
     def is_resolved(self) -> bool:
@@ -150,13 +162,31 @@ class MopHistory(object):
 
     @property
     def block_serial_path(self) -> list[int]:
-        return [blk.serial for blk in self.block_path]
+        """Get list of block serials (cached)."""
+        if self._serial_cache is None:
+            self._serial_cache = tuple(blk_info.blk.serial for blk_info in self.history)
+        return list(self._serial_cache)
+
+    @property
+    def block_serial_set(self) -> frozenset[int]:
+        """Get frozenset of block serials for O(1) membership testing (cached)."""
+        if self._serial_set_cache is None:
+            # Ensure serial_cache is populated first
+            if self._serial_cache is None:
+                self._serial_cache = tuple(blk_info.blk.serial for blk_info in self.history)
+            self._serial_set_cache = frozenset(self._serial_cache)
+        return self._serial_set_cache
+
+    def contains_block_serial(self, serial: int) -> bool:
+        """O(1) check if path contains a block serial."""
+        return serial in self.block_serial_set
 
     def replace_block_in_path(self, old_blk: ida_hexrays.mblock_t, new_blk: ida_hexrays.mblock_t) -> bool:
         blk_index = get_blk_index(old_blk, self.block_path)
         if blk_index > 0:
             self.history[blk_index].blk = new_blk
             self._is_dirty = True
+            self._invalidate_serial_cache()
             return True
         else:
             logger.error("replace_block_in_path: should not happen")
@@ -167,6 +197,7 @@ class MopHistory(object):
             self.history[:where_index] + [BlockInfo(blk)] + self.history[where_index:]
         )
         self._is_dirty = True
+        self._invalidate_serial_cache()
 
     def insert_ins_in_block(self, blk: ida_hexrays.mblock_t, ins: ida_hexrays.minsn_t, before=True):
         blk_index = get_blk_index(blk, self.block_path)
@@ -488,7 +519,8 @@ class MopTracker(object):
 
         while not self.is_resolved():
             # Explore one block
-            if cur_blk.serial in self.history.block_serial_path:
+            # Use O(1) lookup via block_serial_set instead of O(n) list search
+            if self.history.contains_block_serial(cur_blk.serial):
                 self.history.insert_block_in_path(cur_blk, 0)
                 return None
             if cur_blk.serial in self.avoid_list:

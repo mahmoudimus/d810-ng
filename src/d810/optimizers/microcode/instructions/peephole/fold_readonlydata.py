@@ -102,22 +102,48 @@ class FoldReadonlyDataRule(PeepholeSimplificationRule):
             ida_hexrays.MMAT_CALLS,
             getattr(ida_hexrays, "MMAT_GLBOPT1", ida_hexrays.MMAT_CALLS),
         ]
+        # Configuration for segment permission checking
+        # On Mach-O binaries (macOS/iOS), __const segments often have R+X
+        # permissions even though they contain read-only data. Set this to
+        # True to allow folding from segments that are R+!W (ignoring X).
+        self._allow_executable: bool = False
+
+    def configure(self, kwargs: dict) -> None:
+        """Configure rule from project settings."""
+        super().configure(kwargs)
+        # Allow configuration via project config:
+        # "allow_executable_readonly": true
+        self._allow_executable = kwargs.get("allow_executable_readonly", False)
 
     # --------------------------------------------------------------------- #
     # Helper functions                                                      #
     # --------------------------------------------------------------------- #
 
-    @staticmethod
-    def _segment_is_read_only(addr: int) -> bool:
+    def _segment_is_read_only(self, addr: int) -> bool:
+        """Check if segment at addr is suitable for constant folding.
+
+        By default, requires R+!W+!X (strict read-only data).
+        With allow_executable_readonly=True, allows R+!W (ignoring X bit).
+        This is useful for Mach-O binaries where __const has R+X permissions.
+        """
         seg = ida_segment.getseg(addr)
         if seg is None:
             return False
-        # Treat as readonly DATA: has READ, no WRITE, and not EXECUTE.
         perms = seg.perm
         has_read = bool(perms & idaapi.SEGPERM_READ)
         has_write = bool(perms & idaapi.SEGPERM_WRITE)
         has_exec = bool(perms & idaapi.SEGPERM_EXEC)
-        return has_read and not has_write and not has_exec
+
+        # Must be readable and not writable
+        if not has_read or has_write:
+            return False
+
+        # If we allow executable segments (for Mach-O), ignore the X bit
+        if self._allow_executable:
+            return True
+
+        # Default strict check: no execute permission
+        return not has_exec
 
     @staticmethod
     def _fetch_constant(addr: int, size: int) -> Optional[int]:

@@ -3,13 +3,10 @@ from __future__ import annotations
 import dataclasses
 from collections import defaultdict
 from enum import Enum, auto
-from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional
 
 from .logging import getLogger
-from .registry import EventEmitter, Registrant
-
-if TYPE_CHECKING:
-    from d810.mba.rules import VerifiableRule
+from .registry import EventEmitter
 
 logger = getLogger("D810")
 
@@ -83,14 +80,10 @@ class OptimizationStatistics:
     )
 
     # NEW: Track actual rule objects (keyed by normalized name)
-    rule_executions: Dict[str, RuleExecution] = dataclasses.field(
-        default_factory=dict
-    )
+    rule_executions: Dict[str, RuleExecution] = dataclasses.field(default_factory=dict)
 
     # NEW: Ordered list of rule firings for sequence analysis
-    rule_execution_log: List[RuleExecution] = dataclasses.field(
-        default_factory=list
-    )
+    rule_execution_log: List[RuleExecution] = dataclasses.field(default_factory=list)
 
     # NEW: EventEmitter for pub/sub instrumentation
     events: EventEmitter[OptimizationEvent] = dataclasses.field(
@@ -230,10 +223,16 @@ class OptimizationStatistics:
             AssertionError: If rule didn't fire or fired outside bounds
         """
         count = self.get_rule_match_count(rule)
-        rule_name = rule if isinstance(rule, str) else (
-            getattr(rule, "registrant_name", None) or
-            getattr(rule, "name", None) or
-            (rule.__name__ if isinstance(rule, type) else rule.__class__.__name__)
+        rule_name = (
+            rule
+            if isinstance(rule, str)
+            else (
+                getattr(rule, "registrant_name", None)
+                or getattr(rule, "name", None)
+                or (
+                    rule.__name__ if isinstance(rule, type) else rule.__class__.__name__
+                )
+            )
         )
 
         if count < min_count:
@@ -254,9 +253,7 @@ class OptimizationStatistics:
         """Assert that no rules fired (useful for negative tests)."""
         if self.rule_executions:
             fired = self.get_fired_rule_names()
-            raise AssertionError(
-                f"Expected no rules to fire, but these fired: {fired}"
-            )
+            raise AssertionError(f"Expected no rules to fire, but these fired: {fired}")
 
     # -------------------------------------------------------------------------
     # Reporting APIs
@@ -307,8 +304,7 @@ class OptimizationStatistics:
         return {
             "optimizer_matches": dict(self.instruction_optimizer_usage),
             "rule_matches": {
-                ex.rule_name: ex.match_count
-                for ex in self.rule_executions.values()
+                ex.rule_name: ex.match_count for ex in self.rule_executions.values()
             },
             "cfg_patches": {
                 name: {"uses": len(patches), "total_patches": sum(patches)}
@@ -316,3 +312,139 @@ class OptimizationStatistics:
             },
             "total_rule_firings": len(self.rule_execution_log),
         }
+
+    # -------------------------------------------------------------------------
+    # JSON Serialization APIs
+    # -------------------------------------------------------------------------
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize statistics to a dictionary for JSON export.
+
+        Returns a structure suitable for saving as test expectations.
+        """
+        return {
+            "optimizer_matches": dict(self.instruction_optimizer_usage),
+            "instruction_rule_matches": dict(self.instruction_rule_usage),
+            "rule_executions": {
+                name: {
+                    "rule_name": ex.rule_name,
+                    "match_count": ex.match_count,
+                }
+                for name, ex in self.rule_executions.items()
+            },
+            "cfg_rule_usages": {
+                name: list(patches) for name, patches in self.cfg_rule_usages.items()
+            },
+            "total_rule_firings": len(self.rule_execution_log),
+        }
+
+    def to_json(self, indent: int = 2) -> str:
+        """Serialize statistics to JSON string."""
+        import json
+
+        return json.dumps(self.to_dict(), indent=indent, sort_keys=True)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "OptimizationStatistics":
+        """Create statistics from a dictionary (e.g., loaded from JSON)."""
+        stats = cls()
+        stats.instruction_optimizer_usage.update(data.get("optimizer_matches", {}))
+        stats.instruction_rule_usage.update(data.get("instruction_rule_matches", {}))
+        for name, ex_data in data.get("rule_executions", {}).items():
+            stats.rule_executions[name] = RuleExecution(
+                rule=None,  # Can't reconstruct rule object from JSON
+                rule_name=ex_data["rule_name"],
+                match_count=ex_data["match_count"],
+            )
+        for name, patches in data.get("cfg_rule_usages", {}).items():
+            stats.cfg_rule_usages[name] = list(patches)
+        return stats
+
+    @classmethod
+    def from_json(cls, json_str: str) -> "OptimizationStatistics":
+        """Create statistics from a JSON string."""
+        import json
+
+        return cls.from_dict(json.loads(json_str))
+
+    def assert_matches(
+        self,
+        expected: "OptimizationStatistics | Dict[str, Any]",
+        *,
+        check_counts: bool = True,
+        allow_extra_rules: bool = True,
+    ) -> None:
+        """Assert that this statistics object matches expected values.
+
+        Args:
+            expected: Expected statistics (OptimizationStatistics or dict)
+            check_counts: If True, verify exact match counts. If False,
+                         only verify that rules fired (count >= 1).
+            allow_extra_rules: If True, allow rules to fire that aren't
+                              in expected. If False, fail on extra rules.
+
+        Raises:
+            AssertionError: If statistics don't match expected values.
+        """
+        if isinstance(expected, dict):
+            expected = self.from_dict(expected)
+
+        # Check optimizer matches
+        for name, expected_count in expected.instruction_optimizer_usage.items():
+            actual_count = self.instruction_optimizer_usage.get(name, 0)
+            if check_counts:
+                if actual_count != expected_count:
+                    raise AssertionError(
+                        f"Optimizer '{name}' expected {expected_count} matches, "
+                        f"got {actual_count}"
+                    )
+            else:
+                if expected_count > 0 and actual_count == 0:
+                    raise AssertionError(
+                        f"Optimizer '{name}' expected to fire but didn't"
+                    )
+
+        # Check rule executions
+        for name, expected_ex in expected.rule_executions.items():
+            actual_ex = self.rule_executions.get(name)
+            if actual_ex is None:
+                raise AssertionError(
+                    f"Rule '{expected_ex.rule_name}' expected to fire but didn't. "
+                    f"Rules that fired: {self.get_fired_rule_names()}"
+                )
+            if check_counts and actual_ex.match_count != expected_ex.match_count:
+                raise AssertionError(
+                    f"Rule '{expected_ex.rule_name}' expected {expected_ex.match_count} "
+                    f"matches, got {actual_ex.match_count}"
+                )
+
+        # Check CFG rule usages
+        for name, expected_patches in expected.cfg_rule_usages.items():
+            actual_patches = self.cfg_rule_usages.get(name, [])
+            if check_counts:
+                if actual_patches != expected_patches:
+                    raise AssertionError(
+                        f"CFG rule '{name}' expected patches {expected_patches}, "
+                        f"got {actual_patches}"
+                    )
+            else:
+                if expected_patches and not actual_patches:
+                    raise AssertionError(
+                        f"CFG rule '{name}' expected to fire but didn't"
+                    )
+
+        # Check for extra rules if not allowed
+        if not allow_extra_rules:
+            extra_optimizers = set(self.instruction_optimizer_usage) - set(
+                expected.instruction_optimizer_usage
+            )
+            extra_rules = set(self.rule_executions) - set(expected.rule_executions)
+            extra_cfg = set(self.cfg_rule_usages) - set(expected.cfg_rule_usages)
+
+            if extra_optimizers or extra_rules or extra_cfg:
+                raise AssertionError(
+                    f"Unexpected rules fired:\n"
+                    f"  Optimizers: {extra_optimizers or 'none'}\n"
+                    f"  Rules: {extra_rules or 'none'}\n"
+                    f"  CFG rules: {extra_cfg or 'none'}"
+                )
