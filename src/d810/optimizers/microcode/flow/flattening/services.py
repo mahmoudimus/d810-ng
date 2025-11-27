@@ -91,6 +91,22 @@ class DispatcherFinder(Protocol):
         ...
 
 
+@dataclass(frozen=True)
+class EmulationResult:
+    """Result of emulating a dispatcher with tracked state values.
+
+    Attributes:
+        target_block: The target block reached after emulation, or None if failed.
+        executed_instructions: Instructions executed during emulation.
+        success: Whether emulation completed successfully.
+        error_message: Error message if emulation failed.
+    """
+    target_block: ida_hexrays.mblock_t | None
+    executed_instructions: List[ida_hexrays.minsn_t] = field(default_factory=list)
+    success: bool = True
+    error_message: str | None = None
+
+
 class PathEmulator:
     """Emulates microcode execution paths to resolve state variables.
 
@@ -139,16 +155,139 @@ class PathEmulator:
             >>> target = emulator.resolve_target(context, block_5, dispatcher)
             >>> assert target == block_42
         """
-        # This is a placeholder for the actual implementation
-        # The real implementation would use MopTracker and MicroCodeInterpreter
-        # from the existing d810.hexrays.tracker and d810.expr.emulator modules
+        result = self.emulate_with_history(context, from_block, dispatcher)
+        return result.target_block
+
+    def emulate_with_history(
+        self,
+        context: OptimizationContext,
+        from_block: ida_hexrays.mblock_t,
+        dispatcher: Dispatcher,
+        mop_history: "MopHistory | None" = None
+    ) -> EmulationResult:
+        """Emulate dispatcher execution with tracked state values.
+
+        This is the core emulation method that wraps the existing
+        MicroCodeInterpreter and MicroCodeEnvironment logic.
+
+        Args:
+            context: The optimization context.
+            from_block: The predecessor block to emulate from.
+            dispatcher: The dispatcher to emulate through.
+            mop_history: Optional pre-computed MopHistory. If None, tracking
+                        is performed automatically from from_block.
+
+        Returns:
+            EmulationResult containing the target block and execution details.
+        """
+        from d810.expr.emulator import MicroCodeEnvironment, MicroCodeInterpreter
+        from d810.hexrays.helper import format_minsn_t, format_mop_t
+        from d810.hexrays.tracker import MopHistory, MopTracker
+
         context.logger.debug(
-            "Resolving target for block %s through dispatcher at %s",
-            from_block.serial,
-            dispatcher.entry_block.serial
+            "Emulating dispatcher %s from block %s",
+            dispatcher.entry_block.serial,
+            from_block.serial
         )
-        # TODO: Implement using existing MopTracker and MicroCodeInterpreter
-        return None
+
+        # Step 1: Get or create MopHistory by tracking from from_block
+        if mop_history is None:
+            if dispatcher.state_variable is None:
+                return EmulationResult(
+                    target_block=None,
+                    success=False,
+                    error_message="Dispatcher has no state variable"
+                )
+            # Track the state variable backwards from from_block
+            tracker = MopTracker([dispatcher.state_variable], context.mba)
+            mop_history = tracker.search_backward(from_block)
+            if mop_history is None:
+                return EmulationResult(
+                    target_block=None,
+                    success=False,
+                    error_message=f"Could not track state variable from block {from_block.serial}"
+                )
+
+        # Step 2: Setup the microcode environment with state variable values
+        microcode_interpreter = MicroCodeInterpreter(symbolic_mode=False)
+        microcode_environment = MicroCodeEnvironment()
+
+        # Get value of the state variable from the tracked history
+        state_value = mop_history.get_mop_constant_value(dispatcher.state_variable)
+        if state_value is None:
+            return EmulationResult(
+                target_block=None,
+                success=False,
+                error_message=f"State variable value not resolvable from block {from_block.serial}"
+            )
+
+        # Initialize the environment with the state variable value
+        microcode_environment.define(dispatcher.state_variable, state_value)
+
+        context.logger.debug(
+            "Executing dispatcher %s with: %s = %x",
+            dispatcher.entry_block.serial,
+            format_mop_t(dispatcher.state_variable),
+            state_value
+        )
+
+        # Step 3: Emulate the dispatcher blocks
+        exit_block_serials = {blk.serial for blk in dispatcher.exit_blocks}
+        internal_block_serials = {blk.serial for blk in dispatcher.internal_blocks}
+        all_dispatcher_serials = {dispatcher.entry_block.serial} | internal_block_serials
+
+        instructions_executed = []
+        cur_blk = dispatcher.entry_block
+        cur_ins = cur_blk.head
+
+        # Continue while in dispatcher blocks (not at an exit block)
+        max_iterations = 1000  # Safety limit
+        iteration = 0
+        while (
+            cur_blk is not None
+            and cur_blk.serial in all_dispatcher_serials
+            and iteration < max_iterations
+        ):
+            iteration += 1
+            context.logger.debug(
+                "  Executing: %s.%s",
+                cur_blk.serial,
+                format_minsn_t(cur_ins) if cur_ins else "None"
+            )
+
+            if cur_ins is None:
+                break
+
+            # Evaluate the current instruction
+            is_ok = microcode_interpreter.eval_instruction(
+                cur_blk, cur_ins, microcode_environment
+            )
+            if not is_ok:
+                # Emulation could not continue - return current block
+                return EmulationResult(
+                    target_block=cur_blk,
+                    executed_instructions=instructions_executed,
+                    success=True
+                )
+
+            instructions_executed.append(cur_ins)
+            cur_blk = microcode_environment.next_blk
+            cur_ins = microcode_environment.next_ins
+
+        if iteration >= max_iterations:
+            return EmulationResult(
+                target_block=None,
+                executed_instructions=instructions_executed,
+                success=False,
+                error_message="Emulation exceeded maximum iterations"
+            )
+
+        # Return the first block that is not part of the dispatcher
+        return EmulationResult(
+            target_block=cur_blk,
+            executed_instructions=instructions_executed,
+            success=True
+        )
 
 
 class CFGPatcher:
