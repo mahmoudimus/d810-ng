@@ -936,10 +936,10 @@ The infrastructure for composition-based refactoring has been created but is not
 | Refactored Coordinator | ✅ Skeleton | 284 | 40% |
 | CFGPatcher Implementation | ✅ Complete | 178 | 100% |
 | PathEmulator Implementation | ✅ Complete | 147 | 100% |
-| OLLVMDispatcherFinder | ❌ TODO | 0/250 | 0% |
+| OLLVMDispatcherFinder | ✅ Complete | 217 | 100% |
 | Unit Tests | ❌ TODO | 0/300 | 0% |
 | Integration | ❌ TODO | 0/150 | 0% |
-| **TOTAL** | **In Progress** | **1024/1727** | **59%** |
+| **TOTAL** | **In Progress** | **1241/1727** | **72%** |
 
 ### 🎯 Next Steps
 
@@ -955,12 +955,17 @@ The infrastructure for composition-based refactoring has been created but is not
    - Reuses existing emulation logic
    - Enables end-to-end testing
 
-3. **Next: OLLVMDispatcherFinder** (high complexity, necessary)
+3. ~~**OLLVMDispatcherFinder**~~ ✅ COMPLETE
    - Most complex extraction work
-   - Requires understanding existing detection heuristics
-   - Unlocks full refactored unflattener
+   - Wraps existing OllvmDispatcherInfo using Strangler Fig pattern
+   - Converts to immutable Dispatcher dataclass
 
-4. **Write tests continuously** (not at the end)
+4. **Next: Write tests for services** (unit tests first)
+   - Test PathEmulator with mock contexts
+   - Test OLLVMDispatcherFinder with known patterns
+   - Test CFGPatcher with mock mba
+
+5. **Write tests continuously** (not at the end)
    - Test each service as it's implemented
    - Catch bugs early
    - Build confidence in refactoring

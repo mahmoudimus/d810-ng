@@ -563,3 +563,220 @@ class CFGPatcher:
         )
 
         return mba_deep_cleaning(mba, call_mba_combine_block=merge_blocks)
+
+
+class OLLVMDispatcherFinder:
+    """Finds O-LLVM style dispatchers in microcode.
+
+    This service implements the DispatcherFinder protocol for O-LLVM style
+    control-flow flattening. O-LLVM dispatchers have distinctive characteristics:
+
+    - A central "dispatcher" block with many predecessors
+    - State variable compared against multiple constant values
+    - High entropy in comparison values (pseudo-random)
+    - Internal blocks that only compute next state + jump back
+
+    This implementation wraps the existing OllvmDispatcherInfo class using
+    the Strangler Fig pattern, providing a clean interface while reusing
+    proven logic.
+
+    Example:
+        >>> finder = OLLVMDispatcherFinder()
+        >>> dispatchers = finder.find(context)
+        >>> for d in dispatchers:
+        ...     print(f"Found: {d}")
+    """
+
+    # Entropy thresholds for O-LLVM detection
+    # Values are pseudo-random, so entropy should be ~0.5
+    DEFAULT_MIN_ENTROPY = 0.3
+    DEFAULT_MAX_ENTROPY = 0.7
+
+    def __init__(
+        self,
+        min_entropy: float | None = None,
+        max_entropy: float | None = None,
+        use_heuristics: bool = True
+    ):
+        """Initialize the finder with optional configuration.
+
+        Args:
+            min_entropy: Minimum entropy threshold (default 0.3).
+            max_entropy: Maximum entropy threshold (default 0.7).
+            use_heuristics: Whether to use heuristics for early filtering.
+        """
+        self._min_entropy = min_entropy or self.DEFAULT_MIN_ENTROPY
+        self._max_entropy = max_entropy or self.DEFAULT_MAX_ENTROPY
+        self._use_heuristics = use_heuristics
+
+    def find(self, context: OptimizationContext) -> List[Dispatcher]:
+        """Find all O-LLVM dispatchers in the given microcode.
+
+        This method:
+        1. Uses heuristics to filter candidate blocks (if enabled)
+        2. Guesses the outermost dispatcher using predecessor count
+        3. Explores each candidate to validate it's a real dispatcher
+        4. Converts validated dispatchers to immutable Dispatcher objects
+
+        Args:
+            context: The optimization context containing the mba.
+
+        Returns:
+            A list of Dispatcher objects. Empty if no dispatchers found.
+        """
+        # Lazy import to avoid circular dependencies
+        from d810.optimizers.microcode.flow.flattening.unflattener import (
+            OllvmDispatcherInfo,
+        )
+        from d810.optimizers.microcode.flow.flattening.heuristics import (
+            DispatcherHeuristics,
+            apply_selective_scanning,
+        )
+
+        mba = context.mba
+        dispatchers: List[Dispatcher] = []
+
+        # Use the existing OllvmDispatcherInfo for analysis
+        # This wraps the proven logic while providing a clean interface
+        disp_info = OllvmDispatcherInfo(mba)
+
+        # Step 1: Guess the outermost dispatcher block
+        outmost_dispatch_num = disp_info.guess_outmost_dispatcher_blk()
+        if outmost_dispatch_num == -1:
+            context.logger.debug(
+                "No dispatcher candidates found (guess_outmost_dispatcher_blk)"
+            )
+            return dispatchers
+
+        context.logger.debug(
+            f"Guessed outermost dispatcher at block {outmost_dispatch_num}"
+        )
+
+        # Step 2: Get candidate blocks (either via heuristics or brute force)
+        if self._use_heuristics:
+            heuristics = DispatcherHeuristics()
+            candidates = apply_selective_scanning(mba, heuristics)
+            candidate_blocks = candidates
+        else:
+            # Brute force: check all blocks
+            candidate_blocks = [
+                mba.get_mblock(i) for i in range(mba.qty)
+                if mba.get_mblock(i) is not None
+            ]
+
+        # Step 3: Explore each candidate to validate and extract info
+        for blk in candidate_blocks:
+            if blk is None:
+                continue
+
+            # Reset and explore from this block
+            disp_info.outmost_dispatch_num = outmost_dispatch_num
+            disp_info.last_num_in_first_blks = disp_info.get_last_blk_in_first_blks()
+
+            # Explore validates and populates dispatcher info
+            is_valid = disp_info.explore(
+                blk,
+                min_entropy=self._min_entropy,
+                max_entropy=self._max_entropy
+            )
+
+            if is_valid:
+                # Convert to immutable Dispatcher dataclass
+                dispatcher = self._convert_to_dispatcher(disp_info, mba)
+                if dispatcher:
+                    dispatchers.append(dispatcher)
+                    context.logger.info(
+                        f"Found dispatcher: entry={dispatcher.entry_block.serial}, "
+                        f"internal={len(dispatcher.internal_blocks)}, "
+                        f"exits={len(dispatcher.exit_blocks)}"
+                    )
+
+        context.logger.info(f"Found {len(dispatchers)} O-LLVM dispatcher(s)")
+        return dispatchers
+
+    def _convert_to_dispatcher(
+        self,
+        disp_info: "OllvmDispatcherInfo",
+        mba: ida_hexrays.mba_t
+    ) -> Dispatcher | None:
+        """Convert mutable OllvmDispatcherInfo to immutable Dispatcher.
+
+        Args:
+            disp_info: The dispatcher info from exploration.
+            mba: The microcode array.
+
+        Returns:
+            An immutable Dispatcher dataclass, or None if conversion fails.
+        """
+        # Guard against invalid state
+        if not disp_info.entry_block:
+            return None
+
+        entry_block = disp_info.entry_block.blk
+
+        # Extract the state variable (mop_compared from entry block)
+        state_variable = disp_info.mop_compared
+        if state_variable is None:
+            return None
+
+        # Convert internal blocks from OllvmDispatcherBlockInfo to mblock_t
+        internal_blocks = [
+            block_info.blk
+            for block_info in disp_info.dispatcher_internal_blocks
+            if block_info.blk is not None
+        ]
+
+        # Convert exit blocks
+        exit_blocks = [
+            block_info.blk
+            for block_info in disp_info.dispatcher_exit_blocks
+            if block_info.blk is not None
+        ]
+
+        return Dispatcher(
+            entry_block=entry_block,
+            state_variable=state_variable,
+            comparison_values=list(disp_info.comparison_values),
+            internal_blocks=internal_blocks,
+            exit_blocks=exit_blocks,
+            mba=mba
+        )
+
+    def find_single(
+        self,
+        context: OptimizationContext,
+        start_block: ida_hexrays.mblock_t
+    ) -> Dispatcher | None:
+        """Find a single dispatcher starting from a specific block.
+
+        This is useful when you already know which block to analyze,
+        avoiding the full scan.
+
+        Args:
+            context: The optimization context.
+            start_block: The block to analyze as potential dispatcher entry.
+
+        Returns:
+            A Dispatcher if found, None otherwise.
+        """
+        from d810.optimizers.microcode.flow.flattening.unflattener import (
+            OllvmDispatcherInfo,
+        )
+
+        mba = context.mba
+        disp_info = OllvmDispatcherInfo(mba)
+
+        # Setup and explore
+        disp_info.outmost_dispatch_num = disp_info.guess_outmost_dispatcher_blk()
+        disp_info.last_num_in_first_blks = disp_info.get_last_blk_in_first_blks()
+
+        is_valid = disp_info.explore(
+            start_block,
+            min_entropy=self._min_entropy,
+            max_entropy=self._max_entropy
+        )
+
+        if is_valid:
+            return self._convert_to_dispatcher(disp_info, mba)
+
+        return None
