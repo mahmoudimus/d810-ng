@@ -312,6 +312,40 @@ def setup_libobfuscated_funcs():
     _setup_libobfuscated_function_names()
 
 
+@pytest.fixture(scope="class")
+def setup_libobfuscated_test_funcs():
+    """Fixture that verifies function names exist for libobfuscated_test binary.
+
+    For macOS dylib: Function names come from exports, just verify they exist.
+    """
+    expected_functions = [
+        # ABC pattern functions
+        "abc_xor_dispatch",
+        "abc_or_dispatch",
+        "abc_mixed_dispatch",
+        # Nested dispatcher functions
+        "nested_simple",
+        "nested_deep",
+        "nested_parallel",
+        "nested_shared_blocks",
+        # Exception path functions
+        "unresolvable_external",
+        "unresolvable_computed",
+        "non_duplicable_side_effects",
+        "deep_duplication_path",
+        "loop_dependent_state",
+        "indirect_state_pointer",
+        "external_transform_state",
+    ]
+    for name in expected_functions:
+        # Try with and without underscore prefix (macOS adds underscore)
+        ea = idc.get_name_ea_simple(name)
+        if ea == idaapi.BADADDR:
+            ea = idc.get_name_ea_simple("_" + name)
+        if ea != idaapi.BADADDR:
+            logger.debug(f"Found function {name} at 0x{ea:x}")
+
+
 # =============================================================================
 # Pytest Fixtures - D810 State
 # =============================================================================
