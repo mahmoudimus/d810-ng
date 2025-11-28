@@ -118,6 +118,20 @@ from .bits import (
 # Re-export typing module contents for convenience
 from . import typing
 
+# Merkle tree utilities
+from .merkle import MerkleTree
+
+# Binary patching helpers
+from .patching import PatchAction, PatchRecorder, BinaryPatcher
+
+# Ctree snapshot helpers
+from .ctree_snapshot import (
+    serialize_ctree,
+    deserialize_ctree,
+    save_ctree_snapshot,
+    load_ctree_snapshot,
+)
+
 
 # =============================================================================
 # MOP (Microcode OPerand) Caches
@@ -237,4 +251,15 @@ __all__ = [
     # MOP caches
     "MOP_CONSTANT_CACHE",
     "MOP_TO_AST_CACHE",
+    # merkle
+    "MerkleTree",
+    # patching
+    "PatchAction",
+    "PatchRecorder",
+    "BinaryPatcher",
+    # ctree_snapshot
+    "serialize_ctree",
+    "deserialize_ctree",
+    "save_ctree_snapshot",
+    "load_ctree_snapshot",
 ]

@@ -1,6 +1,6 @@
 """Unit tests for the Merkle tree utilities."""
 
-from d810.optimizers.microcode.flow.flattening.merkle import MerkleTree
+from d810.core.merkle import MerkleTree
 
 
 def test_build_root():
