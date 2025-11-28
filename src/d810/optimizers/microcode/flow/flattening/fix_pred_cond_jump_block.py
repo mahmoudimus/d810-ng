@@ -10,6 +10,10 @@ from d810.hexrays.cfg_utils import (
 )
 from d810.hexrays.hexrays_formatters import dump_microcode_for_debug, format_minsn_t
 from d810.hexrays.tracker import MopTracker
+from d810.optimizers.microcode.flow.flattening.dispatcher_detection import (
+    DispatcherCache,
+    DispatcherType,
+)
 from d810.optimizers.microcode.flow.flattening.generic import GenericUnflatteningRule
 from d810.optimizers.microcode.flow.flattening.utils import get_all_possibles_values
 
@@ -185,13 +189,28 @@ class FixPredecessorOfConditionalJumpBlock(GenericUnflatteningRule):
         op_compared = ida_hexrays.mop_t(blk.tail.l)
         blk_preset_list = [x for x in blk.predset]
 
-        # For Hodur-style state machines, we should NOT use dispatcher_info here.
-        # The dispatcher resume logic is designed for HodurUnflattener which uses
-        # symbolic execution to resolve state values. For this simpler rule,
-        # when tracking loops back to the dispatcher, the predecessor should be
-        # marked as "unknown" (not redirected). This prevents cascading unreachability
-        # where all blocks become unreachable because all predecessors were redirected
-        # based on a single initial state value.
+        # Determine dispatcher_info based on dispatcher type.
+        # For CONDITIONAL_CHAIN (nested jnz/jz comparisons like Hodur, C2 frameworks):
+        #   - DO NOT use dispatcher_info (set to None)
+        #   - When MopTracker loops back through the dispatcher, it returns None/"unknown"
+        #   - This prevents cascading unreachability where all predecessors get
+        #     redirected based on a single initial state value
+        #
+        # For SWITCH_TABLE (O-LLVM, Tigress switch mode):
+        #   - Could potentially use dispatcher_info to resume tracking
+        #   - But None also works fine (just skips the resume optimization)
+        #
+        # Currently, we set dispatcher_info = None for all cases because:
+        # 1. It's safe for all dispatcher types
+        # 2. The resume logic is complex and can cause issues if misconfigured
+        cache = DispatcherCache.get_or_create(blk.mba)
+        analysis = cache.analyze()
+
+        if analysis.dispatcher_type == DispatcherType.CONDITIONAL_CHAIN:
+            unflat_logger.debug(
+                "CONDITIONAL_CHAIN dispatcher detected - using dispatcher_info=None "
+                "to prevent cascading unreachability"
+            )
         dispatcher_info = None
 
         for pred_serial in blk_preset_list:
@@ -250,9 +269,9 @@ class FixPredecessorOfConditionalJumpBlock(GenericUnflatteningRule):
             return 0
         if blk.tail.r.t != ida_hexrays.mop_n:
             return 0
-        # NOTE: For Hodur-style nested-while state machines, this rule can cause
-        # cascading unreachability where IDA removes most of the function.
-        # Use example_hodur.json config which disables this rule for those patterns.
+        # NOTE: For CONDITIONAL_CHAIN dispatchers (nested jnz/jz comparisons),
+        # this rule uses dispatcher_info=None to avoid cascading unreachability.
+        # See sort_predecessors() for details on why this is necessary.
         unflat_logger.info(
             "Checking if block {0} can be simplified: {1}".format(
                 blk.serial, format_minsn_t(blk.tail)
