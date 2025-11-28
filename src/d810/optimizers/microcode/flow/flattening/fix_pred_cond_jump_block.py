@@ -257,6 +257,11 @@ class FixPredecessorOfConditionalJumpBlock(GenericUnflatteningRule):
                 len(pred_jmp_unk),
             )
         )
+
+        # NOTE: For Hodur-style nested-while state machines, this rule can cause
+        # cascading unreachability where IDA removes most of the function.
+        # A dedicated HodurUnflattener is needed for those patterns.
+        # See: .claude/plans/fix_hodur_deflattening.md
         nb_change = 0
         if len(pred_jmp_always_taken) > 0:
             if self.dump_intermediate_microcode:

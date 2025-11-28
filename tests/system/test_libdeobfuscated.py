@@ -1042,6 +1042,17 @@ class TestLibDeobfuscated:
                         switch_after <= switch_before
                     ), f"Should reduce switch cases ({switch_before} -> {switch_after})"
 
+                # NOTE: Semantic correctness checks are disabled for hodur-style flattening.
+                # The FixPredecessorOfConditionalJumpBlock rule causes cascading unreachability
+                # on nested-while state machines due to how small patches propagate through
+                # IDA's optimizer. This pattern needs a dedicated HodurUnflattener.
+                # TODO: Implement proper hodur deflattening (see beads issue d810-ng-rxk)
+                #
+                # Ideally we would check:
+                # - "printf" in actual_after (8 calls should be preserved)
+                # - "resolve_api" in actual_after (6 calls should be preserved)
+                # - lines_after >= lines_before * 0.5 (shouldn't lose 50%+ of code)
+
                 # Capture and verify rule statistics
                 stats_dict = capture_stats(state.stats)
                 expected = load_expected_stats()
