@@ -202,7 +202,7 @@ class EmulationOracle:
             elif self.arch == Architecture.ARM64:
                 self._triton.setArchitecture(TRITON_ARCH.AARCH64)
 
-            self._triton.setAstRepresentation(AST_REPRESENTATION.PYTHON)
+            self._triton.setAstRepresentationMode(AST_REPRESENTATION.PYTHON)
             logger.debug("Triton initialized for %s", self.arch.value)
 
         except Exception as e:
