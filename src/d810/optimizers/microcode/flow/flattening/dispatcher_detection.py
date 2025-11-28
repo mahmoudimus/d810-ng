@@ -55,10 +55,12 @@ class DispatcherStrategy(IntFlag):
     HIGH_FAN_IN = 1 << 0           # ≥N predecessors
     STATE_COMPARISON = 1 << 1      # Compares against large constants
     LOOP_HEADER = 1 << 2           # Natural loop header
-    PREDECESSOR_UNIFORM = 1 << 3  # Most preds are unconditional jumps
-    CONSTANT_FREQUENCY = 1 << 4   # Many unique constants compared
-    BACK_EDGE = 1 << 5            # Has incoming back-edges
-    NESTED_LOOP = 1 << 6          # Part of nested loop structure (Hodur)
+    PREDECESSOR_UNIFORM = 1 << 3   # Most preds are unconditional jumps
+    CONSTANT_FREQUENCY = 1 << 4    # Many unique constants compared
+    BACK_EDGE = 1 << 5             # Has incoming back-edges
+    NESTED_LOOP = 1 << 6           # Part of nested loop structure (Hodur)
+    SMALL_BLOCK = 1 << 7           # Few instructions (dispatchers are typically tight)
+    SWITCH_JUMP = 1 << 8           # Contains jtbl or computed goto
 
 
 @dataclass
@@ -148,6 +150,7 @@ MIN_STATE_CONSTANT = 0x10000
 MIN_UNIQUE_CONSTANTS = 3
 MIN_PREDECESSOR_UNIFORMITY_RATIO = 0.8
 MIN_BACK_EDGE_RATIO = 0.3
+MAX_DISPATCHER_BLOCK_SIZE = 20  # Max instructions in a dispatcher block
 
 
 class DispatcherCache:
@@ -165,6 +168,10 @@ class DispatcherCache:
         self.func_ea = mba.entry_ea
         self._analysis: DispatcherAnalysis | None = None
         self._last_maturity: int = -1
+
+        # Statistics for performance tuning
+        self.blocks_analyzed = 0
+        self.blocks_skipped = 0  # Blocks that didn't match any strategy
 
     @classmethod
     def get_or_create(cls, mba: ida_hexrays.mba_t) -> "DispatcherCache":
@@ -230,8 +237,14 @@ class DispatcherCache:
         self._analyze_state_comparisons(analysis)
         self._analyze_loop_structure(analysis)
         self._analyze_state_assignments(analysis)
+        self._analyze_block_sizes(analysis)
+        self._analyze_switch_jumps(analysis)
         self._score_blocks(analysis)
         self._detect_hodur_pattern(analysis)
+
+        # Update statistics
+        self.blocks_analyzed = self.mba.qty
+        self.blocks_skipped = self.mba.qty - len(analysis.blocks)
 
         # Collect dispatcher blocks
         for serial, block_info in analysis.blocks.items():
@@ -261,6 +274,47 @@ class DispatcherCache:
         """Get analysis info for a specific block."""
         analysis = self.analyze()
         return analysis.blocks.get(serial)
+
+    def get_statistics(self) -> dict:
+        """Get analysis statistics for performance tuning.
+
+        Returns:
+            Dict with analysis statistics including:
+            - blocks_analyzed: Total blocks in function
+            - blocks_with_strategies: Blocks matching at least one strategy
+            - blocks_skipped: Blocks not matching any strategy
+            - skip_rate: Percentage of blocks skipped (0.0-1.0)
+            - dispatchers_found: Number of blocks flagged as dispatchers
+            - strategies_used: Dict of strategy -> count
+        """
+        analysis = self.analyze()
+
+        strategies_used: dict[str, int] = {}
+        for strategy in DispatcherStrategy:
+            if strategy == DispatcherStrategy.NONE:
+                continue
+            count = sum(
+                1 for info in analysis.blocks.values()
+                if strategy in info.strategies
+            )
+            if count > 0:
+                strategies_used[strategy.name] = count
+
+        skip_rate = (
+            self.blocks_skipped / self.blocks_analyzed
+            if self.blocks_analyzed > 0 else 0.0
+        )
+
+        return {
+            "blocks_analyzed": self.blocks_analyzed,
+            "blocks_with_strategies": len(analysis.blocks),
+            "blocks_skipped": self.blocks_skipped,
+            "skip_rate": skip_rate,
+            "dispatchers_found": len(analysis.dispatchers),
+            "strategies_used": strategies_used,
+            "is_hodur_style": analysis.is_hodur_style,
+            "state_constants_count": len(analysis.state_constants),
+        }
 
     def validate_with_emulation(
         self,
@@ -590,6 +644,49 @@ class DispatcherCache:
                             block_info.state_constants.add(const_val)
                 insn = insn.next
 
+    def _analyze_block_sizes(self, analysis: DispatcherAnalysis) -> None:
+        """Strategy: Small block detection - dispatchers are typically tight loops."""
+        for i in range(self.mba.qty):
+            blk = self.mba.get_mblock(i)
+
+            # Count instructions in block
+            ins_count = 0
+            insn = blk.head
+            while insn and ins_count <= MAX_DISPATCHER_BLOCK_SIZE:
+                ins_count += 1
+                insn = insn.next
+
+            # Small blocks with other dispatcher characteristics get flagged
+            if ins_count <= MAX_DISPATCHER_BLOCK_SIZE:
+                # Only flag if block has other dispatcher indicators
+                if i in analysis.blocks:
+                    block_info = analysis.blocks[i]
+                    if block_info.strategies != DispatcherStrategy.NONE:
+                        block_info.strategies |= DispatcherStrategy.SMALL_BLOCK
+
+    def _analyze_switch_jumps(self, analysis: DispatcherAnalysis) -> None:
+        """Strategy: Switch/jtbl detection - computed jumps indicate dispatchers."""
+        for i in range(self.mba.qty):
+            blk = self.mba.get_mblock(i)
+            if not blk.tail:
+                continue
+
+            is_switch = False
+
+            # Check for m_jtbl (switch table)
+            if blk.tail.opcode == ida_hexrays.m_jtbl:
+                is_switch = True
+
+            # Check for computed goto (indirect jump)
+            elif blk.tail.opcode == ida_hexrays.m_goto:
+                # Check if jump target is computed (not constant block ref)
+                if blk.tail.l.t == ida_hexrays.mop_d:  # Computed destination
+                    is_switch = True
+
+            if is_switch:
+                block_info = self._get_or_create_block(analysis, i)
+                block_info.strategies |= DispatcherStrategy.SWITCH_JUMP
+
     def _score_blocks(self, analysis: DispatcherAnalysis) -> None:
         """Calculate dispatcher likelihood score for each block."""
         for serial, block_info in analysis.blocks.items():
@@ -622,6 +719,14 @@ class DispatcherCache:
             # Nested loop: +25 (Hodur signature)
             if DispatcherStrategy.NESTED_LOOP in block_info.strategies:
                 score += 25
+
+            # Small block: +5 (dispatchers are typically tight)
+            if DispatcherStrategy.SMALL_BLOCK in block_info.strategies:
+                score += 5
+
+            # Switch/jtbl: +15 (strong dispatcher indicator)
+            if DispatcherStrategy.SWITCH_JUMP in block_info.strategies:
+                score += 15
 
             block_info.score = score
 
