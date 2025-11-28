@@ -17,7 +17,6 @@ unflat_logger = getLogger("D810.unflat")
 
 JMP_OPCODE_HANDLED = [ida_hexrays.m_jnz, ida_hexrays.m_jz, ida_hexrays.m_jae, ida_hexrays.m_jb, ida_hexrays.m_ja, ida_hexrays.m_jbe, ida_hexrays.m_jge, ida_hexrays.m_jg, ida_hexrays.m_jl, ida_hexrays.m_jle]
 
-
 class FixPredecessorOfConditionalJumpBlock(GenericUnflatteningRule):
     DESCRIPTION = "Detect if a predecessor of a conditional block always takes the same path and patch it (works for O-LLVM style control flow flattening)"
     DEFAULT_UNFLATTENING_MATURITIES = [ida_hexrays.MMAT_CALLS, ida_hexrays.MMAT_GLBOPT1, ida_hexrays.MMAT_GLBOPT2]
@@ -185,9 +184,20 @@ class FixPredecessorOfConditionalJumpBlock(GenericUnflatteningRule):
         pred_jmp_unk = []
         op_compared = ida_hexrays.mop_t(blk.tail.l)
         blk_preset_list = [x for x in blk.predset]
+
+        # For Hodur-style state machines, we should NOT use dispatcher_info here.
+        # The dispatcher resume logic is designed for HodurUnflattener which uses
+        # symbolic execution to resolve state values. For this simpler rule,
+        # when tracking loops back to the dispatcher, the predecessor should be
+        # marked as "unknown" (not redirected). This prevents cascading unreachability
+        # where all blocks become unreachable because all predecessors were redirected
+        # based on a single initial state value.
+        dispatcher_info = None
+
         for pred_serial in blk_preset_list:
             cmp_variable_tracker = MopTracker(
-                [op_compared], max_nb_block=100, max_path=1000
+                [op_compared], max_nb_block=100, max_path=1000,
+                dispatcher_info=dispatcher_info
             )
             cmp_variable_tracker.reset()
             pred_blk = blk.mba.get_mblock(pred_serial)
@@ -240,6 +250,9 @@ class FixPredecessorOfConditionalJumpBlock(GenericUnflatteningRule):
             return 0
         if blk.tail.r.t != ida_hexrays.mop_n:
             return 0
+        # NOTE: For Hodur-style nested-while state machines, this rule can cause
+        # cascading unreachability where IDA removes most of the function.
+        # Use example_hodur.json config which disables this rule for those patterns.
         unflat_logger.info(
             "Checking if block {0} can be simplified: {1}".format(
                 blk.serial, format_minsn_t(blk.tail)
@@ -258,9 +271,6 @@ class FixPredecessorOfConditionalJumpBlock(GenericUnflatteningRule):
             )
         )
 
-        # NOTE: For Hodur-style nested-while state machines, this rule can cause
-        # cascading unreachability where IDA removes most of the function.
-        # Use example_hodur.json config which disables this rule for those patterns.
         nb_change = 0
         if len(pred_jmp_always_taken) > 0:
             if self.dump_intermediate_microcode:

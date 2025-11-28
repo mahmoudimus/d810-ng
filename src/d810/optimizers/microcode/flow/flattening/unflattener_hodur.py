@@ -38,6 +38,10 @@ from d810.hexrays.cfg_utils import (
 from d810.hexrays.hexrays_formatters import format_minsn_t, format_mop_t
 from d810.hexrays.hexrays_helpers import extract_num_mop
 from d810.hexrays.tracker import MopTracker
+from d810.optimizers.microcode.flow.flattening.dispatcher_detection import (
+    DispatcherCache,
+    DispatcherStrategy,
+)
 from d810.optimizers.microcode.flow.flattening.generic import GenericUnflatteningRule
 from d810.optimizers.microcode.flow.flattening.utils import get_all_possibles_values
 
@@ -96,16 +100,41 @@ class HodurStateMachine:
 class HodurStateMachineDetector:
     """Detects Hodur-style while-loop state machines in microcode."""
 
-    def __init__(self, mba: ida_hexrays.mba_t):
+    def __init__(self, mba: ida_hexrays.mba_t, use_cache: bool = True):
         self.mba = mba
         self.state_machine: HodurStateMachine | None = None
+        self.use_cache = use_cache
+        self._cache: DispatcherCache | None = None
 
     def detect(self) -> HodurStateMachine | None:
         """
         Detect if the function contains a Hodur state machine.
 
         Returns the state machine structure if found, None otherwise.
+
+        Uses cached dispatcher analysis when available for performance.
         """
+        # Use cached dispatcher detection if available
+        if self.use_cache:
+            self._cache = DispatcherCache.get_or_create(self.mba)
+            analysis = self._cache.analyze()
+
+            # Quick check: is this Hodur-style?
+            if not analysis.is_hodur_style:
+                unflat_logger.debug(
+                    "Dispatcher cache says not Hodur-style (constants=%d, nested=%d)",
+                    len(analysis.state_constants),
+                    analysis.nested_loop_depth,
+                )
+                # Fall back to manual detection anyway
+                pass
+            else:
+                unflat_logger.debug(
+                    "Dispatcher cache confirms Hodur-style: %d state constants, initial=%s",
+                    len(analysis.state_constants),
+                    hex(analysis.initial_state) if analysis.initial_state else "unknown",
+                )
+
         # Step 1: Find all state comparison blocks (jnz with large constants)
         state_check_blocks = self._find_state_check_blocks()
         if len(state_check_blocks) < MIN_STATE_CONSTANTS:
@@ -130,7 +159,12 @@ class HodurStateMachineDetector:
         state_assignments = self._find_state_assignments(state_constants)
 
         # Step 5: Find initial state (assignment in entry block or its immediate successors)
-        initial_state = self._find_initial_state(state_constants)
+        # Use cached value if available
+        initial_state = None
+        if self._cache and self._cache.analyze().initial_state:
+            initial_state = self._cache.analyze().initial_state
+        else:
+            initial_state = self._find_initial_state(state_constants)
 
         # Build the state machine structure
         self.state_machine = HodurStateMachine(

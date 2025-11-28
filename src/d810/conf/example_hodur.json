@@ -957,6 +957,11 @@
             "config": {}
         },
         {
+            "name": "HodurUnflattener",
+            "is_activated": true,
+            "config": {}
+        },
+        {
             "name": "JumpFixer",
             "is_activated": true,
             "config": {

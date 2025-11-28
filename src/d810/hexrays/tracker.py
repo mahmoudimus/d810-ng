@@ -697,6 +697,18 @@ class MopTracker(object):
             # Use O(1) lookup via block_serial_set instead of O(n) list search
             if self.history.contains_block_serial(cur_blk.serial):
                 self.history.insert_block_in_path(cur_blk, 0)
+                # Check if the looped block is the dispatcher - if so, return it
+                # so search_backward can resume tracking from the first blocks
+                if (
+                    self.dispatcher_info
+                    and cur_blk.serial == self.dispatcher_info.outmost_dispatch_num
+                ):
+                    if logger.debug_on:
+                        logger.debug(
+                            "Loop detected back to dispatcher block %d",
+                            cur_blk.serial
+                        )
+                    return cur_blk
                 return None
             if cur_blk.serial in self.avoid_list:
                 self.history.insert_block_in_path(cur_blk, 0)

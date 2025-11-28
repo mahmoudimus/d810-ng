@@ -104,3 +104,186 @@ To fully realise this vision, future work could:
 	4.	Enhance parallelism – Explore process‑based parallelism to avoid Python's GIL and test on large real binaries to quantify speed‑ups.
 
 ⸻
+
+## Hodur-Style State Machine Unflattening (2025)
+
+### Overview
+
+Hodur malware uses a distinct control flow flattening pattern that differs from O-LLVM:
+
+| Feature | O-LLVM | Hodur |
+|---------|--------|-------|
+| Dispatcher | Single `switch` block with `m_jtbl` | Nested `while(1)` loops |
+| Comparison | `switch(var)` → jump table | `jnz var, CONST` / `jz var, CONST` |
+| Structure | Flat switch-case | 10+ levels of nested while loops |
+| State var | Usually register | Usually stack variable (`mop_S`) |
+
+### Problem: Cascading Unreachability
+
+The existing `FixPredecessorOfConditionalJumpBlock` rule was designed for O-LLVM and caused **cascading unreachability** on Hodur functions:
+
+1. Small "entry blocks" (API result checks, loop conditions) were redirected
+2. Entry blocks lead INTO the state machine dispatcher
+3. When redirected, dispatcher becomes unreachable
+4. Entire state machine removed → 196 lines → 7 lines
+
+**Fix Applied**: Added dispatcher detection heuristic (if ≥90% of predecessors go same direction → skip block). Updated `example_hodur.json` to disable problematic rule.
+
+### State Variable Detection Algorithms
+
+Eight algorithms for detecting state variables, ordered by complexity:
+
+#### Algorithm 1: Pattern Matching (Static)
+```python
+def pattern_matching_detection(mba):
+    """Look for: mov LARGE_CONST, var in early blocks (0-5)"""
+    candidates = []
+    for blk_idx in range(min(mba.qty, 5)):
+        for ins in iterate_insns(blk_idx):
+            if ins.opcode == m_mov and ins.l.t == mop_n:
+                if ins.l.nnn.value > 0x10000:
+                    candidates.append({'var': ins.d, 'init_value': ins.l.nnn.value})
+    # Verify var appears in comparisons
+    return score_and_select(candidates)
+```
+**Pros**: Fast, simple | **Cons**: Misses obfuscated init, SSA issues
+
+#### Algorithm 2: Dataflow Analysis (Reaching Definitions)
+Track which definitions reach each use. Find variables with constant defs that flow to comparisons.
+**Pros**: Handles SSA | **Cons**: Complex, slower
+
+#### Algorithm 3: CFG Structure Analysis (Dominator-Based)
+Find dispatcher block first (many predecessors + conditional jump), extract compared variable.
+**Pros**: Works for both O-LLVM and Hodur | **Cons**: May miss low-pred dispatchers
+
+#### Algorithm 4: Constant Propagation
+Track variables receiving multiple distinct large constants.
+```python
+var_constants = defaultdict(set)
+for blk in blocks:
+    for ins in insns:
+        if ins.opcode == m_mov and is_large_const(ins.l):
+            var_constants[var_key(ins.d)].add(ins.l.nnn.value)
+# State var has many unique constants
+return max(var_constants, key=lambda v: len(var_constants[v]))
+```
+**Pros**: Simple, direct | **Cons**: May catch counters
+
+#### Algorithm 5: Loop Analysis (Back-Edge Detection)
+Find variables that control loop back-edges.
+**Pros**: Semantically meaningful | **Cons**: Complex CFG analysis
+
+#### Algorithm 6: Symbolic Execution
+Execute symbolically, track variables determining branch directions.
+**Pros**: Most accurate | **Cons**: Slow, path explosion
+
+#### Algorithm 7: Frequency Analysis
+```python
+score = comparison_freq[var] * assignment_freq[var]
+```
+**Pros**: Fast | **Cons**: False positives with counters
+
+#### Algorithm 8: Machine Learning
+Train classifier on features: n_const_assignments, n_comparisons, const_entropy, etc.
+**Pros**: Learns complex patterns | **Cons**: Needs training data
+
+### Recommended Hybrid Approach
+
+```python
+def hybrid_detection(mba):
+    # Stage 1: Fast CFG structure check
+    dispatcher = find_dispatcher_by_predecessor_count(mba)
+    if dispatcher:
+        candidate = extract_var_from_dispatcher(dispatcher)
+        if verify_candidate(candidate): return candidate
+
+    # Stage 2: Constant propagation for candidates
+    candidates = constant_propagation_detection(mba)
+
+    # Stage 3: Score with frequency analysis
+    for c in candidates:
+        c['score'] = frequency_score(mba, c['var'])
+
+    # Stage 4: Verify with dataflow
+    best = max(candidates, key=lambda c: c['score'])
+    if verify_with_dataflow(mba, best): return best
+
+    # Stage 5: Fall back to symbolic (expensive)
+    return symbolic_execution_detection(mba)
+```
+
+### Scoring Function
+
+```python
+def score_candidate(c):
+    score = len(c['comparisons']) * 10
+    score += len(c['assignments']) * 5
+
+    # Bonus for overlap between compared and assigned values
+    cmp_vals = {x['value'] for x in c['comparisons']}
+    asgn_vals = {x['value'] for x in c['assignments']}
+    score += len(cmp_vals & asgn_vals) * 20
+
+    # Bonus if init value is compared
+    if c['init_value'] in cmp_vals:
+        score += 50
+
+    # Minimum thresholds
+    if len(c['comparisons']) < 3 or len(c['assignments']) < 3:
+        return 0
+    return score
+```
+
+### CFG Transformation Algorithm
+
+Once state variable and handlers are detected:
+
+```
+BEFORE (State Machine):              AFTER (Unflattened):
+┌─────────┐                         ┌─────────┐
+│ State 1 │──┐                      │ State 1 │
+│ v17=S2  │  │                      └────┬────┘
+└─────────┘  │                           │
+             ▼                           ▼
+┌─────────────────┐                 ┌─────────┐
+│   Dispatcher    │        →        │ State 2 │
+│ while(v17==...) │                 └────┬────┘
+└─────────────────┘                      │
+             ▲                           ▼
+┌─────────┐  │                      ┌─────────┐
+│ State 2 │──┘                      │ State 3 │
+│ v17=S3  │                         └─────────┘
+└─────────┘
+```
+
+**Algorithm**:
+1. Build execution order (topological sort from init state)
+2. For each state transition, redirect CFG edge directly to next handler
+3. Handle conditional transitions (keep branches, redirect targets)
+4. Remove unreachable dispatcher blocks
+5. Verify with `safe_verify(mba)`
+
+### Issue Tracking
+
+| Issue ID | Title | Status |
+|----------|-------|--------|
+| d810-ng-5wu | Fix: FixPredecessorOfConditionalJumpBlock cascading unreachability | ✅ CLOSED |
+| d810-ng-gbj | Implement HodurUnflattener state variable detection | OPEN |
+| d810-ng-iid | Implement HodurUnflattener CFG transformation | OPEN |
+
+### Files
+
+- `src/d810/optimizers/microcode/flow/flattening/unflattener_hodur.py` - Hodur unflattener
+- `src/d810/optimizers/microcode/flow/flattening/fix_pred_cond_jump_block.py` - Fixed with dispatcher heuristic
+- `src/d810/conf/example_hodur.json` - Config for Hodur-style functions
+- `tests/system/test_libdeobfuscated.py::test_hodur_func` - Integration test
+
+### Success Criteria
+
+1. **Detection**: State variable correctly identified with all states
+2. **Extraction**: All state handlers and transitions mapped
+3. **Transformation**: CFG correctly rewritten
+4. **Output**: ~50 lines (down from 196), clean sequential code
+5. **Semantics**: All API calls preserved, same execution order
+
+⸻

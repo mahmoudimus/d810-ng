@@ -1005,8 +1005,9 @@ class TestLibDeobfuscated:
             pytest.skip("Function '__hodur_func' not found in this binary")
 
         with d810_state() as state:
-            # Use hodur-specific config that disables FixPredecessorOfConditionalJumpBlock
-            # to prevent cascading unreachability on nested-while state machines
+            # Use example_hodur.json which:
+            # 1. Disables FixPredecessorOfConditionalJumpBlock (causes cascading unreachability)
+            # 2. Enables HodurUnflattener for Hodur-style nested-while state machines
             with state.for_project("example_hodur.json"):
                 state.stop_d810()
                 decompiled_before = idaapi.decompile(
