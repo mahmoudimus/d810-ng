@@ -244,14 +244,16 @@ class TestCompositionBenefits:
         mock_context = Mock(spec=OptimizationContext)
         mock_context.logger = logging.getLogger("test")
         mock_from = Mock(serial=5)
+        mock_from.nsucc.return_value = 3  # >2 successors triggers early return
         mock_to = Mock(serial=10)
 
         # Can test the patcher without needing a real dispatcher or emulator
-        # (This is a stub implementation, so it returns 0)
+        # With nsucc=3, it returns 0 (unsupported case)
         result = patcher.redirect_edge(mock_context, mock_from, mock_to)
 
         # We verified the method signature and basic behavior
         assert isinstance(result, int)
+        assert result == 0  # Unsupported nsucc returns 0
 
 
 """
