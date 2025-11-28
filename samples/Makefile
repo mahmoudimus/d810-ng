@@ -18,13 +18,17 @@
 #   make BUILD_ARCH=x86                  # → 32-bit Windows DLL
 #   make BINARY_NAME=myplugin            # → bins/myplugin.dll (no host/arch suffix)
 #   make clean
+#   make test-all-platforms              # → Build and test all 4 platforms (Windows/Linux/macOS x86_64/macOS arm64)
+#   NIX_DEBUG_SYMBOLS=True make TARGET_OS=darwin  # → Generate dSYM bundle for macOS
+#   NIX_DEBUG_SYMBOLS=True make TARGET_OS=linux   # → Generate .debug file for Linux
+# Note: Windows PDB files are always generated. macOS dSYM and Linux .debug files require NIX_DEBUG_SYMBOLS=True
 # ==============================================================================
 
 # ----------------------------- Host detection -----------------------------
 ifeq ($(OS),Windows_NT)
     UNAME_S :=
     HOST_OS := windows
-    RM      := del /Q 2>nul || ver>nul
+    RM      := del /Q 2>NUL || ver>NUL
     MKDIR   := mkdir
 else
     UNAME_S := $(shell uname -s)
@@ -55,9 +59,9 @@ RAW_ARCH := $(or $(BUILD_ARCH),x86_64)
 
 # Normalized name for filename (bins/libobfuscated_linux_x86_64.dll)
 NORM_ARCH := $(strip \
-    $(if $(findstring 64,$(RAW_ARCH)),x86_64,\
     $(if $(findstring arm64,$(RAW_ARCH)),arm64,\
     $(if $(findstring aarch64,$(RAW_ARCH)),arm64,\
+    $(if $(findstring 64,$(RAW_ARCH)),x86_64,\
     $(if $(findstring 32,$(RAW_ARCH)),x86,\
     $(if $(findstring x86,$(RAW_ARCH)),x86,x86_64))))))
 
@@ -92,7 +96,7 @@ CC_BASE := clang
 
 # On Windows host → prefer clang-cl.exe (MSVC-compatible) if it exists
 ifeq ($(HOST_OS),windows)
-    ifneq ($(shell where clang-cl.exe 2>nul),)
+    ifneq ($(shell where clang-cl.exe 2>NUL),)
         CC_BASE     := clang-cl.exe
         USING_CLANG_CL := 1
     endif
@@ -109,20 +113,47 @@ ifeq ($(TARGET_OS),windows)
         endif
         CC  := $(CC_BASE) --target=$(TRIPLE) -fuse-ld=lld
         LD  := $(CC_BASE) --target=$(TRIPLE) -fuse-ld=lld
+        MINGW_SYSROOT ?=
+        ifeq ($(MINGW_SYSROOT),)
+            $(warning [Makefile] No MinGW / Windows sysroot specified (MINGW_SYSROOT is empty))
+            $(warning [Makefile] To cross-compile to Windows from macOS/Linux you must first install a Windows toolchain.)
+            # Host-specific hints
+            ifeq ($(HOST_OS),darwin)
+                $(warning [Makefile] Detected host: macOS (Darwin). Example setup with Homebrew:)
+                $(warning [Makefile]   brew install llvm-mingw)
+                $(warning [Makefile] Then build with:)
+                $(warning [Makefile]   make TARGET_OS=windows MINGW_SYSROOT=$$(brew --prefix llvm-mingw))
+            else ifeq ($(HOST_OS),linux)
+                $(warning [Makefile] Detected host: Linux. Example setup on Debian/Ubuntu:)
+                $(warning [Makefile]   sudo apt-get update && sudo apt-get install -y mingw-w64)
+                $(warning [Makefile] Then point MINGW_SYSROOT at the MinGW prefix (e.g. /usr or /usr/x86_64-w64-mingw32).)
+                $(warning [Makefile]   make TARGET_OS=windows MINGW_SYSROOT=/usr)
+            endif
+            # Docker hint if available
+            ifneq ($(shell command -v docker 2>/dev/null),)
+                $(warning [Makefile] Detected 'docker' in PATH. As an alternative, you can build inside a container:)
+                $(warning [Makefile]   make docker-windows-dockerfile)
+                $(warning [Makefile] This will create Dockerfile.windows with a minimal clang+mingw-w64 environment.)
+            endif
+            $(warning [Makefile] ------------------------------------------------------------)
+            $(warning [Makefile] NOTE: This Makefile is used for decompilation samples.)
+            $(warning [Makefile] If you only need the sample to compile, you may simply remove)
+            $(warning [Makefile] or comment out the offending '#include <stdlib.h>' (or similar))
+            $(warning [Makefile] in the generated C file. Most samples do not actually need it.)
+            $(warning [Makefile] ------------------------------------------------------------)
+            $(warning [Makefile] Continuing without a sysroot — Clang may still fail later when)
+            $(warning [Makefile] attempting to include Windows headers like <stdlib.h>.)
+        else
+            CC := $(CC) --sysroot=$(MINGW_SYSROOT)
+            LD := $(LD) --sysroot=$(MINGW_SYSROOT)
+            MINGW_INCLUDEDIR ?= $(MINGW_SYSROOT)/include
+            MINGW_LIBDIR     ?= $(MINGW_SYSROOT)/lib
+        endif
     else
         CC  := $(CC_BASE)
         LD  := $(CC_BASE)
     endif
     OUTPUT_EXT := dll
-    # Optional: point to a MinGW / llvm-mingw sysroot when cross-compiling
-    # Example: make TARGET_OS=windows MINGW_SYSROOT=/opt/llvm-mingw
-    MINGW_SYSROOT ?=
-    ifneq ($(MINGW_SYSROOT),)
-        CC := $(CC) --sysroot=$(MINGW_SYSROOT)
-        LD := $(LD) --sysroot=$(MINGW_SYSROOT)
-        MINGW_INCLUDEDIR ?= $(MINGW_SYSROOT)/include
-        MINGW_LIBDIR     ?= $(MINGW_SYSROOT)/lib
-    endif
 else ifeq ($(TARGET_OS),darwin)
     CC  := $(CC_BASE)
     LD  := $(CC_BASE)
@@ -164,8 +195,7 @@ ifeq ($(TARGET_OS),windows)
         endif
         LDFLAGS := -shared -fuse-ld=lld \
                    -Wl,--export-all-symbols \
-                   -Wl,--enable-auto-import \
-                   -Wl,--unresolved-symbols=ignore-all
+                   -Wl,--enable-auto-import
         ifneq ($(MINGW_LIBDIR),)
             LDFLAGS += -L$(MINGW_LIBDIR)
         endif
@@ -177,24 +207,33 @@ else
     ifeq ($(TARGET_OS),darwin)
         LDFLAGS := -shared -undefined dynamic_lookup $(ARCH_FLAGS)
     else
-        LDFLAGS := -shared -Wl,--unresolved-symbols=ignore-in-shared-libs $(ARCH_FLAGS)
+        LDFLAGS := -shared $(ARCH_FLAGS)
     endif
 endif
 
 # Keep debug symbols in the final binary everywhere
 LDFLAGS += -g
 
+# Platform-specific debug symbol file generation
+ifeq ($(TARGET_OS),windows)
+    ifneq ($(USING_CLANG_CL),1)
+        # For MinGW cross-compilation, generate CodeView debug info and PDB
+        CFLAGS += -gcodeview
+        LDFLAGS += -Wl,--pdb=$(TARGET_LIB:.dll=.pdb)
+    endif
+endif
+
 # ----------------------------- Sources & Objects -----------------------------
 SRCS := $(wildcard src/c/*.c)
 OBJS := $(SRCS:.c=.o)
 
 # ----------------------------- Rules -----------------------------
-.PHONY: all clean
+.PHONY: all clean docker-windows-dockerfile test-all-platforms
 
 all: bins $(TARGET_LIB)
 
 bins:
-	@$(MKDIR) bins >nul 2>&1 || $(MKDIR) bins
+	@$(MKDIR) bins >/dev/null 2>&1 || $(MKDIR) bins
 
 # Build target - different for MSVC vs GCC/Clang
 ifeq ($(CC),cl)
@@ -207,6 +246,28 @@ else
 $(TARGET_LIB): $(OBJS)
 	@echo "Linking $(TARGET_LIB)"
 	$(LD) $(LDFLAGS) -o $@ $^
+	@if [ "$(TARGET_OS)" = "darwin" ]; then \
+		if [ "$(NIX_DEBUG_SYMBOLS)" = "True" ]; then \
+			echo "Generating dSYM bundle..."; \
+			dsymutil $@ -o $@.dSYM 2>/dev/null || echo "  (dsymutil not found, skipping dSYM generation)"; \
+		else \
+			echo "  (dSYM generation skipped; set NIX_DEBUG_SYMBOLS=True to generate)"; \
+		fi; \
+	elif [ "$(TARGET_OS)" = "linux" ]; then \
+		if [ "$(NIX_DEBUG_SYMBOLS)" = "True" ]; then \
+			OBJCOPY_CMD=$$(command -v objcopy 2>/dev/null || command -v llvm-objcopy 2>/dev/null || echo ""); \
+			if [ -n "$$OBJCOPY_CMD" ]; then \
+				echo "Generating separate debug symbols..."; \
+				$$OBJCOPY_CMD --only-keep-debug $@ $@.debug 2>/dev/null && \
+				$$OBJCOPY_CMD --add-gnu-debuglink=$@.debug $@ 2>/dev/null && \
+				echo "  ✓ Created: $@.debug" || echo "  (objcopy failed, debug symbols remain in binary)"; \
+			else \
+				echo "  (objcopy/llvm-objcopy not found, debug symbols remain embedded in binary with -g)"; \
+			fi; \
+		else \
+			echo "  (separate .debug file generation skipped; set NIX_DEBUG_SYMBOLS=True to generate)"; \
+		fi; \
+	fi
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
@@ -219,4 +280,66 @@ $(SRCS:.c=.d): %.d: %.c
 -include $(SRCS:.c=.d)
 
 clean:
-	-$(RM) $(TARGET_LIB) $(OBJS) $(SRCS:.c=.d) 2>nul || true
+	-$(RM) $(TARGET_LIB) $(OBJS) $(SRCS:.c=.d) 2>/dev/null || true
+
+# ---------------------------------------------------------------------------
+# Optional helper: generate a simple Dockerfile for Windows cross-builds
+# ---------------------------------------------------------------------------
+docker-windows-dockerfile:
+	@echo "Writing Dockerfile.windows (Debian + clang + lld + mingw-w64 + make)..."
+	@{ \
+		echo "FROM debian:stable-slim"; \
+		echo "RUN apt-get update && apt-get install -y clang lld mingw-w64 make && rm -rf /var/lib/apt/lists/*"; \
+		echo "WORKDIR /work"; \
+		echo "CMD [\"make\", \"TARGET_OS=windows\", \"MINGW_SYSROOT=/usr\"]"; \
+	} > Dockerfile.windows
+	@echo "Created Dockerfile.windows."
+	@echo "Build the image with:"
+	@echo "  docker build -t win-build -f Dockerfile.windows ."
+	@echo "Then run your Windows build with:"
+	@echo "  docker run --rm -v \"$$PWD\":/work win-build"
+
+# ---------------------------------------------------------------------------
+# Build and test all platforms
+# ---------------------------------------------------------------------------
+test-all-platforms:
+	@echo "=========================================="
+	@echo "Building and testing all platforms..."
+	@echo "=========================================="
+	@echo ""
+	@echo "[1/4] Testing Windows (x86_64) via Docker..."
+	@if command -v docker >/dev/null 2>&1; then \
+		docker run --rm -v "$$PWD":/work win-build sh -c "make clean && make TARGET_OS=windows" > /tmp/win-build.log 2>&1 && \
+		echo "  ✓ Windows build successful" || \
+		(echo "  ✗ Windows build failed:" && tail -10 /tmp/win-build.log && exit 1); \
+	else \
+		echo "  ⚠ Docker not found, skipping Windows build"; \
+	fi
+	@echo ""
+	@echo "[2/4] Testing Linux (x86_64)..."
+	@$(MAKE) clean TARGET_OS=linux > /tmp/linux-build.log 2>&1 && \
+		$(MAKE) TARGET_OS=linux >> /tmp/linux-build.log 2>&1 && \
+		echo "  ✓ Linux build successful" && \
+		test -f bins/libobfuscated.so && echo "  ✓ Created: bins/libobfuscated.so" || \
+		(echo "  ✗ Linux build failed:" && tail -10 /tmp/linux-build.log && exit 1)
+	@echo ""
+	@echo "[3/4] Testing macOS (x86_64)..."
+	@$(MAKE) clean TARGET_OS=darwin BUILD_ARCH=x86_64 > /tmp/darwin-x86_64-build.log 2>&1 && \
+		$(MAKE) TARGET_OS=darwin BUILD_ARCH=x86_64 >> /tmp/darwin-x86_64-build.log 2>&1 && \
+		echo "  ✓ macOS x86_64 build successful" && \
+		test -f bins/libobfuscated.dylib && echo "  ✓ Created: bins/libobfuscated.dylib" || \
+		(echo "  ✗ macOS x86_64 build failed:" && tail -10 /tmp/darwin-x86_64-build.log && exit 1)
+	@echo ""
+	@echo "[4/4] Testing macOS (arm64)..."
+	@$(MAKE) clean TARGET_OS=darwin BUILD_ARCH=arm64 > /tmp/darwin-arm64-build.log 2>&1 && \
+		$(MAKE) TARGET_OS=darwin BUILD_ARCH=arm64 >> /tmp/darwin-arm64-build.log 2>&1 && \
+		echo "  ✓ macOS arm64 build successful" && \
+		test -f bins/libobfuscated.dylib && echo "  ✓ Created: bins/libobfuscated.dylib" || \
+		(echo "  ✗ macOS arm64 build failed:" && tail -10 /tmp/darwin-arm64-build.log && exit 1)
+	@echo ""
+	@echo "=========================================="
+	@echo "✓ All platforms built successfully!"
+	@echo "=========================================="
+	@echo ""
+	@echo "Generated files:"
+	@ls -lh bins/*.dll bins/*.so bins/*.dylib 2>/dev/null | awk '{print "  " $$9 " (" $$5 ")"}' || true

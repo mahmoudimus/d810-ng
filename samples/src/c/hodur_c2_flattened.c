@@ -13,7 +13,6 @@
 
 #include "polyfill.h"
 #include <stdio.h>
-#include <stdint.h>
 #include <string.h>
 
 // Global timeout variable
