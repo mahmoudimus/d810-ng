@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import weakref
 from dataclasses import dataclass, field
-from enum import IntFlag
+from enum import Enum, IntFlag
 from typing import TYPE_CHECKING
 
 import ida_hexrays
@@ -58,9 +58,41 @@ class DispatcherStrategy(IntFlag):
     PREDECESSOR_UNIFORM = 1 << 3   # Most preds are unconditional jumps
     CONSTANT_FREQUENCY = 1 << 4    # Many unique constants compared
     BACK_EDGE = 1 << 5             # Has incoming back-edges
-    NESTED_LOOP = 1 << 6           # Part of nested loop structure (Hodur)
+    NESTED_LOOP = 1 << 6           # Part of nested loop structure
     SMALL_BLOCK = 1 << 7           # Few instructions (dispatchers are typically tight)
     SWITCH_JUMP = 1 << 8           # Contains jtbl or computed goto
+
+
+class DispatcherType(Enum):
+    """
+    Classification of control-flow flattening dispatcher mechanisms.
+
+    Different obfuscators use different dispatcher patterns. Identifying the type
+    helps select the appropriate unflattening strategy and avoid techniques that
+    cause cascading unreachability issues.
+    """
+
+    # Unknown or unclassified dispatcher pattern
+    UNKNOWN = 0
+
+    # Switch/jump table based dispatcher (jtbl instruction)
+    # Used by: O-LLVM, Tigress (switch mode), commercial obfuscators
+    # Pattern: Central switch statement dispatches to handler blocks
+    # Characteristics: m_jtbl opcode, computed goto, single dispatcher block
+    SWITCH_TABLE = 1
+
+    # Conditional chain dispatcher (nested jnz/jz comparisons)
+    # Used by: Hodur malware, various C2 frameworks, info stealers
+    # Pattern: Nested while(1) loops with sequential state comparisons
+    # Characteristics: No jtbl, many jnz/jz blocks, nested loop structure
+    # Note: Requires special handling to avoid cascading unreachability
+    CONDITIONAL_CHAIN = 2
+
+    # Indirect jump dispatcher (computed address)
+    # Used by: Tigress (indirect mode), some VM protectors
+    # Pattern: Jump target computed from state variable
+    # Characteristics: m_goto with mop_d destination, address arithmetic
+    INDIRECT_JUMP = 3
 
 
 @dataclass
@@ -138,10 +170,20 @@ class DispatcherAnalysis:
     state_variable: StateVariableCandidate | None = None
     state_constants: set[int] = field(default_factory=set)
 
-    # Hodur-specific
-    is_hodur_style: bool = False
+    # Dispatcher classification
+    dispatcher_type: DispatcherType = DispatcherType.UNKNOWN
     initial_state: int | None = None
     nested_loop_depth: int = 0
+
+    @property
+    def is_conditional_chain(self) -> bool:
+        """True if dispatcher uses conditional chain (nested jnz/jz comparisons)."""
+        return self.dispatcher_type == DispatcherType.CONDITIONAL_CHAIN
+
+    @property
+    def is_switch_table(self) -> bool:
+        """True if dispatcher uses switch/jump table."""
+        return self.dispatcher_type == DispatcherType.SWITCH_TABLE
 
 
 # Thresholds for detection strategies
@@ -225,14 +267,14 @@ class DispatcherCache:
                 break
 
         if has_jtbl:
-            # O-LLVM style - no need for full analysis
-            analysis.is_hodur_style = False
+            # Switch table style (O-LLVM, Tigress switch mode)
+            analysis.dispatcher_type = DispatcherType.SWITCH_TABLE
             self._analysis = analysis
             self._last_maturity = self.mba.maturity
-            logger.debug("Detected jtbl - O-LLVM style, skipping Hodur analysis")
+            logger.debug("Detected jtbl - switch table dispatcher")
             return analysis
 
-        # Run all detection strategies for potential Hodur-style
+        # Run all detection strategies for potential conditional chain style
         self._analyze_block_predecessors(analysis)
         self._analyze_state_comparisons(analysis)
         self._analyze_loop_structure(analysis)
@@ -240,7 +282,7 @@ class DispatcherCache:
         self._analyze_block_sizes(analysis)
         self._analyze_switch_jumps(analysis)
         self._score_blocks(analysis)
-        self._detect_hodur_pattern(analysis)
+        self._classify_dispatcher_type(analysis)
 
         # Update statistics
         self.blocks_analyzed = self.mba.qty
@@ -255,10 +297,10 @@ class DispatcherCache:
         self._last_maturity = self.mba.maturity
 
         logger.info(
-            "Dispatcher analysis complete: %d dispatchers, %d state constants, hodur=%s",
+            "Dispatcher analysis complete: %d dispatchers, %d state constants, type=%s",
             len(analysis.dispatchers),
             len(analysis.state_constants),
-            analysis.is_hodur_style,
+            analysis.dispatcher_type.name,
         )
 
         return analysis
@@ -312,7 +354,7 @@ class DispatcherCache:
             "skip_rate": skip_rate,
             "dispatchers_found": len(analysis.dispatchers),
             "strategies_used": strategies_used,
-            "is_hodur_style": analysis.is_hodur_style,
+            "dispatcher_type": analysis.dispatcher_type.name,
             "state_constants_count": len(analysis.state_constants),
         }
 
@@ -340,7 +382,7 @@ class DispatcherCache:
             return None
 
         analysis = self.analyze()
-        if not analysis.is_hodur_style:
+        if not analysis.is_conditional_chain:
             return None
 
         # Need state variable information for emulation
@@ -730,23 +772,24 @@ class DispatcherCache:
 
             block_info.score = score
 
-    def _detect_hodur_pattern(self, analysis: DispatcherAnalysis) -> None:
-        """Detect if this is Hodur-style flattening."""
-        # Hodur characteristics:
-        # 1. Nested while(1) loops (not switch)
-        # 2. State comparisons using jnz/jz (not jtbl)
-        # 3. Large 32-bit constants
-        # 4. Many state transitions
+    def _classify_dispatcher_type(self, analysis: DispatcherAnalysis) -> None:
+        """Classify the dispatcher type based on detected patterns.
 
-        hodur_score = 0
+        Conditional chain characteristics (Hodur, C2 frameworks, info stealers):
+        1. Nested while(1) loops (not switch)
+        2. State comparisons using jnz/jz (not jtbl)
+        3. Large 32-bit constants
+        4. Many state transitions
+        """
+        conditional_chain_score = 0
 
-        # Nested loops
+        # Nested loops - strong indicator of conditional chain
         if analysis.nested_loop_depth >= 2:
-            hodur_score += 30
+            conditional_chain_score += 30
 
         # State constants count
         if len(analysis.state_constants) >= MIN_UNIQUE_CONSTANTS:
-            hodur_score += len(analysis.state_constants) * 5
+            conditional_chain_score += len(analysis.state_constants) * 5
 
         # No jtbl (switch) present - check for absence of jtbl opcode
         has_jtbl = False
@@ -757,18 +800,24 @@ class DispatcherCache:
                 break
 
         if not has_jtbl and len(analysis.state_constants) >= MIN_UNIQUE_CONSTANTS:
-            hodur_score += 20
+            conditional_chain_score += 20
 
-        analysis.is_hodur_style = hodur_score >= 50
-
-        if analysis.is_hodur_style:
-            logger.info("Detected Hodur-style flattening (score=%d)", hodur_score)
-
-            # Find initial state
+        # Classify based on score
+        if conditional_chain_score >= 50:
+            analysis.dispatcher_type = DispatcherType.CONDITIONAL_CHAIN
+            logger.info(
+                "Classified as CONDITIONAL_CHAIN dispatcher (score=%d)",
+                conditional_chain_score
+            )
+            # Find initial state for conditional chain dispatchers
             self._find_initial_state(analysis)
+        elif has_jtbl:
+            analysis.dispatcher_type = DispatcherType.SWITCH_TABLE
+        else:
+            analysis.dispatcher_type = DispatcherType.UNKNOWN
 
     def _find_initial_state(self, analysis: DispatcherAnalysis) -> None:
-        """Find the initial state value for Hodur."""
+        """Find the initial state value for conditional chain dispatchers."""
         # Look in early blocks for assignment of a state constant
         for i in range(min(5, self.mba.qty)):
             blk = self.mba.get_mblock(i)
@@ -801,23 +850,27 @@ class DispatcherCache:
 
 def should_skip_dispatcher(mba: ida_hexrays.mba_t, blk: ida_hexrays.mblock_t) -> bool:
     """
-    Convenience function to check if a block should be skipped for O-LLVM style patching.
+    Check if a block should be skipped for switch-table style patching.
 
     This is used by FixPredecessorOfConditionalJumpBlock to avoid cascading unreachability
-    when dealing with Hodur-style state machines.
+    when dealing with conditional chain dispatchers (nested jnz/jz comparisons).
 
-    IMPORTANT: This should only return True for Hodur-style functions, NOT for O-LLVM.
-    O-LLVM patching requires modifying dispatcher blocks, so we must not skip them.
+    IMPORTANT: Only returns True for CONDITIONAL_CHAIN dispatchers, NOT for SWITCH_TABLE.
+    Switch-table patching requires modifying dispatcher blocks, so we must not skip them.
+
+    Returns:
+        True if this is a conditional chain dispatcher block that should be skipped
+        to avoid cascading unreachability.
     """
     cache = DispatcherCache.get_or_create(mba)
     analysis = cache.analyze()
 
-    # Only skip if this is Hodur-style flattening (nested while loops, no switch/jtbl)
-    # O-LLVM style should NOT be skipped - it needs the predecessor patching
-    if not analysis.is_hodur_style:
+    # Only skip if this is conditional chain style (nested while loops, no switch/jtbl)
+    # Switch-table style should NOT be skipped - it needs the predecessor patching
+    if not analysis.is_conditional_chain:
         return False
 
-    # For Hodur-style, skip blocks flagged as dispatchers
+    # For conditional chain style, skip blocks flagged as dispatchers
     if cache.is_dispatcher(blk.serial):
         return True
 

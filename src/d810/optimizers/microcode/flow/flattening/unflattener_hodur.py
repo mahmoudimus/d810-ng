@@ -120,7 +120,7 @@ class HodurStateMachineDetector:
             analysis = self._cache.analyze()
 
             # Quick check: is this Hodur-style?
-            if not analysis.is_hodur_style:
+            if not analysis.is_conditional_chain:
                 unflat_logger.debug(
                     "Dispatcher cache says not Hodur-style (constants=%d, nested=%d)",
                     len(analysis.state_constants),

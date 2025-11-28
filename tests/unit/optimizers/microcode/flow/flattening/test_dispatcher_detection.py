@@ -193,7 +193,7 @@ class TestDispatcherAnalysis:
         assert len(analysis.blocks) == 0
         assert len(analysis.dispatchers) == 0
         assert analysis.state_variable is None
-        assert not analysis.is_hodur_style
+        assert not analysis.is_conditional_chain
         assert analysis.initial_state is None
 
 
@@ -334,7 +334,7 @@ class TestDispatcherCacheWithMocks:
         analysis = cache.analyze()
 
         # Should detect O-LLVM style (not Hodur)
-        assert not analysis.is_hodur_style
+        assert not analysis.is_conditional_chain
 
 
 class TestDispatcherCacheStatistics:
@@ -368,7 +368,12 @@ class TestDispatcherCacheStatistics:
         }
         analysis.dispatchers = [0, 5]
         analysis.state_constants = {0x50000, 0x60000, 0x70000}
-        analysis.is_hodur_style = True
+
+        # Import DispatcherType for setting the type
+        from d810.optimizers.microcode.flow.flattening.dispatcher_detection import (
+            DispatcherType
+        )
+        analysis.dispatcher_type = DispatcherType.CONDITIONAL_CHAIN
 
         cache._analysis = analysis
         cache._last_maturity = 0x10
@@ -379,7 +384,7 @@ class TestDispatcherCacheStatistics:
         assert stats["blocks_skipped"] == 15
         assert stats["skip_rate"] == 0.75
         assert stats["dispatchers_found"] == 2
-        assert stats["is_hodur_style"] is True
+        assert stats["dispatcher_type"] == "CONDITIONAL_CHAIN"
         assert stats["state_constants_count"] == 3
         assert "HIGH_FAN_IN" in stats["strategies_used"]
 
@@ -599,7 +604,7 @@ class TestHodurDispatcherSkipping:
         analysis = cache.analyze()
 
         # Verify it's detected as Hodur-style
-        assert analysis.is_hodur_style, "Should detect Hodur-style (no jtbl, nested loops)"
+        assert analysis.is_conditional_chain, "Should detect conditional chain (no jtbl, nested loops)"
 
         # Block 2 should be detected as a dispatcher
         block_2_info = cache.get_block_info(2)
@@ -660,7 +665,7 @@ class TestHodurDispatcherSkipping:
         analysis = cache.analyze()
 
         # Should NOT be Hodur-style (has jtbl)
-        assert not analysis.is_hodur_style, "Should NOT detect as Hodur-style (has jtbl)"
+        assert not analysis.is_conditional_chain, "Should NOT detect as Hodur-style (has jtbl)"
 
         # should_skip_dispatcher should return False for O-LLVM
         dispatcher_blk = blocks[2]
