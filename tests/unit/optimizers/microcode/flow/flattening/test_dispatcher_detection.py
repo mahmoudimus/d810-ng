@@ -49,8 +49,17 @@ def mock_ida_hexrays():
 
     mock_module.BADADDR = 0xFFFFFFFFFFFFFFFF
 
-    # Mock mop_t class
-    mock_module.mop_t = MagicMock
+    # Mock mop_t class - needs to be a proper callable that returns a mock
+    def mock_mop_t_constructor(arg=None):
+        result = MagicMock()
+        if arg is not None:
+            result.t = getattr(arg, 't', 0)
+            result.s = getattr(arg, 's', MagicMock())
+            result.r = getattr(arg, 'r', 0)
+            result.size = getattr(arg, 'size', 4)
+        return result
+
+    mock_module.mop_t = mock_mop_t_constructor
 
     with patch.dict('sys.modules', {'ida_hexrays': mock_module}):
         yield mock_module
@@ -471,6 +480,254 @@ class TestMopKeyGeneration:
         assert key is None
 
 
+class TestHodurDispatcherSkipping:
+    """Tests for Hodur dispatcher integration with predecessor tracking.
+
+    The key problem: For Hodur-style state machines, when MopTracker traces
+    backwards through the dispatcher (nested while loop), it may find only
+    the initial state value. If we redirect ALL predecessors based on that
+    initial value, blocks become unreachable (cascading unreachability).
+
+    Expected behavior:
+    - should_skip_dispatcher() returns True for Hodur-style dispatchers
+    - When tracking through a Hodur dispatcher, the result should be "unknown"
+    - O-LLVM style (with jtbl) should NOT be skipped
+
+    These tests verify the integration between dispatcher_detection and
+    fix_pred_cond_jump_block.
+    """
+
+    def test_should_skip_dispatcher_returns_true_for_hodur_style(self, mock_ida_hexrays):
+        """Hodur-style dispatchers should be skipped to avoid cascading unreachability."""
+        from d810.optimizers.microcode.flow.flattening.dispatcher_detection import (
+            DispatcherCache,
+            DispatcherStrategy,
+            should_skip_dispatcher,
+        )
+
+        # Create a mock mba with Hodur-style characteristics
+        mock_mba = Mock()
+        mock_mba.entry_ea = 0x5000
+        mock_mba.maturity = 10
+        mock_mba.qty = 10
+
+        # Create mock blocks that represent a Hodur-style function:
+        # - No jtbl instruction
+        # - Nested while loops (back edges)
+        # - State comparisons with large constants
+
+        def create_mock_block(serial, opcode=None, right_val=None, has_back_edge=False):
+            blk = Mock()
+            blk.serial = serial
+            blk.npred = Mock(return_value=5 if serial == 2 else 2)
+            blk.nsucc = Mock(return_value=2)
+            blk.predset = [serial - 1] if serial > 0 else []
+            blk.succset = [serial + 1] if serial < 9 else []
+            if has_back_edge:
+                blk.succset.append(2)  # Back edge to block 2
+
+            if opcode is not None:
+                blk.tail = Mock()
+                blk.tail.opcode = opcode
+                if right_val is not None:
+                    blk.tail.r = Mock()
+                    blk.tail.r.t = 2  # mop_n
+                    blk.tail.r.nnn = Mock()
+                    blk.tail.r.nnn.value = right_val
+                    blk.tail.l = Mock()
+                    blk.tail.l.t = 3  # mop_S
+                    blk.tail.l.s = Mock()
+                    blk.tail.l.s.off = 0x20
+                    blk.tail.l.size = 4
+                else:
+                    blk.tail.r = Mock()
+                    blk.tail.r.t = 0
+            else:
+                blk.tail = None
+
+            blk.head = None
+            return blk
+
+        # Build Hodur-style function with NESTED loops:
+        # Block 0: Entry
+        # Block 2: Outer loop header (back edge from block 4)
+        # Block 3: Middle loop header (back edge from block 5)
+        # Block 4: Inner loop header (back edge from block 6)
+        #
+        # For nested loop detection:
+        # - Need >=3 blocks with BACK_EDGE strategy
+        # - Need >=2 back_edge_sources that are ALSO loop headers
+        # - Block 3's back_edge_source includes block 2 (another loop header)
+        # - Block 4's back_edge_source includes block 3 (another loop header)
+        blocks = []
+        for i in range(10):
+            blk = create_mock_block(i)
+
+            if i == 2:
+                # Outer loop header - has back edge from block 4
+                blk = create_mock_block(i, opcode=0x30, right_val=0xB2FD8FB6)
+                blk.npred = Mock(return_value=6)
+                blk.predset = [1, 4, 7, 8, 9]  # Block 4 is a loop header
+                blk.succset = [3]
+            elif i == 3:
+                # Middle loop header - has back edge from block 5
+                blk = create_mock_block(i, opcode=0x30, right_val=0xA1234567)
+                blk.predset = [2, 5]  # Block 5 jumps back here
+                blk.succset = [4, 2]  # Back edge to block 2 (nested structure)
+            elif i == 4:
+                # Inner loop header - has back edge from block 6
+                blk = create_mock_block(i, opcode=0x30, right_val=0xC9876543)
+                blk.predset = [3, 6]  # Block 6 jumps back here
+                blk.succset = [5, 3]  # Back edge to block 3 (nested structure)
+            elif i == 5:
+                blk = create_mock_block(i)
+                blk.succset = [6, 3]  # Back edge to block 3
+            elif i == 6:
+                blk = create_mock_block(i)
+                blk.succset = [7, 4]  # Back edge to block 4
+            elif i == 7:
+                blk = create_mock_block(i)
+                blk.succset = [8, 2]  # Back edge to block 2
+
+            blocks.append(blk)
+
+        mock_mba.get_mblock = Mock(side_effect=lambda x: blocks[x] if 0 <= x < 10 else None)
+
+        # Clear cache and analyze
+        DispatcherCache.clear_cache()
+        cache = DispatcherCache.get_or_create(mock_mba)
+        analysis = cache.analyze()
+
+        # Verify it's detected as Hodur-style
+        assert analysis.is_hodur_style, "Should detect Hodur-style (no jtbl, nested loops)"
+
+        # Block 2 should be detected as a dispatcher
+        block_2_info = cache.get_block_info(2)
+        assert block_2_info is not None, "Block 2 should be analyzed"
+        assert block_2_info.is_dispatcher, "Block 2 should be flagged as dispatcher"
+
+        # should_skip_dispatcher should return True for Hodur dispatcher
+        dispatcher_blk = blocks[2]
+        result = should_skip_dispatcher(mock_mba, dispatcher_blk)
+        assert result is True, "should_skip_dispatcher should return True for Hodur-style dispatcher"
+
+    def test_should_skip_dispatcher_returns_false_for_ollvm_style(self, mock_ida_hexrays):
+        """O-LLVM style (with jtbl) should NOT be skipped - needs predecessor patching."""
+        from d810.optimizers.microcode.flow.flattening.dispatcher_detection import (
+            DispatcherCache,
+            should_skip_dispatcher,
+        )
+
+        mock_mba = Mock()
+        mock_mba.entry_ea = 0x6000
+        mock_mba.maturity = 10
+        mock_mba.qty = 5
+
+        # Create O-LLVM style function with jtbl
+        def create_mock_block(serial, opcode=None):
+            blk = Mock()
+            blk.serial = serial
+            blk.npred = Mock(return_value=2)
+            blk.nsucc = Mock(return_value=2)
+            blk.predset = [serial - 1] if serial > 0 else []
+            blk.succset = [serial + 1] if serial < 4 else []
+
+            if opcode is not None:
+                blk.tail = Mock()
+                blk.tail.opcode = opcode
+                blk.tail.r = Mock()
+                blk.tail.r.t = 0
+                blk.tail.l = Mock()
+                blk.tail.l.t = 0
+            else:
+                blk.tail = None
+            blk.head = None
+            return blk
+
+        blocks = []
+        for i in range(5):
+            if i == 2:
+                # Block 2 has jtbl (O-LLVM switch)
+                blk = create_mock_block(i, opcode=0x41)  # m_jtbl
+            else:
+                blk = create_mock_block(i)
+            blocks.append(blk)
+
+        mock_mba.get_mblock = Mock(side_effect=lambda x: blocks[x] if 0 <= x < 5 else None)
+
+        DispatcherCache.clear_cache()
+        cache = DispatcherCache.get_or_create(mock_mba)
+        analysis = cache.analyze()
+
+        # Should NOT be Hodur-style (has jtbl)
+        assert not analysis.is_hodur_style, "Should NOT detect as Hodur-style (has jtbl)"
+
+        # should_skip_dispatcher should return False for O-LLVM
+        dispatcher_blk = blocks[2]
+        result = should_skip_dispatcher(mock_mba, dispatcher_blk)
+        assert result is False, "should_skip_dispatcher should return False for O-LLVM style"
+
+
+class TestPredecessorTrackingWithDispatcherInfo:
+    """Tests for MopTracker integration with dispatcher detection.
+
+    When tracking backwards through a Hodur-style dispatcher, the result
+    should be marked as 'unknown' to prevent cascading unreachability.
+
+    This tests the dispatcher_info parameter that can be passed to MopTracker.
+    """
+
+    @pytest.mark.skip(reason="FAILING TEST: Integration not yet implemented")
+    def test_tracker_marks_unknown_when_path_through_hodur_dispatcher(self, mock_ida_hexrays):
+        """When tracing through a Hodur dispatcher, result should be 'unknown'.
+
+        This is the key integration test. Currently FAILS because the
+        integration between MopTracker and dispatcher_detection is not complete.
+
+        Expected behavior:
+        1. MopTracker traces backward from a predecessor
+        2. Path leads through a block flagged as Hodur dispatcher
+        3. Instead of returning the initial state value, return None/"unknown"
+        4. This prevents redirect of that predecessor
+
+        Current behavior (the bug):
+        - MopTracker returns the initial state value
+        - FixPredecessorOfConditionalJumpBlock redirects ALL predecessors
+        - Blocks become unreachable (cascading unreachability)
+        """
+        from d810.optimizers.microcode.flow.flattening.dispatcher_detection import (
+            DispatcherCache,
+        )
+
+        # This test documents the expected integration:
+        # 1. DispatcherCache provides is_dispatcher(serial) method
+        # 2. MopTracker should check is_dispatcher when tracing
+        # 3. If path goes through dispatcher, mark as unknown
+
+        # TODO: Implement this integration
+        # The actual implementation will involve modifying MopTracker
+        # or fix_pred_cond_jump_block.py to use dispatcher_detection
+
+        assert False, "Integration not yet implemented - this test should fail"
+
+    @pytest.mark.skip(reason="FAILING TEST: Integration not yet implemented")
+    def test_fix_pred_cond_jump_block_uses_dispatcher_cache(self, mock_ida_hexrays):
+        """FixPredecessorOfConditionalJumpBlock should use DispatcherCache.
+
+        Currently, fix_pred_cond_jump_block.py has a hardcoded workaround:
+            dispatcher_info = None  # line 195
+
+        Expected behavior:
+        1. Check if function is Hodur-style using DispatcherCache
+        2. If Hodur-style, pass dispatcher block info to MopTracker
+        3. MopTracker marks paths through dispatcher as "unknown"
+
+        This test validates the integration is working.
+        """
+        # TODO: Implement this integration
+        assert False, "Integration not yet implemented - this test should fail"
+
+
 """
 Integration with Sample Binaries
 ================================
@@ -479,7 +736,7 @@ For full integration tests with real IDA analysis, see:
 - tests/system/test_libdeobfuscated.py
 - samples/src/c/hodur_c2_flattened.c (Hodur-style dispatcher)
 - samples/src/c/while_switch_flattened.c (O-LLVM style switch)
-- samples/src/c/dispatcher_detection_samples.c (edge cases)
+- samples/src/c/dispatcher_patterns.c (all dispatcher patterns)
 
 These system tests verify:
 1. Hodur-style detection (nested while loops, jnz/jz)
