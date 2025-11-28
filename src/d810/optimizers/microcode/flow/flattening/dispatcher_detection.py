@@ -35,6 +35,14 @@ import ida_hexrays
 
 from d810.core import getLogger
 
+# Optional emulation support
+try:
+    from d810.expr.emulation_oracle import EmulationOracle, StateTransition
+    EMULATION_AVAILABLE = True
+except ImportError:
+    EMULATION_AVAILABLE = False
+    EmulationOracle = None
+
 if TYPE_CHECKING:
     pass
 
@@ -84,6 +92,9 @@ class BlockAnalysis:
 class StateVariableCandidate:
     """A candidate for the state variable."""
     mop: ida_hexrays.mop_t
+    mop_type: int = 0  # ida_hexrays.mop_t type (mop_S, mop_r, etc.)
+    mop_offset: int = 0  # For mop_S: stack offset; for mop_r: register number
+    mop_size: int = 4  # Operand size in bytes
     init_value: int | None = None
     comparison_count: int = 0
     assignment_count: int = 0
@@ -91,6 +102,26 @@ class StateVariableCandidate:
     comparison_blocks: list[int] = field(default_factory=list)
     assignment_blocks: list[int] = field(default_factory=list)
     score: float = 0.0
+
+    def get_native_stack_offset(self, frame_size: int) -> int | None:
+        """
+        Convert microcode stack offset to native stack offset.
+
+        Microcode stores stack offsets counting UP from the bottom of the frame,
+        while native code uses offsets DOWN from RBP/RSP. This converts appropriately.
+
+        Args:
+            frame_size: Total frame size from mba_t
+
+        Returns:
+            Native stack offset (negative, relative to frame base), or None if not a stack var
+        """
+        if self.mop_type != ida_hexrays.mop_S:
+            return None
+        # Convert: display_offset = frame_size - mop.s.off
+        # Native offset is typically -(display_offset) from RBP
+        display_offset = frame_size - self.mop_offset
+        return -display_offset
 
 
 @dataclass
@@ -231,6 +262,154 @@ class DispatcherCache:
         analysis = self.analyze()
         return analysis.blocks.get(serial)
 
+    def validate_with_emulation(
+        self,
+        initial_state: int | None = None,
+        max_transitions: int = 20,
+    ) -> list[tuple[int, int]] | None:
+        """
+        Validate state machine using Unicorn emulation (optional enhancement).
+
+        This method attempts to concretely execute the state machine from
+        an initial state to discover actual transitions. This provides
+        ground truth validation of pattern-based detection.
+
+        Args:
+            initial_state: Starting state value (uses detected initial_state if None)
+            max_transitions: Maximum transitions to trace
+
+        Returns:
+            List of (from_state, to_state) tuples if successful, None otherwise
+        """
+        if not EMULATION_AVAILABLE:
+            logger.debug("Emulation not available for validation")
+            return None
+
+        analysis = self.analyze()
+        if not analysis.is_hodur_style:
+            return None
+
+        # Need state variable information for emulation
+        if analysis.state_variable is None:
+            logger.debug("No state variable detected, cannot emulate")
+            return None
+
+        # Use detected initial state if not provided
+        if initial_state is None:
+            initial_state = analysis.initial_state
+            if initial_state is None:
+                logger.debug("No initial state available for emulation")
+                return None
+
+        try:
+            import idc
+            import idaapi
+
+            # Create emulation oracle - detect architecture from IDA
+            arch = self._detect_architecture()
+            oracle = EmulationOracle.create(arch)
+            if not oracle.has_unicorn:
+                logger.debug("Unicorn not available")
+                return None
+
+            # Get function bytes
+            func_start = self.func_ea
+            func_end = idc.find_func_end(func_start)
+            if func_end == idaapi.BADADDR:
+                logger.debug("Could not determine function end")
+                return None
+
+            code_bytes = idc.get_bytes(func_start, func_end - func_start)
+            if not code_bytes:
+                logger.debug("Could not read function bytes")
+                return None
+
+            # Determine state variable location for Unicorn
+            state_var = analysis.state_variable
+
+            if state_var.mop_type == ida_hexrays.mop_S:
+                # Stack variable - calculate native offset
+                frame_size = self._get_frame_size()
+                native_offset = state_var.get_native_stack_offset(frame_size)
+
+                if native_offset is None:
+                    logger.debug("Could not determine native stack offset")
+                    return None
+
+                logger.info(
+                    "State variable: stack offset %d (micro) -> %d (native), size=%d",
+                    state_var.mop_offset, native_offset, state_var.mop_size
+                )
+
+                # Use oracle's trace_state_variable for stack-based state
+                transitions_raw = oracle.trace_state_variable(
+                    code_bytes,
+                    native_offset,
+                    initial_state,
+                    func_start,
+                )
+
+                # Convert StateTransition objects to tuples
+                transitions = [
+                    (t.from_value, t.to_value) for t in transitions_raw
+                ]
+
+                if transitions:
+                    logger.info(
+                        "Emulation found %d state transitions: %s",
+                        len(transitions),
+                        [(hex(f), hex(t)) for f, t in transitions[:5]]  # Log first 5
+                    )
+                else:
+                    logger.debug("Emulation completed but no transitions found")
+
+                return transitions if transitions else None
+
+            elif state_var.mop_type == ida_hexrays.mop_r:
+                # Register variable - need different approach
+                logger.debug(
+                    "State variable in register %d - register tracing not yet implemented",
+                    state_var.mop_offset
+                )
+                return None
+
+            else:
+                logger.debug("Unsupported state variable type: %d", state_var.mop_type)
+                return None
+
+        except ImportError as e:
+            logger.debug("IDA imports not available: %s", e)
+            return None
+        except Exception as e:
+            logger.debug("Emulation validation error: %s", e)
+            return None
+
+    def _detect_architecture(self) -> str:
+        """Detect architecture from IDA database."""
+        try:
+            import idaapi
+            info = idaapi.get_inf_structure()
+            if info.is_64bit():
+                # Check if ARM64
+                proc_name = idaapi.get_idp_name()
+                if proc_name and "arm" in proc_name.lower():
+                    return "arm64"
+                return "x86_64"
+            elif info.is_32bit():
+                return "x86"
+            return "x86_64"  # Default
+        except Exception:
+            return "x86_64"
+
+    def _get_frame_size(self) -> int:
+        """Get the stack frame size from MBA."""
+        # Try various mba_t attributes that store frame size
+        for attr in ("stacksize", "frsize", "argsize", "tmpstk_size"):
+            val = getattr(self.mba, attr, None)
+            if val and val > 0:
+                return val
+        return 0x100  # Default fallback
+
     def _get_or_create_block(self, analysis: DispatcherAnalysis, serial: int) -> BlockAnalysis:
         """Get or create BlockAnalysis for a serial."""
         if serial not in analysis.blocks:
@@ -274,8 +453,8 @@ class DispatcherCache:
             ida_hexrays.m_jl, ida_hexrays.m_jle,
         ]
 
-        # var_key -> list of (block_serial, constant_value)
-        var_comparisons: dict[str, list[tuple[int, int]]] = {}
+        # var_key -> (mop, list of (block_serial, constant_value))
+        var_comparisons: dict[str, tuple[ida_hexrays.mop_t, list[tuple[int, int]]]] = {}
 
         for i in range(self.mba.qty):
             blk = self.mba.get_mblock(i)
@@ -288,8 +467,9 @@ class DispatcherCache:
                         var_key = self._get_mop_key(blk.tail.l)
                         if var_key:
                             if var_key not in var_comparisons:
-                                var_comparisons[var_key] = []
-                            var_comparisons[var_key].append((i, const_val))
+                                # Store the mop along with comparisons
+                                var_comparisons[var_key] = (ida_hexrays.mop_t(blk.tail.l), [])
+                            var_comparisons[var_key][1].append((i, const_val))
 
                             block_info = self._get_or_create_block(analysis, i)
                             block_info.state_constants.add(const_val)
@@ -297,15 +477,29 @@ class DispatcherCache:
 
         # Find the state variable (most comparisons)
         best_var_key = None
+        best_mop = None
         best_comparisons = []
-        for var_key, comparisons in var_comparisons.items():
+        for var_key, (mop, comparisons) in var_comparisons.items():
             if len(comparisons) > len(best_comparisons):
                 best_var_key = var_key
+                best_mop = mop
                 best_comparisons = comparisons
 
-        # Mark blocks with state comparisons
-        if len(best_comparisons) >= MIN_UNIQUE_CONSTANTS:
+        # Mark blocks with state comparisons and create StateVariableCandidate
+        if len(best_comparisons) >= MIN_UNIQUE_CONSTANTS and best_mop is not None:
             unique_constants = {c[1] for c in best_comparisons}
+            comparison_blocks = [c[0] for c in best_comparisons]
+
+            # Create the state variable candidate
+            analysis.state_variable = StateVariableCandidate(
+                mop=best_mop,
+                mop_type=best_mop.t,
+                mop_offset=self._get_mop_offset(best_mop),
+                mop_size=best_mop.size,
+                comparison_count=len(best_comparisons),
+                unique_constants=unique_constants,
+                comparison_blocks=comparison_blocks,
+            )
 
             for blk_serial, const_val in best_comparisons:
                 block_info = self._get_or_create_block(analysis, blk_serial)
@@ -314,6 +508,18 @@ class DispatcherCache:
                 # Mark as high constant frequency if many unique constants
                 if len(unique_constants) >= MIN_UNIQUE_CONSTANTS:
                     block_info.strategies |= DispatcherStrategy.CONSTANT_FREQUENCY
+
+    def _get_mop_offset(self, mop: ida_hexrays.mop_t) -> int:
+        """Get the offset/identifier from an mop_t."""
+        if mop.t == ida_hexrays.mop_r:
+            return mop.r
+        elif mop.t == ida_hexrays.mop_S:
+            return mop.s.off
+        elif mop.t == ida_hexrays.mop_v:
+            return mop.g
+        elif mop.t == ida_hexrays.mop_l:
+            return mop.l.off
+        return 0
 
     def _analyze_loop_structure(self, analysis: DispatcherAnalysis) -> None:
         """Strategy 3 & 6: Loop header and back-edge detection."""
@@ -468,6 +674,9 @@ class DispatcherCache:
                         const_val = insn.l.nnn.value
                         if const_val in analysis.state_constants:
                             analysis.initial_state = const_val
+                            # Also update the state variable candidate if we have one
+                            if analysis.state_variable is not None:
+                                analysis.state_variable.init_value = const_val
                             logger.debug("Found initial state: 0x%x in block %d", const_val, i)
                             return
                 insn = insn.next
