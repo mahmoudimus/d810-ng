@@ -365,6 +365,12 @@ class PatternOptimizer(InstructionOptimizer):
                 )
             return None
 
+        # NOTE: We do NOT canonicalize the input AST here because canonicalization
+        # creates synthetic nodes (e.g., negated constants) that lose the mop
+        # information needed for pattern matching. Instead, patterns are registered
+        # in multiple forms (via ast_generator or equivalent) to match different
+        # but mathematically equivalent input structures.
+
         all_matches = self.pattern_storage.get_matching_rule_pattern_info(tmp)
         match_len = len(all_matches)
         for i, rule_pattern_info in enumerate(all_matches):
