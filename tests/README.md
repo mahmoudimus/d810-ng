@@ -34,6 +34,20 @@ pytest tests/unit/mba/test_verifiable_rules.py -v
 
 System tests run against IDA Pro and test actual decompilation/optimization against real obfuscated binaries.
 
+**Important: Multi-Binary Testing**
+
+System tests should be run against **both** binary formats to ensure cross-platform compatibility:
+
+```bash
+# Run with macOS dylib (default on Darwin)
+PYTHONPATH=src pytest tests/system/test_libdeobfuscated.py -v
+
+# Run with Windows DLL
+D810_TEST_BINARY=libobfuscated.dll PYTHONPATH=src pytest tests/system/test_libdeobfuscated.py -v
+```
+
+The `D810_TEST_BINARY` environment variable overrides the default platform-based binary selection.
+
 **Option 1: Headless via pytest** (using `idapro` module / idalib)
 
 ```bash

@@ -9,7 +9,9 @@
         {
             "name": "FoldReadonlyDataRule",
             "is_activated": true,
-            "config": {}
+            "config": {
+                "allow_executable_readonly": true
+            }
         },
         {
             "name": "ConstantCallResultFoldRule",

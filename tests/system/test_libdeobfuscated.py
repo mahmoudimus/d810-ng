@@ -10,6 +10,9 @@ Supports both:
 - libobfuscated.dll (Windows PE)
 - libobfuscated.dylib (macOS x86_64)
 
+Override binary via environment variable:
+    D810_TEST_BINARY=libobfuscated.dll pytest tests/system/test_libdeobfuscated.py
+
 Stats Expectations
 ==================
 Each test has a corresponding expectations file in tests/system/expectations/
@@ -21,6 +24,7 @@ To regenerate expectations:
     pytest tests/system/test_libdeobfuscated.py --capture-stats
 """
 
+import os
 import platform
 import textwrap
 
@@ -46,13 +50,21 @@ def libobfuscated_setup(ida_database, configure_hexrays, setup_libobfuscated_fun
     return ida_database
 
 
+def _get_default_binary() -> str:
+    """Get default binary name based on platform, with env var override."""
+    # Allow override via environment variable
+    override = os.environ.get("D810_TEST_BINARY")
+    if override:
+        return override
+    # Default: platform-appropriate binary
+    return "libobfuscated.dylib" if platform.system() == "Darwin" else "libobfuscated.dll"
+
+
 class TestLibDeobfuscated:
     """Tests for deobfuscation against libobfuscated binary."""
 
-    # Use platform-appropriate binary
-    binary_name = (
-        "libobfuscated.dylib" if platform.system() == "Darwin" else "libobfuscated.dll"
-    )
+    # Use platform-appropriate binary (can be overridden via D810_TEST_BINARY env var)
+    binary_name = _get_default_binary()
 
     def test_simplify_chained_add(
         self,
@@ -1118,6 +1130,15 @@ class TestLibDeobfuscated:
 
                 # Log what rules fired for debugging
                 print(f"Rules fired: {state.stats.get_fired_rule_names()}")
+
+                # MUST: FoldReadonlyDataRule must fire to prevent regression
+                fired_rules = state.stats.get_fired_rule_names()
+                assert "FoldReadonlyDataRule" in fired_rules, (
+                    f"FoldReadonlyDataRule must fire for constant folding. "
+                    f"This rule was previously broken for Mach-O binaries due to "
+                    f"executable __const segments being rejected. "
+                    f"Rules fired: {fired_rules}"
+                )
 
                 # MUST: If complex patterns exist, code MUST change
                 if has_rol or has_complex:
