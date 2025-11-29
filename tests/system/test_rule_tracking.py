@@ -98,6 +98,15 @@ def reset_tracker():
     tracker.print_summary()
 
 
+def _get_func_ea(func_name):
+    """Get function EA, trying different name prefixes."""
+    for prefix in ["", "_", "__"]:
+        ea = idc.get_name_ea_simple(prefix + func_name)
+        if ea != idaapi.BADADDR:
+            return ea
+    return idaapi.BADADDR
+
+
 def _decompile_and_track(func_name, d810_state_all_rules, pseudocode_to_string):
     """Decompile a function and track which rules fire.
 
@@ -109,8 +118,8 @@ def _decompile_and_track(func_name, d810_state_all_rules, pseudocode_to_string):
     Returns:
         Tuple of (pseudocode_before, pseudocode_after, tracker)
     """
-    func_ea = idc.get_name_ea_simple(func_name)
-    assert func_ea != idaapi.BADADDR, f"Function '{func_name}' not found"
+    func_ea = _get_func_ea(func_name)
+    assert func_ea != idaapi.BADADDR, f"Function '{func_name}' not found (tried prefixes: '', '_', '__')"
 
     # Use all_rules=True to test all DSL rules
     with d810_state_all_rules() as state:
@@ -132,101 +141,100 @@ def _decompile_and_track(func_name, d810_state_all_rules, pseudocode_to_string):
 
 
 @pytest.mark.usefixtures("rule_tracking_setup")
-def test_xor_pattern_optimization(d810_state_all_rules, pseudocode_to_string):
-    """Test that XOR pattern is optimized by DSL rules."""
-    logger.info("\n" + "=" * 80)
-    logger.info("TEST: XOR Pattern Optimization")
-    logger.info("=" * 80)
+class TestRuleTracking:
+    """Test class for rule tracking - requires binary_name for ida_database fixture."""
 
-    before, after, _ = _decompile_and_track(
-        "test_xor", d810_state_all_rules, pseudocode_to_string
-    )
+    binary_name = "libobfuscated.dylib"
 
-    logger.info("\nCode BEFORE d810:")
-    logger.info(before)
-    logger.info("\nCode AFTER d810:")
-    logger.info(after)
+    def test_xor_pattern_optimization(self, d810_state_all_rules, pseudocode_to_string):
+        """Test that XOR pattern is optimized by DSL rules."""
+        logger.info("\n" + "=" * 80)
+        logger.info("TEST: XOR Pattern Optimization")
+        logger.info("=" * 80)
 
-    # Verify optimization happened
-    assert before != after, "d810 should modify the code"
+        before, after, _ = _decompile_and_track(
+            "test_xor", d810_state_all_rules, pseudocode_to_string
+        )
 
-    # Check that XOR patterns are present in after
-    assert "^" in after, "Should contain XOR operator after optimization"
+        logger.info("\nCode BEFORE d810:")
+        logger.info(before)
+        logger.info("\nCode AFTER d810:")
+        logger.info(after)
 
-    # Check for obfuscated patterns in before
-    assert " & " in before, "Before should contain AND from obfuscated XOR pattern"
+        # Verify optimization happened
+        assert before != after, "d810 should modify the code"
 
+        # Check that XOR patterns are present in after
+        assert "^" in after, "Should contain XOR operator after optimization"
 
-@pytest.mark.usefixtures("rule_tracking_setup")
-def test_constant_folding_optimization(d810_state_all_rules, pseudocode_to_string):
-    """Test that constant folding uses DSL rules."""
-    logger.info("\n" + "=" * 80)
-    logger.info("TEST: Constant Folding")
-    logger.info("=" * 80)
+        # Check for obfuscated patterns in before
+        assert " & " in before, "Before should contain AND from obfuscated XOR pattern"
 
-    before, after, _ = _decompile_and_track(
-        "test_cst_simplification", d810_state_all_rules, pseudocode_to_string
-    )
+    def test_constant_folding_optimization(self, d810_state_all_rules, pseudocode_to_string):
+        """Test that constant folding uses DSL rules."""
+        logger.info("\n" + "=" * 80)
+        logger.info("TEST: Constant Folding")
+        logger.info("=" * 80)
 
-    logger.info("\nCode BEFORE d810:")
-    logger.info(before)
-    logger.info("\nCode AFTER d810:")
-    logger.info(after)
+        before, after, _ = _decompile_and_track(
+            "test_cst_simplification", d810_state_all_rules, pseudocode_to_string
+        )
 
-    # Verify optimization happened
-    assert before != after, "d810 should simplify constants"
+        logger.info("\nCode BEFORE d810:")
+        logger.info(before)
+        logger.info("\nCode AFTER d810:")
+        logger.info(after)
 
-    # Check for hex constants (we configured DEFAULT_RADIX=16)
-    assert "0x" in after, "Should have hexadecimal constants after d810"
+        # Verify optimization happened
+        assert before != after, "d810 should simplify constants"
 
+        # Check for hex constants (we configured DEFAULT_RADIX=16)
+        assert "0x" in after, "Should have hexadecimal constants after d810"
 
-@pytest.mark.usefixtures("rule_tracking_setup")
-def test_mba_pattern_optimization(d810_state_all_rules, pseudocode_to_string):
-    """Test that MBA patterns are optimized by DSL rules."""
-    logger.info("\n" + "=" * 80)
-    logger.info("TEST: MBA Pattern Optimization")
-    logger.info("=" * 80)
+    def test_mba_pattern_optimization(self, d810_state_all_rules, pseudocode_to_string):
+        """Test that MBA patterns are optimized by DSL rules."""
+        logger.info("\n" + "=" * 80)
+        logger.info("TEST: MBA Pattern Optimization")
+        logger.info("=" * 80)
 
-    before, after, _ = _decompile_and_track(
-        "test_mba_guessing", d810_state_all_rules, pseudocode_to_string
-    )
+        before, after, _ = _decompile_and_track(
+            "test_mba_guessing", d810_state_all_rules, pseudocode_to_string
+        )
 
-    logger.info("\nCode BEFORE d810:")
-    logger.info(before)
-    logger.info("\nCode AFTER d810:")
-    logger.info(after)
+        logger.info("\nCode BEFORE d810:")
+        logger.info(before)
+        logger.info("\nCode AFTER d810:")
+        logger.info(after)
 
-    # Verify optimization happened
-    assert before != after, "d810 should simplify MBA patterns"
+        # Verify optimization happened
+        assert before != after, "d810 should simplify MBA patterns"
 
-    # Count operators before and after
-    ops_before = before.count("+") + before.count("-") + before.count("*")
-    ops_after = after.count("+") + after.count("-") + after.count("*")
+        # Count operators before and after
+        ops_before = before.count("+") + before.count("-") + before.count("*")
+        ops_after = after.count("+") + after.count("-") + after.count("*")
 
-    assert (
-        ops_after < ops_before
-    ), f"MBA simplification should reduce operators ({ops_before} -> {ops_after})"
+        assert (
+            ops_after < ops_before
+        ), f"MBA simplification should reduce operators ({ops_before} -> {ops_after})"
 
+    def test_opaque_predicate_removal(self, d810_state_all_rules, pseudocode_to_string):
+        """Test that opaque predicates are removed."""
+        logger.info("\n" + "=" * 80)
+        logger.info("TEST: Opaque Predicate Removal")
+        logger.info("=" * 80)
 
-@pytest.mark.usefixtures("rule_tracking_setup")
-def test_opaque_predicate_removal(d810_state_all_rules, pseudocode_to_string):
-    """Test that opaque predicates are removed."""
-    logger.info("\n" + "=" * 80)
-    logger.info("TEST: Opaque Predicate Removal")
-    logger.info("=" * 80)
+        before, after, _ = _decompile_and_track(
+            "test_opaque_predicate", d810_state_all_rules, pseudocode_to_string
+        )
 
-    before, after, _ = _decompile_and_track(
-        "test_opaque_predicate", d810_state_all_rules, pseudocode_to_string
-    )
+        logger.info("\nCode BEFORE d810:")
+        logger.info(before)
+        logger.info("\nCode AFTER d810:")
+        logger.info(after)
 
-    logger.info("\nCode BEFORE d810:")
-    logger.info(before)
-    logger.info("\nCode AFTER d810:")
-    logger.info(after)
+        # Verify optimization happened
+        assert before != after, "d810 should remove opaque predicates"
 
-    # Verify optimization happened
-    assert before != after, "d810 should remove opaque predicates"
-
-    # Check for constant assignments
-    assert "= 1;" in after, "Should have constant 1"
-    assert "= 0;" in after, "Should have constant 0"
+        # Check for constant assignments
+        assert "= 1;" in after, "Should have constant 1"
+        assert "= 0;" in after, "Should have constant 0"
