@@ -391,11 +391,13 @@ class HodurUnflattener(GenericUnflatteningRule):
         if not super().check_if_rule_should_be_used(blk):
             return False
 
-        # Only run on first block to avoid multiple passes per maturity
-        if blk.serial != 0:
+        # Only run once per maturity level (on first block we see)
+        # Note: blk.serial != 0 doesn't work because IDA starts from block 1
+        # We use cur_maturity_pass which is reset to 0 when maturity changes
+        if self.cur_maturity_pass > 0:
             return False
 
-        # Check pass limits
+        # Check pass limits (for future multi-pass support)
         if self.cur_maturity_pass >= self.max_passes:
             return False
 
@@ -425,8 +427,11 @@ class HodurUnflattener(GenericUnflatteningRule):
         # Log the detected structure
         self._log_state_machine()
 
-        # Resolve and patch
-        nb_changes = self._resolve_and_patch()
+        # Use direct transition patching (more effective for Hodur-style)
+        nb_changes = self._patch_transitions_direct()
+
+        # Also try predecessor-based patching for any remaining cases
+        nb_changes += self._resolve_and_patch()
 
         if nb_changes > 0:
             self.mba.mark_chains_dirty()
@@ -443,6 +448,85 @@ class HodurUnflattener(GenericUnflatteningRule):
             self.cur_maturity_pass,
             nb_changes,
         )
+
+        return nb_changes
+
+    def _patch_transitions_direct(self) -> int:
+        """
+        Direct transition patching: bypass dispatcher and state checks entirely.
+
+        For each transition (from_state -> to_state):
+        - The from_block (where state is assigned) currently goes to the dispatcher
+        - Change it to go directly to to_state's first handler block
+
+        This is more effective than _resolve_and_patch() which tries to resolve
+        state values at check block predecessors, but fails when the predecessor
+        is the dispatcher itself (which can have any state value).
+        """
+        if self.state_machine is None:
+            return 0
+
+        nb_changes = 0
+
+        for transition in self.state_machine.transitions:
+            from_blk = self.mba.get_mblock(transition.from_block)
+            to_handler = self.state_machine.handlers.get(transition.to_state)
+
+            if to_handler is None:
+                unflat_logger.debug(
+                    "No handler found for to_state %s", hex(transition.to_state)
+                )
+                continue
+
+            # Get the target: first handler block (skip the check block)
+            if not to_handler.handler_blocks:
+                unflat_logger.debug(
+                    "No handler blocks for state %s", hex(transition.to_state)
+                )
+                continue
+
+            target_block = to_handler.handler_blocks[0]
+
+            # Check if from_blk ends with a goto to the dispatcher
+            if from_blk.tail is None:
+                continue
+
+            if from_blk.tail.opcode != ida_hexrays.m_goto:
+                # Not a simple goto - might be a conditional, skip for now
+                unflat_logger.debug(
+                    "Block %d doesn't end with goto, skipping", transition.from_block
+                )
+                continue
+
+            # Get current destination
+            if from_blk.tail.l.t != ida_hexrays.mop_b:
+                continue
+
+            current_dest = from_blk.tail.l.b
+
+            # Only patch if going to the first check block (dispatcher entry)
+            first_check = list(self.state_machine.handlers.values())[0].check_block
+            if current_dest != first_check:
+                unflat_logger.debug(
+                    "Block %d goes to %d, not dispatcher %d, skipping",
+                    transition.from_block, current_dest, first_check
+                )
+                continue
+
+            # Patch: change goto destination to target handler block
+            unflat_logger.info(
+                "Patching block %d: goto %d -> goto %d (transition %s -> %s)",
+                transition.from_block, current_dest, target_block,
+                hex(transition.from_state), hex(transition.to_state)
+            )
+
+            try:
+                change_1way_block_successor(from_blk, target_block)
+                nb_changes += 1
+            except Exception as e:
+                unflat_logger.warning(
+                    "Failed to patch block %d: %s", transition.from_block, e
+                )
 
         return nb_changes
 
