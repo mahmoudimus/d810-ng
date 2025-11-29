@@ -21,18 +21,18 @@ bd ready --json
 **Create new issues:**
 ```bash
 bd create "Issue title" -t bug|feature|task -p 0-4 --json
-bd create "Issue title" -p 1 --deps discovered-from:bd-123 --json
+bd create "Issue title" -p 1 --deps discovered-from:d810ng-abc --json
 ```
 
 **Claim and update:**
 ```bash
-bd update bd-42 --status in_progress --json
-bd update bd-42 --priority 1 --json
+bd update d810ng-xyz --status in_progress --json
+bd update d810ng-xyz --priority 1 --json
 ```
 
 **Complete work:**
 ```bash
-bd close bd-42 --reason "Completed" --json
+bd close d810ng-xyz --reason "Completed" --json
 ```
 
 ### Issue Types
@@ -54,48 +54,68 @@ bd close bd-42 --reason "Completed" --json
 ### Workflow for AI Agents
 
 1. **Check ready work**: `bd ready` shows unblocked issues
-2. **Claim your task**: `bd update <id> --status in_progress`
+2. **Claim your task**: `bd update d810ng-xxx --status in_progress`
 3. **Work on it**: Implement, test, document
 4. **Discover new work?** Create linked issue:
-   - `bd create "Found bug" -p 1 --deps discovered-from:<parent-id>`
-5. **Complete**: `bd close <id> --reason "Done"`
-6. **Commit together**: Always commit the `.beads/issues.jsonl` file together with the code changes so issue state stays in sync with code state
+   - `bd create "Found bug" -p 1 --deps discovered-from:d810ng-xxx`
+5. **Complete**: `bd close d810ng-xxx --reason "Done"`
 
-### Auto-Sync
+Note: In stealth mode, issue state is local only (not synced via git).
 
-bd automatically syncs with git:
-- Exports to `.beads/issues.jsonl` after changes (5s debounce)
-- Imports from JSONL when newer (e.g., after `git pull`)
-- No manual export/import needed!
+### Auto-Sync (Disabled)
+
+Auto-sync is disabled in this repository (stealth mode). The `.beads/` directory is globally gitignored, so issue state remains local to each machine.
 
 ### Important Rules
 
 - Use bd for ALL task tracking
 - Always use `--json` flag for programmatic use
-- Run `bd sync` at end of sessions
+- Do NOT run `bd sync` (stealth mode - see below)
 - Do NOT create markdown TODO lists
-- Do NOT commit `.beads/beads.db` (JSONL only)
+- Do NOT commit `.beads/` directory (globally gitignored)
+
+### Stealth Mode
+
+This repository runs beads in **stealth mode** (local only, not git-synced):
+- `.beads/` is globally gitignored
+- Do NOT run `bd sync` - it will fail
+- Use local commands only: `bd list`, `bd create`, `bd update`, `bd close`
+- Issue state is local to each developer's machine
 
 ### Known Issues & Workarounds
 
-#### `bd sync` fails with "prefix mismatch" error (bd 0.25.1)
+#### Hyphenated prefix bug (bd 0.25.1 - 0.26.0)
 
 **Symptom:**
 ```
 Import failed: prefix mismatch detected: database uses 'd810-ng-' but found issues with prefixes: [d810- (4 issues)]
 ```
-
-**Cause:** Bug in bd 0.25.1 where hyphenated prefixes (like `d810-ng-`) are incorrectly parsed during the pull/import step. It splits `d810-ng-e68` as prefix `d810-` + suffix `ng-e68` instead of `d810-ng-` + `e68`.
-
-**Workaround:** Use `--no-pull` flag:
-```bash
-bd sync --no-pull
+or:
+```
+Import failed: failed to rename prefixes: cannot rename issue d810-ng-iid: non-numeric suffix 'ng-iid'
 ```
 
-This is safe when there's no remote beads data to pull yet. The issue may self-resolve once beads data is established on the remote branch or when bd is updated.
+**Cause:** Bug in bd 0.25.1-0.26.0 where hyphenated prefixes (like `d810-ng-`) are incorrectly parsed. The parser splits on the first hyphen, so `d810-ng-e68` becomes prefix `d810-` + suffix `ng-e68` instead of `d810-ng-` + `e68`. The `--rename-on-import` flag is also broken for this reason.
 
-**Manual sync alternative:**
+**Permanent fix:** Reinitialize with a non-hyphenated prefix:
 ```bash
-bd export --no-daemon
-bd import --no-daemon
+# Backup existing issues
+bd list --json | jq -c '.[]' > /tmp/beads_backup.jsonl
+
+# Reinitialize with non-hyphenated prefix
+rm -rf .beads
+bd init --prefix d810ng
+
+# Fix prefixes in backup and import
+sed 's/"d810-ng-/"d810ng-/g' /tmp/beads_backup.jsonl > /tmp/beads_fixed.jsonl
+bd import -i /tmp/beads_fixed.jsonl
+
+# Export to sync JSONL
+rm -f .beads/issues.jsonl
+bd list --json | jq -c '.[]' > .beads/issues.jsonl
+
+# Verify
+bd doctor
 ```
+
+This repository now uses prefix `d810ng` (no hyphen) to avoid this bug.
