@@ -66,7 +66,7 @@ class DispatcherFinder(Protocol):
     Example implementations:
     - OLLVMDispatcherFinder: Finds O-LLVM style dispatchers
     - TigressDispatcherFinder: Finds Tigress style dispatchers
-    - HeuristicDispatcherFinder: Uses heuristics for unknown obfuscators
+    - GenericDispatcherFinder: Uses DispatcherCache for unknown obfuscators
     """
 
     def find(self, context: OptimizationContext) -> List[Dispatcher]:
@@ -596,24 +596,24 @@ class OLLVMDispatcherFinder:
         self,
         min_entropy: float | None = None,
         max_entropy: float | None = None,
-        use_heuristics: bool = True
+        use_dispatcher_cache: bool = True
     ):
         """Initialize the finder with optional configuration.
 
         Args:
             min_entropy: Minimum entropy threshold (default 0.3).
             max_entropy: Maximum entropy threshold (default 0.7).
-            use_heuristics: Whether to use heuristics for early filtering.
+            use_dispatcher_cache: Whether to use DispatcherCache for early filtering.
         """
         self._min_entropy = min_entropy or self.DEFAULT_MIN_ENTROPY
         self._max_entropy = max_entropy or self.DEFAULT_MAX_ENTROPY
-        self._use_heuristics = use_heuristics
+        self._use_dispatcher_cache = use_dispatcher_cache
 
     def find(self, context: OptimizationContext) -> List[Dispatcher]:
         """Find all O-LLVM dispatchers in the given microcode.
 
         This method:
-        1. Uses heuristics to filter candidate blocks (if enabled)
+        1. Uses DispatcherCache to filter candidate blocks (if enabled)
         2. Guesses the outermost dispatcher using predecessor count
         3. Explores each candidate to validate it's a real dispatcher
         4. Converts validated dispatchers to immutable Dispatcher objects
@@ -628,9 +628,8 @@ class OLLVMDispatcherFinder:
         from d810.optimizers.microcode.flow.flattening.unflattener import (
             OllvmDispatcherInfo,
         )
-        from d810.optimizers.microcode.flow.flattening.heuristics import (
-            DispatcherHeuristics,
-            apply_selective_scanning,
+        from d810.optimizers.microcode.flow.flattening.dispatcher_detection import (
+            DispatcherCache,
         )
 
         mba = context.mba
@@ -652,11 +651,15 @@ class OLLVMDispatcherFinder:
             f"Guessed outermost dispatcher at block {outmost_dispatch_num}"
         )
 
-        # Step 2: Get candidate blocks (either via heuristics or brute force)
-        if self._use_heuristics:
-            heuristics = DispatcherHeuristics()
-            candidates = apply_selective_scanning(mba, heuristics)
-            candidate_blocks = candidates
+        # Step 2: Get candidate blocks using DispatcherCache
+        if self._use_dispatcher_cache:
+            cache = DispatcherCache.get_or_create(mba)
+            analysis = cache.analyze()
+            # Convert dispatcher serials to blocks
+            candidate_blocks = [
+                mba.get_mblock(serial) for serial in analysis.dispatchers
+                if mba.get_mblock(serial) is not None
+            ]
         else:
             # Brute force: check all blocks
             candidate_blocks = [
