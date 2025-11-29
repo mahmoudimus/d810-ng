@@ -206,26 +206,35 @@ class TestLibDeobfuscated:
             # Log what rules fired for debugging
             print(f"Rules fired: {state.stats.get_fired_rule_names()}")
 
-            # Check if code changed
-            code_changed = actual_before != actual_after
-            if not code_changed:
-                print("WARNING: No rules changed the code")
+            # MUST: Deobfuscation must change the code
+            assert actual_before != actual_after, (
+                f"Constant simplification MUST change the code.\n\n"
+                f"BEFORE:\n{actual_before}\n\n"
+                f"Rules fired: {state.stats.get_fired_rule_names()}"
+            )
 
-            # Use AST comparison for semantic equivalence if code changed
-            if code_changed and not code_comparator.are_equivalent(actual_after, expected_deobfuscated):
-                # Not equivalent - check if at least constants are folded
-                has_folded = (
-                    "0x222E69C0" in actual_after or "0xD32B5931" in actual_after
-                )
-                if not has_folded:
-                    print(f"WARNING: Constants not folded.\nActual:\n{actual_after}")
+            # Check for folded constants - at minimum one should be present
+            has_folded = (
+                "0x222E69C0" in actual_after or "0xD32B5931" in actual_after
+            )
+            assert has_folded, (
+                f"Constants MUST be folded (expected 0x222E69C0 or 0xD32B5931).\n\n"
+                f"Actual:\n{actual_after}"
+            )
 
-            # Verify statistics if expectations file exists
+            # Use AST comparison for semantic equivalence
+            is_equivalent = code_comparator.are_equivalent(actual_after, expected_deobfuscated)
+            if not is_equivalent:
+                # Not fully equivalent but has folded constants - acceptable partial result
+                print(f"Note: Not fully equivalent to expected, but constants were folded")
+
+            # Verify statistics - expectations file is required
             expected = load_expected_stats()
-            if expected is not None:
-                state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
-            else:
-                print(f"No expectations file - stats captured: {stats_dict}")
+            assert expected is not None, (
+                "Expectations file missing: tests/system/expectations/test_cst_simplification.json\n"
+                "Run: pytest tests/system/test_libdeobfuscated.py::TestLibDeobfuscated::test_cst_simplification --capture-stats"
+            )
+            state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
 
     def test_deobfuscate_opaque_predicate(
         self,
@@ -1110,18 +1119,21 @@ class TestLibDeobfuscated:
                 # Log what rules fired for debugging
                 print(f"Rules fired: {state.stats.get_fired_rule_names()}")
 
-                # Code should change (simplify)
-                code_changed = actual_before != actual_after
+                # MUST: If complex patterns exist, code MUST change
                 if has_rol or has_complex:
-                    if not code_changed:
-                        print("WARNING: No rules changed the code despite complex patterns")
+                    assert actual_before != actual_after, (
+                        f"Constant folding MUST simplify ROL/shift patterns.\n\n"
+                        f"BEFORE:\n{actual_before}\n\n"
+                        f"Rules fired: {state.stats.get_fired_rule_names()}"
+                    )
 
-                # Verify statistics if expectations file exists
+                # Verify statistics - expectations file is required
                 expected = load_expected_stats()
-                if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
-                else:
-                    print(f"No expectations file - stats captured: {stats_dict}")
+                assert expected is not None, (
+                    "Expectations file missing: tests/system/expectations/test_constant_folding_1.json\n"
+                    "Run: pytest tests/system/test_libdeobfuscated.py::TestLibDeobfuscated::test_constant_folding_1 --capture-stats"
+                )
+                state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
 
     def test_constant_folding_2(
         self,
@@ -1163,21 +1175,21 @@ class TestLibDeobfuscated:
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
-                # Capture statistics before potential skip
+                # Capture statistics
                 stats_dict = capture_stats(state.stats)
 
-                # Check if simplification occurred
-                if actual_before == actual_after:
-                    if has_rol or has_complex:
-                        # Has complex expressions but not simplified
-                        pytest.skip(
-                            "constant_folding_test2 has ROL/shift patterns but "
-                            "FoldReadonlyDataRule did not fire"
-                        )
-                    # No complex expressions found
-                    return
+                # Log what rules fired for debugging
+                print(f"Rules fired: {state.stats.get_fired_rule_names()}")
 
-                # Verify statistics if we got here
+                # MUST: If complex patterns exist, code MUST change
+                if has_rol or has_complex:
+                    assert actual_before != actual_after, (
+                        f"Constant folding MUST simplify ROL/shift patterns.\n\n"
+                        f"BEFORE:\n{actual_before}\n\n"
+                        f"Rules fired: {state.stats.get_fired_rule_names()}"
+                    )
+
+                # Verify statistics - expectations file is required
                 expected = load_expected_stats()
                 assert expected is not None, (
                     "Expectations file missing: tests/system/expectations/test_constant_folding_2.json\n"
