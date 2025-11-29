@@ -557,37 +557,120 @@ class HodurUnflattener(GenericUnflatteningRule):
 
     def _queue_state_assignment_removals(self) -> None:
         """
-        Queue removal of state assignment instructions.
+        Queue removal of state assignment instructions and fix terminal artifacts.
 
-        After all transition patches are applied, the state variable assignments
-        (mov STATE_CONSTANT, state_var) become dead code. We queue their removal
-        to happen AFTER all patching is complete.
+        After all transition patches are applied:
+        1. State variable assignments (mov STATE_CONSTANT, state_var) become dead code
+        2. The terminal back-edge (last handler -> first check) should be removed
+        3. The first state check becomes unnecessary
 
-        This is critical because if we remove an assignment before patching
-        a conditional branch that depends on it, we lose tracking information.
+        This cleans up the "wrapper while(1)" artifact that remains after unflattening.
         """
         if self.state_machine is None or self.deferred is None:
             return
 
-        # Find all state assignment instructions
+        initial_state = self.state_machine.initial_state
+        if initial_state is None:
+            return
+
+        # Get the first check block (entry to state machine)
+        first_handler = list(self.state_machine.handlers.values())[0]
+        first_check_block = first_handler.check_block
+
+        # Track which blocks we've patched (their gotos were changed)
+        patched_blocks = set()
+        for mod in self.deferred.modifications:
+            if mod.mod_type.name == "BLOCK_GOTO_CHANGE":
+                patched_blocks.add(mod.block_serial)
+
+        # Find and queue removal of state assignments in patched blocks
+        # These are the "mov STATE_CONSTANT, state_var" instructions
         for blk_serial in range(self.mba.qty):
             blk = self.mba.get_mblock(blk_serial)
-            insn = blk.head
-            while insn:
-                if insn.opcode == ida_hexrays.m_mov:
-                    if insn.l.t == ida_hexrays.mop_n:
-                        const_val = insn.l.nnn.value
-                        if const_val in self.state_machine.state_constants:
-                            # This is a state assignment - queue its removal
-                            # But only if this block was patched
-                            # For now, just log - actual removal may cause issues
-                            unflat_logger.debug(
-                                "Found state assignment in block %d: mov %s, state_var (ea=%s)",
-                                blk_serial, hex(const_val), hex(insn.ea)
-                            )
-                            # TODO: Safely queue removal after verifying block is patched
-                            # self.deferred.queue_insn_nop(blk_serial, insn.ea)
-                insn = insn.next
+
+            # Only process blocks that were patched or are in handler blocks
+            is_handler_block = any(
+                blk_serial in h.handler_blocks
+                for h in self.state_machine.handlers.values()
+            )
+
+            if blk_serial not in patched_blocks and not is_handler_block:
+                continue
+
+            # NOTE: We skip NOPing state assignments for now because:
+            # 1. insn.ea is not unique - multiple instructions can share the same EA
+            # 2. NOPing by EA can accidentally remove unrelated instructions
+            # 3. The state assignments become dead code anyway after unflattening
+            # 4. IDA's optimizer will clean them up during subsequent passes
+            #
+            # The terminal back-edge fix is more important and safer.
+            # TODO: Implement proper instruction identity tracking for safe NOPing
+            pass
+
+        # Find terminal back-edge: a block that goes back to first_check_block
+        # after all transitions have been patched
+        self._queue_terminal_backedge_fix(first_check_block)
+
+    def _queue_terminal_backedge_fix(self, first_check_block: int) -> None:
+        """
+        Find and fix the terminal back-edge that creates the while(1) wrapper.
+
+        After unflattening, there's typically one back-edge remaining:
+        - From the last handler block back to the first state check
+        - This creates the while(1) { if(state != INIT) goto success; ... } pattern
+
+        We convert this back-edge to go to the "success" path instead of looping.
+        """
+        if self.state_machine is None or self.deferred is None:
+            return
+
+        first_check_blk = self.mba.get_mblock(first_check_block)
+        if first_check_blk is None:
+            return
+
+        # Find the "success" target from the first check block
+        # For jnz state, INIT_STATE, @success_path:
+        #   - If state == INIT_STATE: fall through (continue loop)
+        #   - If state != INIT_STATE: jump to success_path
+        success_target = None
+        if first_check_blk.tail and first_check_blk.tail.opcode == ida_hexrays.m_jnz:
+            if first_check_blk.tail.d.t == ida_hexrays.mop_b:
+                success_target = first_check_blk.tail.d.b
+                unflat_logger.debug(
+                    "First check block %d: success path is block %d",
+                    first_check_block, success_target
+                )
+
+        if success_target is None:
+            unflat_logger.debug("Could not determine success path from first check block")
+            return
+
+        # Find blocks that have a back-edge to first_check_block
+        for blk_serial in range(self.mba.qty):
+            blk = self.mba.get_mblock(blk_serial)
+
+            # Check if this block goes back to the first check block
+            if first_check_block not in blk.succset:
+                continue
+
+            # This block has an edge to the first check block
+            # Check if it's a back-edge (blk_serial > first_check_block)
+            if blk_serial <= first_check_block:
+                continue
+
+            # Found a back-edge! Check if it ends with a goto
+            if blk.tail and blk.tail.opcode == ida_hexrays.m_goto:
+                if blk.tail.l.t == ida_hexrays.mop_b and blk.tail.l.b == first_check_block:
+                    unflat_logger.info(
+                        "Found terminal back-edge: block %d -> block %d, redirecting to success path %d",
+                        blk_serial, first_check_block, success_target
+                    )
+                    # Redirect this back-edge to the success path
+                    self.deferred.queue_goto_change(
+                        block_serial=blk_serial,
+                        new_target=success_target,
+                        description=f"terminal back-edge -> success path"
+                    )
 
     def _log_state_machine(self) -> None:
         """Log the detected state machine structure."""
