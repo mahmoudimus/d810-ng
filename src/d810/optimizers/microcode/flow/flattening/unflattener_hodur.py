@@ -145,15 +145,43 @@ class HodurStateMachineDetector:
             return None
 
         # Step 2: Find the state variable (the operand being compared)
-        state_var = self._identify_state_variable(state_check_blocks)
+        # Prefer cached state variable from DispatcherCache (more sophisticated detection)
+        state_var = None
+        if self._cache:
+            analysis = self._cache.analyze()
+            if analysis.state_variable is not None:
+                state_var = analysis.state_variable.mop
+                unflat_logger.debug(
+                    "Using cached state variable: %s (type=%d, comparisons=%d)",
+                    format_mop_t(state_var),
+                    analysis.state_variable.mop_type,
+                    analysis.state_variable.comparison_count,
+                )
+
+        # Fall back to simple detection if cache doesn't have it
+        if state_var is None:
+            state_var = self._identify_state_variable(state_check_blocks)
+
         if state_var is None:
             unflat_logger.debug("Could not identify state variable")
             return None
 
         # Step 3: Find all state constants
+        # Prefer cached state constants (includes constants from both comparisons and assignments)
         state_constants = set()
-        for blk_serial, opcode, const in state_check_blocks:
-            state_constants.add(const)
+        if self._cache:
+            analysis = self._cache.analyze()
+            if analysis.state_constants:
+                state_constants = set(analysis.state_constants)
+                unflat_logger.debug(
+                    "Using %d cached state constants",
+                    len(state_constants),
+                )
+
+        # Fall back to extracting from state check blocks
+        if not state_constants:
+            for blk_serial, opcode, const in state_check_blocks:
+                state_constants.add(const)
 
         # Step 4: Find state assignments and build transition graph
         state_assignments = self._find_state_assignments(state_constants)
