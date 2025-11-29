@@ -346,6 +346,9 @@ class HodurStateMachineDetector:
                 # Check if this block has a state assignment
                 if curr_serial in assignment_map:
                     for next_state in assignment_map[curr_serial]:
+                        # Skip self-loops (re-assignment of current state at handler start)
+                        if next_state == state_val:
+                            continue
                         transition = StateTransition(
                             from_state=state_val,
                             to_state=next_state,
