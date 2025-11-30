@@ -36,13 +36,12 @@ volatile int approov_global_state = 0;
 volatile uint64 approov_qword = 0;
 
 /**
- * Real Approov pattern - exact copy of decompiled code structure
+ * Real Approov pattern - uses while(!=) to generate jz instruction
  *
- * This is the smoking gun pattern that BadWhileLoop should detect:
- * - LABEL_xx: v8 = MAGIC_CONST;
- * - while (v8 != OTHER_MAGIC) { ... }
- * - State transitions via: v8 = NEW_STATE;
- * - goto LABEL_xx to reset
+ * Pattern requirements for BadWhileLoop:
+ * - Entry block: jz with constant in 0xF6000-0xF6FFF
+ * - prevb: mov #magic, reg
+ * - nextb: jz/jnz with constant in 0xF6000-0xF6FFF
  */
 __int64 approov_real_pattern(int a1, __int64 a2)
 {
@@ -58,9 +57,11 @@ __int64 approov_real_pattern(int a1, __int64 a2)
 
 LABEL_13:
     v8 = 1010207;  /* 0xF6A1F - initial state */
-    while (v8 != 1010208)   /* 0xF6A20 - exit condition */
+
+    /* Use while(!=) to generate jz instruction like approov_multistate */
+    while (v8 != 1010213)  /* 0xF6A25 - exit condition generates jz */
     {
-        if (v8 == 1010208)   /* 0xF6A20 - dead check, never true on entry */
+        if (v8 == 1010208)  /* 0xF6A20 - process state */
         {
             if (!sub_D28B(a1, v6, v7, v5))
             {
@@ -70,13 +71,20 @@ LABEL_13:
             v6 += sub_258F0(v6) + 1;
             goto LABEL_13;
         }
-        v5 = 1010213LL;  /* 0xF6A25 */
-        if (*v6)
-            v8 = 1010206;  /* 0xF6A1E */
-        else
-            v8 = 1010208;  /* 0xF6A20 - forces exit on next iteration */
-        v7 = 0LL;
-        v4 = v10;
+        else if (v8 == 1010207)  /* 0xF6A1F - initial state */
+        {
+            v5 = 1010213LL;  /* 0xF6A25 */
+            if (*v6)
+                v8 = 1010206;  /* 0xF6A1E */
+            else
+                v8 = 1010213;  /* 0xF6A25 - exit */
+            v7 = 0LL;
+            v4 = v10;
+        }
+        else if (v8 == 1010206)  /* 0xF6A1E - intermediate state */
+        {
+            v8 = 1010208;  /* 0xF6A20 - go to process */
+        }
     }
     return sub_26A5ae(a2, v4);
 }
@@ -85,6 +93,7 @@ LABEL_13:
  * Simplified version of the real Approov pattern
  *
  * Same structure but self-contained (no external calls)
+ * Uses while(!=) to generate jz instruction
  */
 int approov_simplified(int input)
 {
@@ -97,19 +106,28 @@ int approov_simplified(int input)
 
 LABEL_ENTRY:
     v8 = 1010207;  /* 0xF6A1F */
-    while (v8 != 1010208)  /* 0xF6A20 */
+
+    /* Use while(!=) to generate jz instruction like approov_multistate */
+    while (v8 != 1010213)  /* 0xF6A25 - exit condition generates jz */
     {
-        if (v8 == 1010208)  /* dead check */
+        if (v8 == 1010208)  /* 0xF6A20 - process */
         {
             result = result + 10;
             v4 = 1;
             goto LABEL_ENTRY;
         }
-        if (result > 50)
-            v8 = 1010206;  /* 0xF6A1E */
-        else
-            v8 = 1010208;  /* 0xF6A20 - exit */
-        v4 = result;
+        else if (v8 == 1010207)  /* 0xF6A1F - initial */
+        {
+            if (result > 50)
+                v8 = 1010206;  /* 0xF6A1E */
+            else
+                v8 = 1010213;  /* 0xF6A25 - exit */
+            v4 = result;
+        }
+        else if (v8 == 1010206)  /* 0xF6A1E - intermediate */
+        {
+            v8 = 1010208;  /* 0xF6A20 */
+        }
     }
     return v4;
 }
@@ -235,37 +253,42 @@ DISPATCHER:
 }
 
 /**
- * Simple loop pattern - do-while with state machine
+ * Simple loop pattern - uses while(!=) like approov_multistate
+ * The while(!=) generates jz which is what BadWhileLoop expects
  */
 int approov_simple_loop(int input)
 {
-    volatile int v1;
+    int v1;
     int result;
 
     result = input;
     v1 = 1010207;  /* 0xF6A1F */
 
-    do {
-        if (v1 == 1010206) {        /* 0xF6A1E */
+    /* Use while(!=) to generate jz instruction like approov_multistate */
+    while (v1 != 1010213)  /* 0xF6A25 - exit condition generates jz */
+    {
+        if (v1 == 1010206)  /* 0xF6A1E */
+        {
             result += 10;
             v1 = 1010208;
         }
-        else if (v1 == 1010207) {   /* 0xF6A1F */
+        else if (v1 == 1010207)  /* 0xF6A1F */
+        {
             result *= 2;
             v1 = 1010206;
         }
-        else if (v1 == 1010208) {   /* 0xF6A20 */
+        else if (v1 == 1010208)  /* 0xF6A20 */
+        {
             result -= 5;
             v1 = 1010213;
         }
-        else if (v1 == 1010213) {   /* 0xF6A25 - exit */
-            return result;
-        }
-        else {
+        else
+        {
             approov_global_state++;
             return -1;
         }
-    } while (1);
+    }
+    return result;
 }
 
 /**
