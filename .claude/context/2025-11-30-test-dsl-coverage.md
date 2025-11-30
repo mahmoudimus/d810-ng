@@ -81,24 +81,37 @@ while ( 1 ) {
 | services.py | 25% | Low |
 | unflattener_fake_jump.py | 20% | Low |
 
-## Next Investigation Steps
+## Root Cause Analysis (Completed 2025-11-30)
 
-1. **Debug `BadWhileLoop` matching**:
-   ```python
-   # In IDA with the function open, run:
-   from d810.optimizers.microcode.flow.flattening.unflattener_badwhile_loop import BadWhileLoopInfo
-   # Check what explore() returns and why
-   ```
+### ABC F6xxx Test Failure Root Cause
 
-2. **Check microcode structure**:
-   - Print mba blocks at MMAT_LOCOPT maturity
-   - Find blocks with F6xxx constants
-   - Verify they have `jz`/`jnz` tail instructions
+**Location**: `src/d810/optimizers/microcode/flow/flattening/unflattener_badwhile_loop.py`
 
-3. **Possible fixes**:
-   - Adjust `BadWhileLoop` to handle different block patterns
-   - Create new rule specifically for ABC F6xxx patterns
-   - Adjust test expectations if pattern isn't supported
+**Problem**: `BadWhileLoopInfo._is_candidate_for_dispatcher_entry_block()` (lines 196-241) has strict pattern requirements:
+1. ✓ Block ends with `jz/jnz` with F6xxx constant
+2. ❌ **prevb.tail must be `mov #F6xxx, reg`** - ABC has `mov #0, reg`
+3. ✓ nextb ends with `jz/jnz` with F6xxx constant
+
+**Microcode Evidence** (at MMAT_GLBOPT1 for `_abc_f6_add_dispatch`):
+```
+Block 2: opcode=44 (jnz)  r=0xf6951  ← Entry block ✓
+Block 1: opcode=4 (mov)   l=0x0     ← prevb - NOT in magic range! ❌
+Block 3: opcode=44 (jnz)  r=0xf6952  ← nextb ✓
+```
+
+**Why ABC Patterns Differ**: ABC samples initialize state to `0` (not F6xxx), then transition to F6xxx states. Original Approov pattern expected `mov #F6xxx` immediately preceding comparisons.
+
+**Fix Attempt**: Relaxed pattern matching caused **segfault** because:
+- `_collect_exit_blocks` uses prevb's magic constant for exit path
+- Removing this assumption corrupts the CFG
+
+**Required Fix Strategy**:
+1. Make prevb check optional in `_is_candidate_for_dispatcher_entry_block`
+2. Make prevb exit path optional in `_collect_exit_blocks`
+3. Reduce `DEFAULT_DISPATCHER_MIN_EXIT_BLOCK` from 3 to 2
+4. Thoroughly test CFG integrity after modifications
+
+**Alternative Approach**: Create a new `ABCWhileLoop` rule specifically for this pattern, rather than modifying `BadWhileLoop` which is known to work for original Approov patterns.
 
 ## How to Run Tests
 

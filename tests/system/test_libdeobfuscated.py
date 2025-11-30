@@ -326,11 +326,19 @@ class TestLibDeobfuscated:
                     decompiled_func.get_pseudocode()
                 )
 
+                # Check for XOR MBA pattern: (a + b) - 2*(a & b)
+                # Operand order may vary due to compiler/IDA optimizations
                 assert (
                     "a2 + a1 - 2 * (a2 & a1)" in pseudocode_before
+                    or "a1 + a2 - 2 * (a1 & a2)" in pseudocode_before
+                    or "a1 + a2 - 2 * (a2 & a1)" in pseudocode_before
+                    or "a2 + a1 - 2 * (a1 & a2)" in pseudocode_before
                 ), "Should have obfuscated XOR pattern before d810"
+                # Check for complex expression - accept multiple orderings
                 assert (
                     "a2 - 3 + a3 * a1 - 2 * ((a2 - 3) & (a3 * a1))" in pseudocode_before
+                    or "a1 * a3 + a2 - 3 - 2 * ((a1 * a3) & (a2 - 3))" in pseudocode_before
+                    or "a1 * a3 - 2 * ((a1 * a3) & (a2 - 3)) + a2 - 3" in pseudocode_before
                 ), "Should have complex obfuscated expression before d810"
 
                 state.start_d810()
@@ -348,11 +356,16 @@ class TestLibDeobfuscated:
                 assert (
                     pseudocode_before != pseudocode_after
                 ), "d810 MUST simplify the XOR pattern"
+                # XOR is commutative, accept either operand order
                 assert (
                     "a2 ^ a1" in pseudocode_after
+                    or "a1 ^ a2" in pseudocode_after
                 ), "Should have simplified XOR after d810"
+                # Complex XOR with multiple operand orderings
                 assert (
                     "(a2 - 3) ^ (a3 * a1)" in pseudocode_after
+                    or "(a1 * a3) ^ (a2 - 3)" in pseudocode_after
+                    or "(a3 * a1) ^ (a2 - 3)" in pseudocode_after
                 ), "Should have simplified XOR expression after d810"
 
                 # Capture and verify statistics
