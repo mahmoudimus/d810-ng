@@ -2,6 +2,8 @@
 
 This document catalogs the gaps between auto-generated SDK `.pxd` files and the manual `_chexrays.pxd` definitions, enabling future improvements to the pxd generator.
 
+> **Last Updated**: 2025-11-30
+
 ## Overview
 
 D810's Cython bindings use two approaches:
@@ -16,38 +18,93 @@ D810's Cython bindings use two approaches:
    - Contains full template definitions, custom helpers, and fixes
    - Currently required for correct Cython compilation
 
+## Current Status Summary
+
+| Gap Category | Status | Notes |
+|--------------|--------|-------|
+| Template classes (qvector, _qstring) | ✅ FIXED | SDK now has ~20 methods each |
+| mop_t class definition | ❌ CRITICAL | SDK has only `pass`, no fields |
+| mcallinfo_t.args field | ❌ Missing | Needed for call analysis |
+| MOPT enum (mop_zero, mop_r, etc.) | ❌ Missing | Must define manually |
+| OPERAND_PROPERTIES enum | ❌ Missing | Must define manually |
+| LOCOPT_FLAGS enum | ❌ Missing | Must define manually |
+| SWIG helpers | Manual by design | Cannot be auto-generated |
+
 ## Gap Categories
 
-### 1. Template Class Definitions
+### 1. Template Class Definitions ✅ FIXED
 
-**Problem**: SDK generates only stub declarations for template classes, missing method implementations.
+**Status**: The SDK now generates method implementations for template classes.
 
-**Affected Types**:
-
-| Type | SDK Status | Manual Fix |
-|------|------------|------------|
-| `qvector<T>` | Stub only | Full 30+ method definition |
-| `_qstring<T>` | Stub only | Full 50+ method definition |
-
-**Example Gap**:
+**Current SDK** (in `range.pxd` and `hexrays.pxd`):
 
 ```cython
-# SDK generates (incomplete):
-cdef cppclass qvector[T]:
-    pass  # No methods!
-
-# Manual _chexrays.pxd provides:
 cdef cppclass qvector[T]:
     qvector() except +
-    void push_back(const T& x) except +
+    qvector(const qvector[T]& x) except +
+    T& operator[](size_t idx)
+    T& at(size_t idx)
+    T& front()
+    T& back()
     size_t size() const
-    T& operator[](size_t _idx)
-    # ... 30+ more methods
+    bint empty() const
+    size_t capacity() const
+    void reserve(size_t cnt) except +
+    void push_back(const T& x) except +
+    void pop_back() except +
+    void clear() except +
+    void resize(size_t newsize) except +
+    void swap(qvector[T]& r) except +
+    # ... iterators, erase, insert, find, has, add_unique
 ```
 
-**Generator Improvement**: Parse template class definitions from pro.h and generate full method signatures.
+**No longer a gap** - manual `_chexrays.pxd` still has more methods but SDK is sufficient for most use cases.
 
-### 2. Missing Fields in Structs
+### 2. mop_t Class Definition ❌ CRITICAL GAP
+
+**Problem**: The SDK generates `mop_t` as a forward declaration only, with no fields or methods.
+
+**SDK hexrays.pxd (line 4263)**:
+```cython
+cdef cppclass mop_t:  # Microcode level forward definitions:
+    pass  # ← ONLY THIS! No fields, no methods!
+```
+
+**Manual _chexrays.pxd requires**:
+```cython
+cdef cppclass mop_t:
+    mop_t() except +
+    mopt_t t           # Operand type
+    uint8 oprops       # Operand properties
+    uint16 valnum      # Value number
+    int size           # Operand size
+    # Union members for different operand types:
+    mreg_t r           # Register
+    mnumber_t *nnn     # Number
+    minsn_t *d         # Sub-instruction
+    stkvar_ref_t *s    # Stack variable
+    ea_t g             # Global address
+    int b              # Block number
+    mcallinfo_t *f     # Call info
+    lvar_ref_t *l      # Local variable
+    mop_addr_t *a      # Address operand
+    char *helper       # Helper function
+    char *cstr         # String constant
+    mcases_t *c        # Cases
+    fnumber_t *fpc     # Floating point
+    mop_pair_t *pair   # Pair operand
+    scif_t *scif       # Scattered
+    # Methods:
+    const char *dstr() const
+    void make_number(uint64 val, int size)
+    void assign(const mop_t& other)
+```
+
+**Impact**: Cannot use SDK for any microcode operand manipulation without manual definitions.
+
+**Generator Fix Required**: Parse the full `mop_t` class definition from hexrays.hpp.
+
+### 3. Missing Struct Fields
 
 **Problem**: Some struct fields are missing from SDK-generated definitions.
 
@@ -56,26 +113,29 @@ cdef cppclass qvector[T]:
 | Type | Missing Field | Notes |
 |------|---------------|-------|
 | `mcallinfo_t` | `args` (`mcallargs_t`) | Critical for call analysis |
-| `mop_t` | None missing | SDK is complete |
-| `minsn_t` | None missing | SDK is complete |
 
-**Example Gap**:
-
+**SDK mcallinfo_t (has most fields but missing args)**:
 ```cython
-# SDK mcallinfo_t may be missing:
 cdef cppclass mcallinfo_t:
     ea_t callee
     int solid_args
+    int call_spd
+    int stkargs_top
+    callcnv_t cc
+    int flags
+    funcrole_t role
     # args field missing!
+```
 
-# Manual fix adds:
+**Manual fix adds**:
+```cython
 cdef cppclass mcallinfo_t:
-    mcallargs_t args  # Added manually
+    mcallargs_t args  # Added manually - list of call arguments
 ```
 
 **Generator Improvement**: Ensure all public fields are parsed from header structs.
 
-### 3. Custom Helper Functions
+### 4. Custom Helper Functions
 
 **Problem**: SWIG interop requires custom C++ helper code not present in SDK headers.
 
@@ -98,7 +158,7 @@ cdef inline void* _swig_ptr(object obj):
 
 **Generator Status**: These cannot be auto-generated; they must remain in manual definitions.
 
-### 4. Custom Enums
+### 5. Custom Enums ❌ STILL MISSING
 
 **Problem**: Some enums needed for Cython code aren't exposed in SDK headers or use different names.
 
@@ -123,7 +183,7 @@ cdef enum MOPT:
 
 **Generator Improvement**: Parse `#define` constants and generate enum equivalents.
 
-### 5. Method Signature Corrections
+### 6. Method Signature Corrections
 
 **Problem**: Some methods have incorrect or simplified signatures in SDK.
 
@@ -135,7 +195,7 @@ cdef enum MOPT:
 
 **Generator Improvement**: Better overload resolution and default argument handling.
 
-### 6. Typedef Aliases
+### 7. Typedef Aliases
 
 **Problem**: Common typedefs need to be available at Cython level.
 
