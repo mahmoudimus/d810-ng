@@ -198,6 +198,87 @@ For more details, see [`docs/BUILDING.md`](docs/BUILDING.md).
 * Decompile an obfuscated function, the code should be simplified (hopefully)
 * When you want to disable deobfuscation, just click on the `Stop` button.
 
+### Rule Configuration
+
+D-810 ng rules are configured through JSON project files. Each rule can have custom configuration options that control its behavior.
+
+#### Basic Configuration
+
+```json
+{
+  "name": "FoldReadonlyDataRule",
+  "is_activated": true,
+  "config": {
+    "min_size": 4,
+    "allow_executable_readonly": true
+  }
+}
+```
+
+#### Architecture-Specific Configuration
+
+Some settings need to vary based on the binary format (Mach-O, ELF, PE). D-810 ng supports **architecture-specific configuration overrides** that automatically apply based on the loaded binary:
+
+```json
+{
+  "name": "FoldReadonlyDataRule",
+  "is_activated": true,
+  "config": {
+    "default": {
+      "min_size": 4
+    },
+    "macho": {
+      "allow_executable_readonly": true
+    },
+    "elf": {},
+    "pe": {}
+  }
+}
+```
+
+**How it works:**
+
+1. **Detection**: D-810 automatically detects the binary format (Mach-O, ELF, or PE) when loading a project
+2. **Merging**: The `default` config is merged with the format-specific config
+3. **Precedence**: Format-specific values override default values
+
+**Supported keys:**
+
+| Key | Applies To |
+|-----|------------|
+| `default` | All binaries (base configuration) |
+| `macho` | Mach-O binaries (macOS, iOS) |
+| `darwin` | Alias for `macho` |
+| `elf` | ELF binaries (Linux, BSD) |
+| `linux` | Alias for `elf` |
+| `pe` | PE/COFF binaries (Windows) |
+| `windows` | Alias for `pe` |
+
+**Example use case**: On Mach-O binaries, `__const` segments often have R+X permissions even though they contain read-only data. The `FoldReadonlyDataRule` needs `allow_executable_readonly: true` for Mach-O but should use strict R+!W+!X checking on ELF/PE:
+
+```json
+{
+  "name": "FoldReadonlyDataRule",
+  "is_activated": true,
+  "config": {
+    "default": {},
+    "macho": {
+      "allow_executable_readonly": true
+    }
+  }
+}
+```
+
+**Backwards compatibility**: Plain configs (without arch keys) continue to work unchanged:
+
+```json
+{
+  "config": {
+    "min_size": 4
+  }
+}
+```
+
 ### Test Runner
 
 D-810 ng comes with a built-in test runner that automatically loads system tests from the tests folder, under `tests/system`. This GUI is a simple test runner that allows a developer to run tests *inside* of IDA Pro, accessing the hexrays decompiler API and utilizing specific samples under `samples/bins` to test transformations.
