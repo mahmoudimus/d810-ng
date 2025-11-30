@@ -1,3 +1,21 @@
+"""
+Generic unflattening base classes for control flow deobfuscation.
+
+WARNING: CFG MODIFICATION SAFETY
+================================
+This module contains direct CFG modifications that do not use DeferredGraphModifier.
+Specifically, `father_patcher_abc_create_blocks` (lines ~696-874) performs:
+- Direct mba.insert_block() calls
+- Direct predset/succset manipulation
+- Block creation during iteration
+
+This pattern is risky but works for the specific obfuscation patterns targeted
+(magic numbers 0xF6xxx, 101xxxx). A full refactor to DeferredGraphModifier
+would be safer but is deferred due to complexity.
+
+See: docs/cfg-modification-audit.md for details.
+See: d810ng-dtq for tracking issue.
+"""
 from __future__ import annotations
 
 import abc
@@ -702,7 +720,16 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
         compare_mop_right: ida_hexrays.mop_t,
         opcode: int,
     ) -> tuple[ida_hexrays.mblock_t, ida_hexrays.mblock_t]:
+        """
+        Create two new blocks to split a dispatcher father based on a condition.
 
+        WARNING: This function performs direct CFG modifications without using
+        DeferredGraphModifier. It directly manipulates predset/succset and calls
+        mba.insert_block(). This works for the specific obfuscation patterns
+        targeted but is not the recommended pattern for new code.
+
+        See: docs/cfg-modification-audit.md
+        """
         mba = dispatcher_father.mba
         if dispatcher_father.tail.opcode == ida_hexrays.m_goto:
             dispatcher_father.remove_from_block(dispatcher_father.tail)
