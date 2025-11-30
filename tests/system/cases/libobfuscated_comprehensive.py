@@ -94,42 +94,42 @@ ABC_F6_CASES = [
     DeobfuscationCase(
         function="abc_f6_add_dispatch",
         description="ABC pattern with ADD using F6xxx magic constants",
-        project="default_unflattening_approov.json",
+        project="example_libobfuscated.json",
         obfuscated_contains=["0xF6"],
         must_change=True,
     ),
     DeobfuscationCase(
         function="abc_f6_sub_dispatch",
         description="ABC pattern using SUB with F6xxx constants",
-        project="default_unflattening_approov.json",
+        project="example_libobfuscated.json",
         obfuscated_contains=["0xF6"],
         must_change=True,
     ),
     DeobfuscationCase(
         function="abc_f6_xor_dispatch",
         description="ABC pattern with XOR-based state transitions",
-        project="default_unflattening_approov.json",
+        project="example_libobfuscated.json",
         obfuscated_contains=["0xF6"],
         must_change=True,
     ),
     DeobfuscationCase(
         function="abc_f6_or_dispatch",
         description="ABC pattern with OR operations on state variables",
-        project="default_unflattening_approov.json",
+        project="example_libobfuscated.json",
         obfuscated_contains=["0xF6"],
         must_change=True,
     ),
     DeobfuscationCase(
         function="abc_f6_nested",
         description="Nested conditional ABC pattern",
-        project="default_unflattening_approov.json",
+        project="example_libobfuscated.json",
         obfuscated_contains=["0xF6"],
         must_change=True,
     ),
     DeobfuscationCase(
         function="abc_f6_64bit_pattern",
         description="ABC pattern with 64-bit magic constants",
-        project="default_unflattening_approov.json",
+        project="example_libobfuscated.json",
         must_change=True,
     ),
 ]
@@ -143,19 +143,19 @@ ABC_XOR_CASES = [
     DeobfuscationCase(
         function="abc_xor_dispatch",
         description="XOR-based flattened control flow dispatcher",
-        project="default_unflattening_approov.json",
+        project="example_libobfuscated.json",
         must_change=True,
     ),
     DeobfuscationCase(
         function="abc_or_dispatch",
         description="OR-based state manipulation with mask operations",
-        project="default_unflattening_approov.json",
+        project="example_libobfuscated.json",
         must_change=True,
     ),
     DeobfuscationCase(
         function="abc_mixed_dispatch",
         description="Combined XOR/OR state transitions",
-        project="default_unflattening_approov.json",
+        project="example_libobfuscated.json",
         must_change=True,
     ),
 ]
@@ -225,14 +225,6 @@ CONSTANT_FOLDING_CASES = [
         description="Constant folding with bitwise operations",
         project="example_libobfuscated.json",
         must_change=True,
-    ),
-    DeobfuscationCase(
-        function="sub_180001000",
-        description="Complex constant folding with nested rotations",
-        project="example_libobfuscated.json",
-        # May not change if pattern doesn't match
-        must_change=False,
-        skip="Function does not exist in libobfuscated.dylib test binary",
     ),
     DeobfuscationCase(
         function="outlined_helper_1",
