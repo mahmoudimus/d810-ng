@@ -52,9 +52,8 @@ def detect_file_format() -> FileFormat:
     """
     try:
         import idaapi
-
-        inf = idaapi.get_inf_structure()
-        filetype = inf.filetype
+        # Use idaapi shim - works across IDA versions
+        filetype = idaapi.inf_get_filetype()
 
         if filetype == _IDA_FILETYPE_MACHO:
             return FileFormat.MACHO

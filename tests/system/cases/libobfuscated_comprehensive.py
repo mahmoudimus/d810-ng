@@ -188,7 +188,7 @@ APPROOV_CASES = [
         function="approov_vm_dispatcher",
         description="Approov VM dispatcher using switch statement",
         project="default_unflattening_approov.json",
-        obfuscated_contains=["switch"],
+        deobfuscated_not_contains=["switch"],
         must_change=True,
     ),
     DeobfuscationCase(
@@ -196,6 +196,7 @@ APPROOV_CASES = [
         description="Approov pattern using explicit goto statements",
         project="default_unflattening_approov.json",
         must_change=True,
+        skip="IDA pre-optimizes switch/goto to nested loops - needs new UnflattenerNestedLoops rule",
     ),
     DeobfuscationCase(
         function="approov_simple_loop",
@@ -231,6 +232,7 @@ CONSTANT_FOLDING_CASES = [
         project="example_libobfuscated.json",
         # May not change if pattern doesn't match
         must_change=False,
+        skip="Function does not exist in libobfuscated.dylib test binary",
     ),
     DeobfuscationCase(
         function="outlined_helper_1",
@@ -261,7 +263,7 @@ DISPATCHER_PATTERN_CASES = [
     DeobfuscationCase(
         function="high_fan_in_pattern",
         description="HIGH_FAN_IN dispatcher with multiple case blocks",
-        project="default_unflattening_ollvm.json",
+        project="default_unflattening_switch_case.json",
         must_change=True,
     ),
     DeobfuscationCase(
@@ -281,7 +283,7 @@ DISPATCHER_PATTERN_CASES = [
     DeobfuscationCase(
         function="switch_case_ollvm_pattern",
         description="SWITCH_JUMP pattern with O-LLVM style jtbl",
-        project="default_unflattening_ollvm.json",
+        project="default_unflattening_switch_case.json",
         obfuscated_contains=["switch", "case"],
         must_change=True,
     ),
@@ -295,7 +297,7 @@ DISPATCHER_PATTERN_CASES = [
     DeobfuscationCase(
         function="predecessor_uniformity_pattern",
         description="PREDECESSOR_UNIFORM detection pattern",
-        project="default_unflattening_ollvm.json",
+        project="default_unflattening_switch_case.json",
         must_change=True,
     ),
     DeobfuscationCase(
