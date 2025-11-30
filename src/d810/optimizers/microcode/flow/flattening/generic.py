@@ -66,6 +66,10 @@ from d810.optimizers.microcode.flow.flattening.utils import (
 from d810.core.registry import EventEmitter
 from d810.hexrays.deferred_modifier import DeferredGraphModifier, GraphModification
 from d810.optimizers.microcode.flow.flattening.abc_block_splitter import ABCBlockSplitter
+from d810.optimizers.microcode.flow.flattening.loop_prover import (
+    SingleIterationLoopTracker,
+    prove_single_iteration,
+)
 from d810.optimizers.microcode.flow.handler import FlowOptimizationRule
 
 
@@ -510,6 +514,8 @@ class GenericUnflatteningRule(FlowOptimizationRule):
         self.scheduled_modifications: dict[int, list[GraphModification]] = {}
         # Event emitter for cross-optimizer coordination (future use)
         self.events: EventEmitter = EventEmitter()
+        # Tracker for provably single-iteration loops to schedule for cleanup
+        self.single_iteration_loop_tracker: SingleIterationLoopTracker = SingleIterationLoopTracker()
 
     def schedule_for_maturity(
         self,
@@ -570,6 +576,128 @@ class GenericUnflatteningRule(FlowOptimizationRule):
             optimizer=self,
         )
         return applied
+
+    def scan_for_single_iteration_loops(self) -> int:
+        """Scan the CFG for provably single-iteration loops.
+
+        After unflattening, residual loops may remain with pattern::
+
+            Block A (predecessor):
+                mov #INIT, state
+                goto B
+
+            Block B (loop header):
+                jz state, #CHECK, @exit
+                ; fall-through to body
+
+            Block C (loop body):
+                ...
+                mov #UPDATE, state
+                goto B  ; back edge
+
+        If INIT == CHECK and UPDATE != CHECK, the loop executes exactly once.
+        This method records such loops for later cleanup.
+
+        Returns:
+            Number of single-iteration loops found
+        """
+        loops_found = 0
+
+        for i in range(self.mba.qty):
+            blk = self.mba.get_mblock(i)
+            if blk is None or blk.tail is None:
+                continue
+
+            # Look for conditional jump blocks that could be loop headers
+            if blk.tail.opcode not in CONDITIONAL_JUMP_OPCODES:
+                continue
+
+            # Need a comparison against a constant
+            check_const = None
+            state_mop = None
+            if blk.tail.r and blk.tail.r.t == ida_hexrays.mop_n:
+                check_const = blk.tail.r.signed_value()
+                state_mop = blk.tail.l
+            elif blk.tail.l and blk.tail.l.t == ida_hexrays.mop_n:
+                check_const = blk.tail.l.signed_value()
+                state_mop = blk.tail.r
+            else:
+                continue
+
+            # Only consider magic constants (Approov-style)
+            if check_const is None or not (0xF6000 <= check_const <= 0xF6FFF):
+                continue
+
+            # Look for back edges (predecessors that are also successors)
+            for pred_serial in blk.predset:
+                if pred_serial not in blk.succset:
+                    continue  # Not a back edge
+
+                # Found a potential loop: check for init/update pattern
+                pred_blk = self.mba.get_mblock(pred_serial)
+                if pred_blk is None or pred_blk.tail is None:
+                    continue
+
+                # Look for update assignment in predecessor (back edge source)
+                update_const = self._find_state_assignment(pred_blk, state_mop)
+                if update_const is None:
+                    continue
+
+                # Look for init assignment in other predecessors (loop entry)
+                for entry_serial in blk.predset:
+                    if entry_serial == pred_serial:
+                        continue  # Skip the back edge
+                    entry_blk = self.mba.get_mblock(entry_serial)
+                    if entry_blk is None:
+                        continue
+
+                    init_const = self._find_state_assignment(entry_blk, state_mop)
+                    if init_const is None:
+                        continue
+
+                    # Try to prove single-iteration
+                    if prove_single_iteration(init_const, check_const, update_const):
+                        loop = self.single_iteration_loop_tracker.record_loop(
+                            block_serial=blk.serial,
+                            init_value=init_const,
+                            check_value=check_const,
+                            update_value=update_const,
+                        )
+                        if loop:
+                            loops_found += 1
+                            unflat_logger.info(
+                                "Detected single-iteration loop at block %d: "
+                                "init=0x%X, check=0x%X, update=0x%X. "
+                                "Consider running BadWhileLoop unflattener.",
+                                blk.serial, init_const, check_const, update_const,
+                            )
+
+        return loops_found
+
+    def _find_state_assignment(
+        self,
+        blk: ida_hexrays.mblock_t,
+        state_mop: ida_hexrays.mop_t,
+    ) -> int | None:
+        """Find assignment to state variable in a block.
+
+        Args:
+            blk: Block to search
+            state_mop: The state variable mop to look for
+
+        Returns:
+            Constant value assigned, or None if not found
+        """
+        # Walk backwards through instructions
+        insn = blk.tail
+        while insn:
+            if insn.opcode == ida_hexrays.m_mov:
+                # Check if this assigns to our state variable
+                if state_mop and insn.d and insn.d.equal_mops(state_mop, ida_hexrays.EQ_IGNSIZE):
+                    if insn.l and insn.l.t == ida_hexrays.mop_n:
+                        return insn.l.signed_value()
+            insn = insn.prev
+        return None
 
     def check_if_rule_should_be_used(self, blk: ida_hexrays.mblock_t) -> bool:
         if self.cur_maturity == self.mba.maturity:
@@ -1366,6 +1494,13 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
                 len(deferred_modifier.modifications),
             )
             deferred_modifier.apply(run_optimize_local=False, run_deep_cleaning=False)
+
+        # Scan for residual single-iteration loops and record for cleanup
+        loops_found = self.scan_for_single_iteration_loops()
+        if loops_found > 0:
+            unflat_logger.info(
+                "Found %d provable single-iteration loops after unflattening", loops_found
+            )
 
         unflat_logger.info("Unflattening removed %s branch", nb_flattened_branches)
         total_nb_change += nb_flattened_branches
