@@ -7,9 +7,13 @@
 ## Executive Summary
 
 Audited 10 files for CFG modification patterns. Found:
-- **3 files** use safe `DeferredGraphModifier` or abstraction patterns
-- **2 files** are HIGH RISK with direct CFG modifications during iteration
+- **4 files** use safe `DeferredGraphModifier` or abstraction patterns
+- **1 file** was HIGH RISK, now removed (unflattener_cf.py was redundant)
 - **5 files** use safe bounded patterns (single modification after analysis)
+
+**Update 2025-11-29**: `generic.py` has been refactored to use `ABCBlockSplitter`
+for deferred CFG modifications. The ABC pattern handling now follows the safe
+deferred pattern instead of immediate recursive modifications.
 
 ## Risk Assessment
 
@@ -23,7 +27,7 @@ Audited 10 files for CFG modification patterns. Found:
 | `tracker.py` | ✅ Safe | Analysis | No change needed |
 | `handler.py` | ✅ Safe | Analysis | No change needed |
 | `fix_pred_cond_jump_block.py` | ⚠️ Medium | Direct+Cache | Consider refactor |
-| `generic.py` | 🔴 High | Direct | **Needs refactor** |
+| `generic.py` | ✅ Safe | Deferred | **REFACTORED** (uses ABCBlockSplitter) |
 | `unflattener_cf.py` | 🔴 High | Hybrid | **REMOVED** (redundant) |
 
 ## High-Risk Files Detail
@@ -32,22 +36,35 @@ Audited 10 files for CFG modification patterns. Found:
 
 **Status:** Removed as redundant. Other unflatteners (HodurUnflattener, UnflattenerSwitchCase) cover the same use cases with safer patterns.
 
-### 2. `generic.py` - HIGH PRIORITY
+### 2. `generic.py` - REFACTORED ✅
 
-**Problems:**
-- Lines 735-736: `mba.insert_block()` called inside analysis loop
-- Lines 814-820: Direct `predset._del()` / `succset.add_unique()` manipulation
-- Lines 840-871: Multiple CFG modifications in loop without deferral
+**Status:** Refactored to use `ABCBlockSplitter` for deferred CFG modifications.
 
-**Example of dangerous code:**
+**Solution:**
+- Created `abc_block_splitter.py` with the `ABCBlockSplitter` class
+- `fix_fathers_from_mop_history()` now delegates to `ABCBlockSplitter`
+- Analysis phase: collect all ABC split operations without modifying CFG
+- Apply phase: perform all splits atomically after analysis completes
+
+**Before (dangerous):**
 ```python
-for father_to_patch in fathers_to_patch_for_not_taken_branch:
-    dup_blk, _ = duplicate_block(father_to_patch)  # Creates new block!
-    make_2way_block_goto(father_to_patch, ...)     # Modifies CFG!
-    update_blk_successor(dup_blk, ...)             # More modifications!
+# Immediate CFG modification during iteration
+for block in father_history.block_path:
+    total_n += self.father_history_patcher_abc(block)  # Modifies CFG immediately!
 ```
 
-**Impact:** New blocks created during iteration can invalidate serial references.
+**After (safe):**
+```python
+# Deferred CFG modification
+splitter = ABCBlockSplitter(self.mba)
+for father_history in father_histories:
+    for block in father_history.block_path:
+        splitter.analyze_block(block)  # Only collects, no modifications
+total_n = splitter.apply()  # All modifications applied atomically
+```
+
+**Legacy code retained:** The original `father_patcher_abc_*` functions are kept for
+reference but are no longer called from the main code path.
 
 ## Safe Patterns (Reference)
 
@@ -84,20 +101,20 @@ change_1way_block_successor(blk, target_info.new_target)
 
 ## Recommendations
 
-### Phase 1: Document (This PR)
+### Phase 1: Document ✅ COMPLETE
 - [x] Complete audit of CFG modification patterns
 - [x] Document safe vs unsafe patterns
 - [x] Identify high-risk files
 
-### Phase 2: Refactor unflattener_cf.py (Future PR)
-- Complete the DeferredGraphModifier usage
-- Move instruction copying outside of iteration loops
-- Remove block serial assumptions
+### Phase 2: Remove unflattener_cf.py ✅ COMPLETE
+- [x] Removed as redundant with other unflatteners
+- [x] Removed flatfold-noswitch.json config
 
-### Phase 3: Refactor generic.py (Future PR)
-- Queue all block creation and edge changes
-- Apply after analysis phase completes
-- Add proper error handling for failed modifications
+### Phase 3: Refactor generic.py ✅ COMPLETE
+- [x] Created ABCBlockSplitter for deferred pattern
+- [x] Queue all block creation and edge changes
+- [x] Apply after analysis phase completes
+- [x] Added proper error handling for failed modifications
 
 ### Phase 4: Standardize (Future PR)
 - Create coding guidelines for CFG modifications
@@ -109,10 +126,11 @@ change_1way_block_successor(blk, target_info.new_target)
 1. `src/d810/hexrays/deferred_modifier.py` - DeferredGraphModifier implementation
 2. `src/d810/hexrays/cfg_utils.py` - Low-level CFG utilities
 3. `src/d810/optimizers/microcode/flow/flattening/unflattener_hodur.py` - ✅ Safe
-4. `src/d810/optimizers/microcode/flow/flattening/unflattener_cf.py` - 🔴 Unsafe
-5. `src/d810/optimizers/microcode/flow/flattening/generic.py` - 🔴 Unsafe
-6. `src/d810/optimizers/microcode/flow/flattening/services.py` - ✅ Safe
-7. `src/d810/optimizers/microcode/flow/flattening/fix_pred_cond_jump_block.py` - ⚠️ Medium
-8. `src/d810/optimizers/microcode/flow/flattening/unflattener_fake_jump.py` - ✅ Safe
-9. `src/d810/optimizers/microcode/flow/jumps/handler.py` - ✅ Safe
-10. `src/d810/optimizers/microcode/flow/loops/bogus_loops.py` - ✅ Safe
+4. `src/d810/optimizers/microcode/flow/flattening/unflattener_cf.py` - **REMOVED**
+5. `src/d810/optimizers/microcode/flow/flattening/generic.py` - ✅ Safe (refactored)
+6. `src/d810/optimizers/microcode/flow/flattening/abc_block_splitter.py` - ✅ Safe (new)
+7. `src/d810/optimizers/microcode/flow/flattening/services.py` - ✅ Safe
+8. `src/d810/optimizers/microcode/flow/flattening/fix_pred_cond_jump_block.py` - ⚠️ Medium
+9. `src/d810/optimizers/microcode/flow/flattening/unflattener_fake_jump.py` - ✅ Safe
+10. `src/d810/optimizers/microcode/flow/jumps/handler.py` - ✅ Safe
+11. `src/d810/optimizers/microcode/flow/loops/bogus_loops.py` - ✅ Safe
