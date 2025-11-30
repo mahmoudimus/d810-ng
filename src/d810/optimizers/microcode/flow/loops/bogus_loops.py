@@ -254,7 +254,17 @@ class BogusLoopRemover(FlowOptimizationRule):
         for (i = C1; i == C1; i = C2) { body }
 
     Which always executes exactly once and can be safely unrolled.
+
+    .. warning::
+        This rule uses direct CFG modifications (make_2way_block_goto,
+        change_1way_block_successor, mba_deep_cleaning) and is only safe
+        at MMAT_CALLS and MMAT_GLBOPT1. Extending to later maturities
+        requires migration to DeferredGraphModifier (see d810ng-3oc).
     """
+
+    # CFG modification safety - uses direct modifications, not deferred
+    USES_DEFERRED_CFG = False
+    SAFE_MATURITIES = [ida_hexrays.MMAT_CALLS, ida_hexrays.MMAT_GLBOPT1]
 
     def __init__(self):
         super().__init__()
