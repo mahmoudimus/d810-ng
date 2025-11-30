@@ -132,6 +132,18 @@ from .ctree_snapshot import (
     load_ctree_snapshot,
 )
 
+# Platform and file format detection
+from .platform import (
+    FileFormat,
+    Platform,
+    detect_file_format,
+    detect_platform,
+    get_format_config_keys,
+    is_arch_specific_config,
+    resolve_arch_config,
+    ARCH_CONFIG_KEYS,
+)
+
 
 # =============================================================================
 # MOP (Microcode OPerand) Caches
@@ -262,4 +274,13 @@ __all__ = [
     "deserialize_ctree",
     "save_ctree_snapshot",
     "load_ctree_snapshot",
+    # platform
+    "FileFormat",
+    "Platform",
+    "detect_file_format",
+    "detect_platform",
+    "get_format_config_keys",
+    "is_arch_specific_config",
+    "resolve_arch_config",
+    "ARCH_CONFIG_KEYS",
 ]

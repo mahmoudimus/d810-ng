@@ -23,6 +23,7 @@ from d810.core import (
     clear_logs,
     configure_loggers,
     getLogger,
+    resolve_arch_config,
 )
 
 _IDA_USER_DIR: str | None = idaapi.get_user_idadir()
@@ -316,10 +317,12 @@ class D810State(metaclass=SingletonMeta):
                 if not rule_conf.is_activated:
                     continue
                 if rule.name == rule_conf.name:
-                    rule_conf.config["dump_intermediate_microcode"] = (
+                    # Resolve architecture-specific config if present
+                    effective_config = resolve_arch_config(rule_conf.config)
+                    effective_config["dump_intermediate_microcode"] = (
                         self.d810_config.get("dump_intermediate_microcode")
                     )
-                    rule.configure(rule_conf.config)
+                    rule.configure(effective_config)
                     rule.set_log_dir(self.log_dir)
                     self.current_ins_rules.append(rule)
         logger.debug("Instruction rules configured")
@@ -328,10 +331,12 @@ class D810State(metaclass=SingletonMeta):
                 if not rule_conf.is_activated:
                     continue
                 if blk_rule.name == rule_conf.name:
-                    rule_conf.config["dump_intermediate_microcode"] = (
+                    # Resolve architecture-specific config if present
+                    effective_config = resolve_arch_config(rule_conf.config)
+                    effective_config["dump_intermediate_microcode"] = (
                         self.d810_config.get("dump_intermediate_microcode")
                     )
-                    blk_rule.configure(rule_conf.config)
+                    blk_rule.configure(effective_config)
                     blk_rule.set_log_dir(self.log_dir)
                     self.current_blk_rules.append(blk_rule)
         logger.debug("Block rules configured")

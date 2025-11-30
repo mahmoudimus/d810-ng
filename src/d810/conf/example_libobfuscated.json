@@ -10,7 +10,10 @@
             "name": "FoldReadonlyDataRule",
             "is_activated": true,
             "config": {
-                "allow_executable_readonly": true
+                "default": {},
+                "macho": {
+                    "allow_executable_readonly": true
+                }
             }
         },
         {
