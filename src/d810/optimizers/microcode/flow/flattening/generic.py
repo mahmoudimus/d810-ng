@@ -490,11 +490,12 @@ class GenericDispatcherCollector(ida_hexrays.minsn_visitor_t):
 
 class GenericUnflatteningRule(FlowOptimizationRule):
 
+    # Practical maturities - MMAT_GLBOPT3 is rarely/never called by Hex-Rays
+    # MMAT_GLBOPT2 is the latest practical maturity level
     DEFAULT_UNFLATTENING_MATURITIES = [
         ida_hexrays.MMAT_CALLS,
         ida_hexrays.MMAT_GLBOPT1,
         ida_hexrays.MMAT_GLBOPT2,
-        ida_hexrays.MMAT_GLBOPT3,
     ]
 
     def __init__(self):
