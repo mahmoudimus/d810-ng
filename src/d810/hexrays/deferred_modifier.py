@@ -30,6 +30,7 @@ from d810.core import getLogger
 from d810.hexrays.cfg_utils import (
     change_1way_block_successor,
     change_2way_block_conditional_successor,
+    create_block,
     make_2way_block_goto,
     mba_deep_cleaning,
     safe_verify,
@@ -50,6 +51,7 @@ class ModificationType(Enum):
     BLOCK_NOP_INSNS = auto()          # NOP instructions in a block
     INSN_REMOVE = auto()              # Remove a specific instruction
     INSN_NOP = auto()                 # NOP a specific instruction
+    BLOCK_CREATE_WITH_REDIRECT = auto()  # Create intermediate block and redirect
 
 
 @dataclass
@@ -65,6 +67,12 @@ class GraphModification:
     priority: int = 100
     # Description for logging
     description: str = ""
+    # For BLOCK_CREATE_WITH_REDIRECT: instructions to copy to new block
+    instructions_to_copy: list | None = None
+    # For BLOCK_CREATE_WITH_REDIRECT: final target after intermediate block
+    final_target: int | None = None
+    # For BLOCK_CREATE_WITH_REDIRECT: whether target is 0-way
+    is_0_way: bool = False
 
 
 @dataclass
@@ -172,6 +180,43 @@ class DeferredGraphModifier:
         ))
         logger.debug("Queued insn nop: block %d, ea=%s", block_serial, hex(insn_ea))
 
+    def queue_create_and_redirect(
+        self,
+        source_block_serial: int,
+        final_target_serial: int,
+        instructions_to_copy: list,
+        is_0_way: bool = False,
+        description: str = "",
+    ) -> None:
+        """
+        Queue creation of an intermediate block with instruction redirect.
+
+        This creates a new block containing the specified instructions,
+        redirects source_block to the new block, and redirects new block
+        to final_target.
+
+        Args:
+            source_block_serial: Block whose successor will be changed to new block
+            final_target_serial: Final target block after the intermediate block
+            instructions_to_copy: List of minsn_t to copy to the new block
+            is_0_way: If True, new block will be 0-way (no successor)
+            description: Optional description for logging
+        """
+        self.modifications.append(GraphModification(
+            mod_type=ModificationType.BLOCK_CREATE_WITH_REDIRECT,
+            block_serial=source_block_serial,
+            new_target=final_target_serial,  # Used as reference block for insert_nop_blk
+            final_target=final_target_serial,
+            instructions_to_copy=instructions_to_copy,
+            is_0_way=is_0_way,
+            priority=5,  # Very high priority - create blocks before other changes
+            description=description or f"create block after {source_block_serial} -> {final_target_serial}",
+        ))
+        logger.debug(
+            "Queued create_and_redirect: %d -> (new) -> %d with %d instructions",
+            source_block_serial, final_target_serial, len(instructions_to_copy)
+        )
+
     def has_modifications(self) -> bool:
         """Check if there are any queued modifications."""
         return len(self.modifications) > 0
@@ -264,6 +309,11 @@ class DeferredGraphModifier:
         elif mod.mod_type == ModificationType.INSN_NOP:
             return self._apply_insn_nop(blk, mod.insn_ea)
 
+        elif mod.mod_type == ModificationType.BLOCK_CREATE_WITH_REDIRECT:
+            return self._apply_create_and_redirect(
+                blk, mod.final_target, mod.instructions_to_copy, mod.is_0_way
+            )
+
         else:
             logger.warning("Unknown modification type: %s", mod.mod_type)
             return False
@@ -334,3 +384,70 @@ class DeferredGraphModifier:
             hex(insn_ea), blk.serial
         )
         return False
+
+    def _apply_create_and_redirect(
+        self,
+        source_blk: ida_hexrays.mblock_t,
+        final_target: int,
+        instructions_to_copy: list,
+        is_0_way: bool,
+    ) -> bool:
+        """
+        Create an intermediate block and redirect source through it to target.
+
+        Creates: source_blk -> new_block -> final_target
+        The new block contains copies of instructions_to_copy.
+        """
+        if not instructions_to_copy:
+            logger.warning(
+                "No instructions to copy for create_and_redirect on block %d",
+                source_blk.serial
+            )
+            return False
+
+        mba = self.mba
+
+        # Find reference block for insertion (tail block, avoiding XTRN/STOP)
+        tail_serial = mba.qty - 1
+        ref_block = mba.get_mblock(tail_serial)
+        while ref_block.type in (ida_hexrays.BLT_XTRN, ida_hexrays.BLT_STOP):
+            tail_serial -= 1
+            ref_block = mba.get_mblock(tail_serial)
+
+        # Get target block to check if it's 0-way
+        target_blk = mba.get_mblock(final_target)
+        actual_is_0_way = is_0_way or (target_blk and target_blk.type == ida_hexrays.BLT_0WAY)
+
+        try:
+            # Create the intermediate block with the instructions
+            new_block = create_block(ref_block, instructions_to_copy, is_0_way=actual_is_0_way)
+
+            # Redirect source block to the new block
+            if not change_1way_block_successor(source_blk, new_block.serial):
+                logger.warning(
+                    "Failed to redirect block %d to new block %d",
+                    source_blk.serial, new_block.serial
+                )
+                return False
+
+            # If not 0-way, redirect new block to final target
+            if not actual_is_0_way:
+                if not change_1way_block_successor(new_block, final_target):
+                    logger.warning(
+                        "Failed to redirect new block %d to target %d",
+                        new_block.serial, final_target
+                    )
+                    return False
+
+            logger.debug(
+                "Created block %d: %d -> %d -> %d",
+                new_block.serial, source_blk.serial, new_block.serial, final_target
+            )
+            return True
+
+        except Exception as e:
+            logger.error(
+                "Exception in create_and_redirect for block %d: %s",
+                source_blk.serial, e
+            )
+            return False

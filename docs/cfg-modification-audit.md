@@ -15,6 +15,12 @@ Audited 10 files for CFG modification patterns. Found:
 for deferred CFG modifications. The ABC pattern handling now follows the safe
 deferred pattern instead of immediate recursive modifications.
 
+**Update 2025-11-29 (part 2)**: `resolve_dispatcher_father()` in `generic.py` has been
+migrated to use `DeferredGraphModifier` for deferred CFG modifications. This completes
+the migration of all CFG modification paths in `generic.py` to the deferred pattern:
+- `fix_fathers_from_mop_history()` → `ABCBlockSplitter`
+- `resolve_dispatcher_father()` → `DeferredGraphModifier`
+
 ## Risk Assessment
 
 | File | Risk | Pattern | Action |
@@ -36,15 +42,21 @@ deferred pattern instead of immediate recursive modifications.
 
 **Status:** Removed as redundant. Other unflatteners (HodurUnflattener, UnflattenerSwitchCase) cover the same use cases with safer patterns.
 
-### 2. `generic.py` - REFACTORED ✅
+### 2. `generic.py` - FULLY REFACTORED ✅
 
-**Status:** Refactored to use `ABCBlockSplitter` for deferred CFG modifications.
+**Status:** All CFG modification paths now use deferred patterns.
 
-**Solution:**
+**Solution (Part 1 - ABC patterns):**
 - Created `abc_block_splitter.py` with the `ABCBlockSplitter` class
 - `fix_fathers_from_mop_history()` now delegates to `ABCBlockSplitter`
 - Analysis phase: collect all ABC split operations without modifying CFG
 - Apply phase: perform all splits atomically after analysis completes
+
+**Solution (Part 2 - Dispatcher resolution):**
+- Extended `DeferredGraphModifier` with `BLOCK_CREATE_WITH_REDIRECT` modification type
+- `resolve_dispatcher_father()` now accepts optional `deferred_modifier` parameter
+- `remove_flattening()` creates a `DeferredGraphModifier` and applies after all resolutions
+- Block creation and goto changes are queued during analysis, applied atomically afterward
 
 **Before (dangerous):**
 ```python

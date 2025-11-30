@@ -6,10 +6,15 @@ CFG MODIFICATION APPROACH
 This module handles ABC (Arithmetic/Bitwise/Constant) patterns that use magic
 numbers in the range 1010000-1011999 (0xF6950-0xF719F).
 
-The primary CFG modification path now uses ABCBlockSplitter (deferred pattern):
-- `fix_fathers_from_mop_history()` delegates to ABCBlockSplitter
-- Analysis phase: collect all split operations without modifying CFG
-- Apply phase: perform all splits atomically after analysis
+All CFG modifications now use deferred patterns:
+
+1. `fix_fathers_from_mop_history()` -> ABCBlockSplitter
+   - Analysis phase: collect all split operations without modifying CFG
+   - Apply phase: perform all splits atomically after analysis
+
+2. `resolve_dispatcher_father()` -> DeferredGraphModifier
+   - Queues goto changes and block creation operations
+   - Applied after all dispatcher fathers are resolved in `remove_flattening()`
 
 Legacy code paths (`father_patcher_abc_create_blocks`, `father_history_patcher_abc`)
 are retained for reference but no longer called from the main code path.
@@ -58,6 +63,7 @@ from d810.optimizers.microcode.flow.flattening.utils import (
     check_if_all_values_are_found,
     get_all_possibles_values,
 )
+from d810.hexrays.deferred_modifier import DeferredGraphModifier
 from d810.optimizers.microcode.flow.flattening.abc_block_splitter import ABCBlockSplitter
 from d810.optimizers.microcode.flow.handler import FlowOptimizationRule
 
@@ -964,8 +970,25 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
                             # create 2 block with goto to jtbl case
 
     def resolve_dispatcher_father(
-        self, dispatcher_father: ida_hexrays.mblock_t, dispatcher_info: GenericDispatcherInfo
+        self,
+        dispatcher_father: ida_hexrays.mblock_t,
+        dispatcher_info: GenericDispatcherInfo,
+        deferred_modifier: DeferredGraphModifier | None = None,
     ) -> int:
+        """Resolve a dispatcher father block by redirecting it to the target.
+
+        Args:
+            dispatcher_father: The predecessor block to resolve
+            dispatcher_info: Information about the dispatcher
+            deferred_modifier: If provided, queue CFG modifications instead of
+                applying them directly. This enables safer deferred patching.
+
+        Returns:
+            2 on success (for historical reasons)
+
+        Raises:
+            NotResolvableFatherException: If the block cannot be resolved
+        """
         dispatcher_father_histories = self.get_dispatcher_father_histories(
             dispatcher_father,
             dispatcher_info.entry_block,
@@ -1015,30 +1038,60 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
                 for ins in disp_ins
                 if ((ins is not None) and (ins.opcode not in CONTROL_FLOW_OPCODES))
             ]
-            if len(ins_to_copy) > 0:
-                unflat_logger.info(
-                    "Instruction copied: %s: %s",
-                    len(ins_to_copy),
-                    ", ".join(
-                        [format_minsn_t(ins_copied) for ins_copied in ins_to_copy]
-                    ),
-                )
-                tail_serial = self.mba.qty - 1
-                block_to_copy = self.mba.get_mblock(tail_serial)
-                while block_to_copy.type == ida_hexrays.BLT_XTRN or block_to_copy.type == ida_hexrays.BLT_STOP:
-                    block_to_copy = self.mba.get_mblock(tail_serial)
-                    tail_serial -= 1
-                dispatcher_side_effect_blk = create_block(
-                    block_to_copy, ins_to_copy, is_0_way=(target_blk.type == ida_hexrays.BLT_0WAY)
-                )
-                change_1way_block_successor(
-                    dispatcher_father, dispatcher_side_effect_blk.serial
-                )
-                change_1way_block_successor(
-                    dispatcher_side_effect_blk, target_blk.serial
-                )
+
+            if deferred_modifier is not None:
+                # Use deferred CFG modifications
+                if len(ins_to_copy) > 0:
+                    unflat_logger.info(
+                        "Queuing create_and_redirect: %s instructions from block %s -> %s",
+                        len(ins_to_copy),
+                        dispatcher_father.serial,
+                        target_blk.serial,
+                    )
+                    deferred_modifier.queue_create_and_redirect(
+                        source_block_serial=dispatcher_father.serial,
+                        final_target_serial=target_blk.serial,
+                        instructions_to_copy=ins_to_copy,
+                        is_0_way=(target_blk.type == ida_hexrays.BLT_0WAY),
+                        description=f"resolve_dispatcher_father {dispatcher_father.serial} -> {target_blk.serial}",
+                    )
+                else:
+                    unflat_logger.info(
+                        "Queuing goto change: block %s -> %s",
+                        dispatcher_father.serial,
+                        target_blk.serial,
+                    )
+                    deferred_modifier.queue_goto_change(
+                        block_serial=dispatcher_father.serial,
+                        new_target=target_blk.serial,
+                        description=f"resolve_dispatcher_father {dispatcher_father.serial} -> {target_blk.serial}",
+                    )
             else:
-                change_1way_block_successor(dispatcher_father, target_blk.serial)
+                # Legacy direct CFG modifications
+                if len(ins_to_copy) > 0:
+                    unflat_logger.info(
+                        "Instruction copied: %s: %s",
+                        len(ins_to_copy),
+                        ", ".join(
+                            [format_minsn_t(ins_copied) for ins_copied in ins_to_copy]
+                        ),
+                    )
+                    tail_serial = self.mba.qty - 1
+                    block_to_copy = self.mba.get_mblock(tail_serial)
+                    while block_to_copy.type == ida_hexrays.BLT_XTRN or block_to_copy.type == ida_hexrays.BLT_STOP:
+                        block_to_copy = self.mba.get_mblock(tail_serial)
+                        tail_serial -= 1
+                    dispatcher_side_effect_blk = create_block(
+                        block_to_copy, ins_to_copy, is_0_way=(target_blk.type == ida_hexrays.BLT_0WAY)
+                    )
+                    change_1way_block_successor(
+                        dispatcher_father, dispatcher_side_effect_blk.serial
+                    )
+                    change_1way_block_successor(
+                        dispatcher_side_effect_blk, target_blk.serial
+                    )
+                else:
+                    change_1way_block_successor(dispatcher_father, target_blk.serial)
             return 2
 
         raise NotResolvableFatherException(
@@ -1103,6 +1156,9 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
         self.non_significant_changes = ensure_last_block_is_goto(self.mba)
         self.non_significant_changes += self.ensure_all_dispatcher_fathers_are_direct()
 
+        # Create deferred modifier for all resolve_dispatcher_father operations
+        deferred_modifier = DeferredGraphModifier(self.mba)
+
         for dispatcher_info in self.dispatcher_list:
             if self.dump_intermediate_microcode:
                 dump_microcode_for_debug(
@@ -1152,7 +1208,7 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
             for dispatcher_father in dispatcher_father_list:
                 try:
                     nb_flattened_branches += self.resolve_dispatcher_father(
-                        dispatcher_father, dispatcher_info
+                        dispatcher_father, dispatcher_info, deferred_modifier
                     )
                 except NotResolvableFatherException as e:
                     unflat_logger.warning(e)
@@ -1165,6 +1221,14 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
                         self.cur_maturity_pass, dispatcher_info.entry_block.serial
                     ),
                 )
+
+        # Apply all deferred CFG modifications after analysis is complete
+        if deferred_modifier.has_modifications():
+            unflat_logger.info(
+                "Applying %d deferred CFG modifications from resolve_dispatcher_father",
+                len(deferred_modifier.modifications),
+            )
+            deferred_modifier.apply(run_optimize_local=False, run_deep_cleaning=False)
 
         unflat_logger.info("Unflattening removed %s branch", nb_flattened_branches)
         total_nb_change += nb_flattened_branches
