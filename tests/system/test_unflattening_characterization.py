@@ -593,6 +593,226 @@ class TestABCF6ConstantsCharacterization:
                     state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
 
 
+class TestApproovFlatteningCharacterization:
+    """Characterization tests for Approov-style control flow flattening.
+
+    These tests exercise the ABC patching code path with patterns that match
+    the Approov obfuscator's characteristic microcode patterns:
+    - m_high(m_sub(m_or(x, #0xF6Axx_0000_xxxx.8), y))
+    - jz eax.4, #0xF6A1E.4, @XX style comparisons
+    - 64-bit constants with high 32 bits in ABC range (1010000-1011999)
+
+    See: src/d810/optimizers/microcode/flow/flattening/generic.py
+    See: src/d810/optimizers/microcode/flow/flattening/unflattener_badwhile_loop.py
+    """
+
+    binary_name = (
+        "libobfuscated.dylib" if platform.system() == "Darwin" else "libobfuscated.dll"
+    )
+
+    def test_approov_real_pattern(
+        self,
+        libobfuscated_test_setup,
+        d810_state,
+        pseudocode_to_string,
+        capture_stats,
+        load_expected_stats,
+    ):
+        """Test real Approov pattern copied from decompiled code.
+
+        This is the exact structure from real Approov-obfuscated binaries:
+        - LABEL_xx: v8 = 1010207;
+        - while (v8 != 1010208) { ... }
+        - State transitions: v8 = 1010206 or v8 = 1010208
+        - goto LABEL_xx to reset
+        """
+        func_ea = get_func_ea("approov_real_pattern")
+        if func_ea == idaapi.BADADDR:
+            pytest.skip("Function 'approov_real_pattern' not found in binary")
+
+        with d810_state() as state:
+            with state.for_project("example_libobfuscated.json"):
+                state.stop_d810()
+                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_before is not None, "Decompilation failed"
+
+                actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
+
+                state.start_d810()
+                state.stats.reset()
+                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_after is not None, "Decompilation with d810 failed"
+
+                actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
+
+                stats_dict = capture_stats(state.stats)
+                print(f"[CHARACTERIZATION] approov_real_pattern rules fired: {state.stats.get_fired_rule_names()}")
+                print(f"[CHARACTERIZATION] Before:\n{actual_before[:500]}...")
+                print(f"[CHARACTERIZATION] After:\n{actual_after[:500]}...")
+
+                expected = load_expected_stats()
+                if expected is not None:
+                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+
+    def test_approov_vm_dispatcher(
+        self,
+        libobfuscated_test_setup,
+        d810_state,
+        pseudocode_to_string,
+        capture_stats,
+        load_expected_stats,
+    ):
+        """Test Approov VM dispatcher with switch-based state machine.
+
+        Uses constants in 0xF6xxx range with self-modifying state transitions
+        like `opcode = (int)(qword |= 0xF6A20)` characteristic of Approov.
+        """
+        func_ea = get_func_ea("approov_vm_dispatcher")
+        if func_ea == idaapi.BADADDR:
+            pytest.skip("Function 'approov_vm_dispatcher' not found in binary")
+
+        with d810_state() as state:
+            with state.for_project("example_libobfuscated.json"):
+                state.stop_d810()
+                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_before is not None, "Decompilation failed"
+
+                actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
+
+                state.start_d810()
+                state.stats.reset()
+                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_after is not None, "Decompilation with d810 failed"
+
+                actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
+
+                stats_dict = capture_stats(state.stats)
+                print(f"[CHARACTERIZATION] approov_vm_dispatcher rules fired: {state.stats.get_fired_rule_names()}")
+                print(f"[CHARACTERIZATION] Before:\n{actual_before[:500]}...")
+                print(f"[CHARACTERIZATION] After:\n{actual_after[:500]}...")
+
+                expected = load_expected_stats()
+                if expected is not None:
+                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+
+    def test_approov_simple_loop(
+        self,
+        libobfuscated_test_setup,
+        d810_state,
+        pseudocode_to_string,
+        capture_stats,
+        load_expected_stats,
+    ):
+        """Test simple Approov loop with do-while state machine.
+
+        Uses volatile state variable and comparisons with 0xF6xxx constants.
+        """
+        func_ea = get_func_ea("approov_simple_loop")
+        if func_ea == idaapi.BADADDR:
+            pytest.skip("Function 'approov_simple_loop' not found in binary")
+
+        with d810_state() as state:
+            with state.for_project("example_libobfuscated.json"):
+                state.stop_d810()
+                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_before is not None
+
+                actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
+
+                state.start_d810()
+                state.stats.reset()
+                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_after is not None
+
+                actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
+
+                stats_dict = capture_stats(state.stats)
+                print(f"[CHARACTERIZATION] approov_simple_loop rules fired: {state.stats.get_fired_rule_names()}")
+                print(f"[CHARACTERIZATION] Before:\n{actual_before[:500]}...")
+                print(f"[CHARACTERIZATION] After:\n{actual_after[:500]}...")
+
+                expected = load_expected_stats()
+                if expected is not None:
+                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+
+    def test_approov_goto_dispatcher(
+        self,
+        libobfuscated_test_setup,
+        d810_state,
+        pseudocode_to_string,
+        capture_stats,
+        load_expected_stats,
+    ):
+        """Test Approov pattern using goto for explicit control flow.
+
+        Uses switch with goto back to dispatcher label for state transitions.
+        """
+        func_ea = get_func_ea("approov_goto_dispatcher")
+        if func_ea == idaapi.BADADDR:
+            pytest.skip("Function 'approov_goto_dispatcher' not found in binary")
+
+        with d810_state() as state:
+            with state.for_project("example_libobfuscated.json"):
+                state.stop_d810()
+                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_before is not None
+
+                actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
+
+                state.start_d810()
+                state.stats.reset()
+                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_after is not None
+
+                actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
+
+                stats_dict = capture_stats(state.stats)
+                print(f"[CHARACTERIZATION] approov_goto_dispatcher rules fired: {state.stats.get_fired_rule_names()}")
+
+                expected = load_expected_stats()
+                if expected is not None:
+                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+
+    def test_approov_qword_pattern(
+        self,
+        libobfuscated_test_setup,
+        d810_state,
+        pseudocode_to_string,
+        capture_stats,
+        load_expected_stats,
+    ):
+        """Test real Approov pattern with qword OR assignment.
+
+        Tests the characteristic pattern: v1 = (qword |= next_state)
+        which is the smoking gun of Approov obfuscation.
+        """
+        func_ea = get_func_ea("approov_qword_pattern")
+        if func_ea == idaapi.BADADDR:
+            pytest.skip("Function 'approov_qword_pattern' not found in binary")
+
+        with d810_state() as state:
+            with state.for_project("example_libobfuscated.json"):
+                state.stop_d810()
+                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_before is not None
+
+                actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
+
+                state.start_d810()
+                state.stats.reset()
+                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_after is not None
+
+                actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
+
+                stats_dict = capture_stats(state.stats)
+                print(f"[CHARACTERIZATION] approov_qword_pattern rules fired: {state.stats.get_fired_rule_names()}")
+
+                expected = load_expected_stats()
+                if expected is not None:
+                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+
+
 class TestExceptionPathCharacterization:
     """Characterization tests for exception handling paths.
 
