@@ -81,6 +81,14 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "@abstractmethod",
 ]
+# Fail if coverage drops below threshold
+fail_under = 0  # Set to desired percentage when ready (e.g., 80)
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.coverage.paths]
+source = ["src/d810"]
 
 # Vendoring configuration (following pip's approach)
 # See src/d810/_vendor/README.md for documentation
