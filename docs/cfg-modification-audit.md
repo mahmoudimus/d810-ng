@@ -24,27 +24,13 @@ Audited 10 files for CFG modification patterns. Found:
 | `handler.py` | ✅ Safe | Analysis | No change needed |
 | `fix_pred_cond_jump_block.py` | ⚠️ Medium | Direct+Cache | Consider refactor |
 | `generic.py` | 🔴 High | Direct | **Needs refactor** |
-| `unflattener_cf.py` | 🔴 High | Hybrid | **Needs refactor** |
+| `unflattener_cf.py` | 🔴 High | Hybrid | **REMOVED** (redundant) |
 
 ## High-Risk Files Detail
 
-### 1. `unflattener_cf.py` - HIGHEST PRIORITY
+### 1. `unflattener_cf.py` - REMOVED
 
-**Problems:**
-- Line 386: Direct `mgoto.l.b = goto_target` modification during iteration
-- Lines 2011-2016: Instruction insertion while iterating source block
-- Line 1876: Fragile block serial assumptions (`disp_pred + 1`)
-- Hybrid pattern: Some edges deferred, but block modifications are direct
-
-**Example of dangerous code:**
-```python
-for disp_pred in dispatch_predset:  # predset may change during iteration
-    mb = mba.get_mblock(disp_pred)
-    # ... CFG modifications happen here
-    non_jcc.insert_into_block(copy, non_jcc.tail)  # Direct modification!
-```
-
-**Impact:** Block serial references can become stale, instruction pointers can dangle.
+**Status:** Removed as redundant. Other unflatteners (HodurUnflattener, UnflattenerSwitchCase) cover the same use cases with safer patterns.
 
 ### 2. `generic.py` - HIGH PRIORITY
 

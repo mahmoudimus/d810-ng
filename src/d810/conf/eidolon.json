@@ -917,11 +917,6 @@
     ],
     "blk_rules": [
         {
-            "name": "UnflattenControlFlowRule",
-            "is_activated": false,
-            "config": {}
-        },
-        {
             "name": "UnflattenerSwitchCase",
             "is_activated": true,
             "config": {}
