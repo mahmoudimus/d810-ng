@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
     unit-tests:
-        runs-on: ubuntu-24.04
+        runs-on: ubuntu-latest
         strategy:
             matrix:
                 python-version: ["3.10", "3.11", "3.12", "3.13"]
@@ -40,10 +40,10 @@ jobs:
             - name: Install dependencies
               run: |
                   pip install --upgrade pip setuptools wheel uv
-                  uv pip install --system -e .
-            - name: Python unit tests
+                  uv pip install --system -e .[dev]
+            - name: Python local tests (no IDA required)
               run: |
-                  python -m unittest discover -s tests.unit -t . -v
+                  python tests/run_tests_local.py
             # - name: Run all tests except system (those require ida)
             #   run: |
             #       for dir in d810/tests/*; do
