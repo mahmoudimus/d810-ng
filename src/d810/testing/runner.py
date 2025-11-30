@@ -110,9 +110,9 @@ def run_deobfuscation_test(
     with d810_state() as state:
         # Configure project if specified
         if effective_case.project:
-            # Note: This assumes the state has a for_project method or similar
-            # The actual implementation depends on the d810_state fixture
-            pass  # Project is typically configured via fixture
+            # Load the project by name - get index and load
+            project_index = state.project_manager.index(effective_case.project)
+            state.load_project(project_index)
 
         # ==========================================
         # BEFORE: Decompile without d810 (obfuscated)
