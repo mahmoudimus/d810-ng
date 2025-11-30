@@ -1,8 +1,12 @@
 """
 Canonicalization & Normalization logic for ASTs.
 
-NOTE: This module is NOT currently integrated into the pattern matching pipeline.
-See the limitation below for why.
+STATUS: NOT INTEGRATED - P4 (nice-to-have, not necessary)
+========================================================
+
+This module is NOT currently integrated into the pattern matching pipeline.
+The existing O(N!) permutation approach (ast_generator) works well enough for
+the current rule set where most patterns have 2-3 variables.
 
 Handles AC-matching (Associative-Commutative) and structural normalization.
 
@@ -12,20 +16,76 @@ The canonicalization performs the following transforms:
 3. Double negation removal: neg(neg(x)) -> x
 4. Operand sorting: For commutative ops, sort operands by hash for consistent ordering
 
-LIMITATION:
-This canonicalization cannot be applied to INPUT ASTs (from real microcode) because:
-- Canonicalization creates synthetic AstConstant nodes (e.g., negated constants)
-- Synthetic nodes lack `mop` references to the original IDA microcode operands
-- Pattern matching requires mops to generate replacement instructions
-- Without mops, pattern matching fails
+FUNDAMENTAL LIMITATION: The Shadow Map Problem
+==============================================
 
-Potential future solutions:
-1. Apply canonicalization only to patterns, then generate both canonical and
-   non-canonical (subtraction) variants
-2. Modify pattern matching to work with values instead of mops
-3. Preserve mop references through canonicalization via indirection
+This canonicalization CANNOT be applied to INPUT ASTs (from real microcode) because
+transformations create SYNTHETIC nodes that lose their connection to IDA microcode.
 
-For now, the existing O(N!) permutation approach (ast_generator) is used instead.
+Example - in _negate_constant():
+
+    new_const = AstConstant(f"neg_{node.name}", expected_value=-val)
+    # ^^^ THIS IS THE PROBLEM - no mop reference!
+
+The moment you transform sub(a, b) → add(a, neg(b)) or sink a negation into a
+constant, you create synthetic nodes with no connection to the original IDA
+microcode operands. Pattern matching requires mops to generate replacement
+instructions via _copy_mops_from_ast() - without them, replacement fails.
+
+WHY THIS IS HARD TO FIX
+=======================
+
+To preserve mop references through canonicalization, you'd need something like:
+
+    class CanonicalNode:
+        canonical_form: AstNode           # The transformed canonical AST
+        original_node: AstNode            # Reference to original (for mop extraction)
+        operand_mapping: dict[str, AstBase]  # Map canonical leaf names → original mops
+
+This is essentially building:
+1. A **term rewriting system** (like what compilers use)
+2. A **two-way binding** between abstract algebra and concrete representation
+3. **Provenance tracking** through transformations
+
+This creeps into compiler frontend territory:
+- SSA form has similar "where did this value come from" tracking
+- LLVM's Value/Use chains
+- GCC's tree-SSA infrastructure
+
+CURRENT APPROACH: O(N!) Permutations
+====================================
+
+The ast_generator() function generates all permutations of commutative operands
+for each pattern at startup. For a pattern like (x | y) - (x & y), it generates:
+- (x | y) - (x & y)
+- (y | x) - (x & y)
+- (x | y) - (y & x)
+- (y | x) - (y & x)
+- ... and subtraction variants
+
+This is O(N!) in the number of commutative operands, but:
+- Most MBA rules have only 2-3 variables (manageable)
+- The cost is paid once at startup
+- Matching is still O(patterns × input_size)
+
+POTENTIAL FUTURE OPTIMIZATIONS (if needed)
+==========================================
+
+Before implementing full canonicalization, consider:
+
+1. **Measure first** - Profile startup time and matching time to see if this
+   is actually a bottleneck. The current approach may be fast enough.
+
+2. **Cache permutations** - Store generated permutations so we pay the cost
+   once per session, not per function decompilation.
+
+3. **Pattern-only canonicalization** - Canonicalize only the rule patterns,
+   generate both canonical and non-canonical (subtraction) variants. Input
+   matching would try multiple forms but preserve original mops.
+
+4. **Lazy generation** - Generate permutations on-demand rather than all at startup.
+
+Related: beads issue d810ng-d7j (P4)
 """
 from __future__ import annotations
 
