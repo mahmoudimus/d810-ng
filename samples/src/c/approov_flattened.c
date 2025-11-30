@@ -290,36 +290,3 @@ int approov_simple_loop(int input)
     }
     return result;
 }
-
-/**
- * Qword pattern - the characteristic OR assignment
- */
-__int64 approov_qword_pattern(int context)
-{
-    int v1;
-
-    v1 = *(int *)((char *)&context + 16);
-
-    while (1)
-    {
-        switch (v1)
-        {
-            case 1010181:  /* 0xF6A05 */
-                approov_global_state = 0;
-                approov_qword |= 0;
-                return (__int64)approov_qword;
-
-            case 1010182:  /* 0xF6A06 */
-                v1 = (int)(approov_qword |= 1010183);
-                continue;
-
-            case 1010183:  /* 0xF6A07 */
-                approov_global_state = context;
-                v1 = 1010181;
-                break;
-
-            default:
-                return -1;
-        }
-    }
-}
