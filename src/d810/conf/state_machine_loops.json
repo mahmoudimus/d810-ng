@@ -10,13 +10,6 @@
             }
         },
         {
-            "name": "BogusLoopRemover",
-            "is_activated": true,
-            "config": {
-                "dump_intermediate_microcode": false
-            }
-        },
-        {
             "name": "JumpFixer",
             "is_activated": true,
             "config": {

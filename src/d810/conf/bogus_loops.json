@@ -3,13 +3,6 @@
     "ins_rules": [],
     "blk_rules": [
         {
-            "name": "BogusLoopRemover",
-            "is_activated": true,
-            "config": {
-                "dump_intermediate_microcode": false
-            }
-        },
-        {
             "name": "UnflattenerSwitchCase",
             "is_activated": true,
             "config": {}
