@@ -348,6 +348,14 @@ def z3_check_mop_equality(
 ) -> bool:
     if mop1 is None or mop2 is None:
         return False
+    # Validate SWIG objects before accessing their attributes
+    # Invalid/freed SWIG objects will not have essential attributes
+    if not hasattr(mop1, 't') or not hasattr(mop1, 'size'):
+        logger.warning("z3_check_mop_equality: mop1 is invalid or freed SWIG object")
+        return False
+    if not hasattr(mop2, 't') or not hasattr(mop2, 'size'):
+        logger.warning("z3_check_mop_equality: mop2 is invalid or freed SWIG object")
+        return False
     # TODO(w00tzenheimer): should we use this?
     # # Quick positives when both operands share type/size.
     # if mop1.t == mop2.t and mop1.size == mop2.size:
@@ -413,6 +421,14 @@ def z3_check_mop_inequality(
     solver: z3.Solver | None = None,
 ) -> bool:
     if mop1 is None or mop2 is None:
+        return True
+    # Validate SWIG objects before accessing their attributes
+    # Invalid/freed SWIG objects will not have essential attributes
+    if not hasattr(mop1, 't') or not hasattr(mop1, 'size'):
+        logger.warning("z3_check_mop_inequality: mop1 is invalid or freed SWIG object")
+        return True
+    if not hasattr(mop2, 't') or not hasattr(mop2, 'size'):
+        logger.warning("z3_check_mop_inequality: mop2 is invalid or freed SWIG object")
         return True
     # TODO(w00tzenheimer): should we use this?
     # if mop1.t == mop2.t and mop1.size == mop2.size:

@@ -462,6 +462,10 @@ def assert_code_not_contains():
 def capture_stats(request):
     """Fixture for capturing and optionally saving deobfuscation statistics.
 
+    Supports binary-specific expectations:
+    - Saves to: expectations/<test_name>.<binary_basename>.json
+    - Example: test_ollvm.libobfuscated.json (for libobfuscated.dll or libobfuscated.dylib)
+
     Usage:
         def test_something(self, d810_state, capture_stats):
             with d810_state() as state:
@@ -474,22 +478,29 @@ def capture_stats(request):
     To generate expectation files, run pytest with --capture-stats:
         pytest tests/system/test_libdeobfuscated.py --capture-stats
 
-    The captured stats will be saved to tests/system/expectations/<test_name>.json
+    The captured stats will be saved to tests/system/expectations/<test_name>.<binary>.json
     """
     import json
 
     capture_mode = request.config.getoption("--capture-stats", default=False)
     test_name = request.node.name
+    # Get binary name from class attribute if available
+    binary_name = getattr(request.cls, "binary_name", None)
+    binary_basename = pathlib.Path(binary_name).stem if binary_name else None
 
     def _capture(stats):
         """Capture statistics and optionally save to file."""
         stats_dict = stats.to_dict()
 
         if capture_mode:
-            # Save to expectations file
+            # Save to expectations file (binary-specific if binary_name is set)
             expectations_dir = pathlib.Path(__file__).parent / "expectations"
             expectations_dir.mkdir(exist_ok=True)
-            expectation_file = expectations_dir / f"{test_name}.json"
+
+            if binary_basename:
+                expectation_file = expectations_dir / f"{test_name}.{binary_basename}.json"
+            else:
+                expectation_file = expectations_dir / f"{test_name}.json"
 
             with open(expectation_file, "w") as f:
                 json.dump(stats_dict, f, indent=2, sort_keys=True)
@@ -505,6 +516,10 @@ def capture_stats(request):
 def load_expected_stats(request):
     """Fixture for loading expected statistics from JSON files.
 
+    Supports binary-specific expectations:
+    - First tries: expectations/<test_name>.<binary_basename>.json
+    - Falls back to: expectations/<test_name>.json
+
     Usage:
         def test_something(self, d810_state, load_expected_stats):
             expected = load_expected_stats()  # Loads from expectations/<test_name>.json
@@ -516,13 +531,29 @@ def load_expected_stats(request):
     import json
 
     test_name = request.node.name
+    # Get binary name from class attribute if available
+    binary_name = getattr(request.cls, "binary_name", None)
+    binary_basename = pathlib.Path(binary_name).stem if binary_name else None
 
     def _load(filename: str = None):
-        """Load expected statistics from JSON file."""
+        """Load expected statistics from JSON file.
+
+        Tries binary-specific file first, then falls back to generic.
+        """
+        expectations_dir = pathlib.Path(__file__).parent / "expectations"
+
         if filename is None:
+            # Try binary-specific expectations first
+            if binary_basename:
+                binary_specific = expectations_dir / f"{test_name}.{binary_basename}.json"
+                if binary_specific.exists():
+                    logger.debug(f"Loading binary-specific expectations: {binary_specific}")
+                    with open(binary_specific) as f:
+                        return json.load(f)
+
+            # Fall back to generic expectations
             filename = f"{test_name}.json"
 
-        expectations_dir = pathlib.Path(__file__).parent / "expectations"
         expectation_file = expectations_dir / filename
 
         if not expectation_file.exists():

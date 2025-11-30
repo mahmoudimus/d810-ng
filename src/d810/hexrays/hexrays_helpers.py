@@ -445,6 +445,9 @@ def mop_quick_key_ignore_size(op: ida_hexrays.mop_t) -> str:
     collide across non-equal operands, so callers must still verify equality
     within a bucket using equal_mops_ignore_size.
     """
+    # Validate SWIG object before accessing attributes
+    if not hasattr(op, 't'):
+        return f"invalid:{id(op)}"
     t = op.t
     if t == ida_hexrays.mop_n:
         try:
@@ -481,10 +484,17 @@ def structural_mop_hash(op: ida_hexrays.mop_t, func_entry_ea: int = 0) -> int:
     This returns a 64-bit int when Cython is present; otherwise a Python hash
     of the quick key which is still cheap and avoids dstr().
     """
+    # Validate mop_t object before attempting to hash it
+    # Check if the object has the essential 't' attribute to detect invalid SWIG objects
+    if not hasattr(op, 't') or not hasattr(op, 'size'):
+        # Invalid or freed SWIG object - return a sentinel hash
+        return hash(("invalid_mop", id(op)))
+
     if cy_hash_mop is not None:
         try:
             return int(cy_hash_mop(op, func_entry_ea))
         except Exception:
+            # Fall through to Python implementation
             pass
     return hash(mop_quick_key_ignore_size(op))
 
