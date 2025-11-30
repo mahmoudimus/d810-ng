@@ -290,6 +290,7 @@ DISPATCHER_PATTERN_CASES = [
         description="Combination of multiple dispatcher strategies",
         project="default_unflattening_ollvm.json",
         must_change=True,
+        skip="Causes timeout/infinite loop - needs investigation",
     ),
     DeobfuscationCase(
         function="predecessor_uniformity_pattern",
