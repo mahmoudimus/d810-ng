@@ -23,11 +23,11 @@ D810's Cython bindings use two approaches:
 | Gap Category | Status | Notes |
 |--------------|--------|-------|
 | Template classes (qvector, _qstring) | ✅ FIXED | SDK now has ~20 methods each |
-| mop_t class definition | ❌ CRITICAL | SDK has only `pass`, no fields |
-| mcallinfo_t.args field | ❌ Missing | Needed for call analysis |
-| MOPT enum (mop_zero, mop_r, etc.) | ❌ Missing | Must define manually |
-| OPERAND_PROPERTIES enum | ❌ Missing | Must define manually |
-| LOCOPT_FLAGS enum | ❌ Missing | Must define manually |
+| mop_t class definition | ✅ FIXED | SDK now has full class with all fields and methods |
+| mcallinfo_t.args field | ✅ FIXED | SDK now includes `mcallargs_t args` field |
+| MOPT enum (mop_zero, mop_r, etc.) | Manual by design | SDK correctly uses `ctypedef uint8 mopt_t`; named constants are Cython convenience |
+| OPERAND_PROPERTIES enum | Manual by design | SDK exposes `oprops` field; named enum is Cython convenience |
+| LOCOPT_FLAGS enum | Manual by design | Named enum is Cython convenience |
 | SWIG helpers | Manual by design | Cannot be auto-generated |
 
 ## Gap Categories
@@ -60,80 +60,73 @@ cdef cppclass qvector[T]:
 
 **No longer a gap** - manual `_chexrays.pxd` still has more methods but SDK is sufficient for most use cases.
 
-### 2. mop_t Class Definition ❌ CRITICAL GAP
+### 2. mop_t Class Definition ✅ FIXED
 
-**Problem**: The SDK generates `mop_t` as a forward declaration only, with no fields or methods.
+**Status**: The SDK now generates the complete `mop_t` class with all fields and methods.
 
-**SDK hexrays.pxd (line 4263)**:
-```cython
-cdef cppclass mop_t:  # Microcode level forward definitions:
-    pass  # ← ONLY THIS! No fields, no methods!
-```
-
-**Manual _chexrays.pxd requires**:
+**SDK hexrays.pxd (lines 5845-5895)**:
 ```cython
 cdef cppclass mop_t:
-    mop_t() except +
     mopt_t t           # Operand type
     uint8 oprops       # Operand properties
     uint16 valnum      # Value number
     int size           # Operand size
     # Union members for different operand types:
-    mreg_t r           # Register
-    mnumber_t *nnn     # Number
-    minsn_t *d         # Sub-instruction
-    stkvar_ref_t *s    # Stack variable
-    ea_t g             # Global address
-    int b              # Block number
-    mcallinfo_t *f     # Call info
-    lvar_ref_t *l      # Local variable
-    mop_addr_t *a      # Address operand
-    char *helper       # Helper function
-    char *cstr         # String constant
-    mcases_t *c        # Cases
-    fnumber_t *fpc     # Floating point
-    mop_pair_t *pair   # Pair operand
-    scif_t *scif       # Scattered
-    # Methods:
-    const char *dstr() const
-    void make_number(uint64 val, int size)
-    void assign(const mop_t& other)
+    mreg_t r           # mop_r   register number
+    mnumber_t* nnn     # mop_n   immediate value
+    minsn_t* d         # mop_d   result of another instruction
+    stkvar_ref_t* s    # mop_S   stack variable
+    ea_t g             # mop_v   global variable
+    int b              # mop_b   block number
+    mcallinfo_t* f     # mop_f   function call information
+    lvar_ref_t* l      # mop_l   local variable
+    mop_addr_t* a      # mop_a   address operand
+    char* helper       # mop_h   helper function name
+    char* cstr         # mop_str utf8 string constant
+    mcases_t* c        # mop_c   cases
+    fnumber_t* fpc     # mop_fn  floating point constant
+    mop_pair_t* pair   # mop_p   operand pair
+    scif_t* scif       # mop_sc  scattered operand info
+    # Methods (50+ including):
+    mop_t()
+    mop_t& assign(mop_t& rop)
+    char* dstr() const
+    void make_number(uint64 _value, int _size, ea_t _ea, int opnum)
+    bint is_reg() const
+    bint is_insn() const
+    bint equal_mops(mop_t& rop, int eqflags) const
+    # ... and many more
 ```
 
-**Impact**: Cannot use SDK for any microcode operand manipulation without manual definitions.
+**No longer a gap** - SDK now has complete `mop_t` definition suitable for microcode manipulation.
 
-**Generator Fix Required**: Parse the full `mop_t` class definition from hexrays.hpp.
+### 3. Struct Fields ✅ FIXED
 
-### 3. Missing Struct Fields
+**Status**: The SDK now generates complete struct definitions including previously missing fields.
 
-**Problem**: Some struct fields are missing from SDK-generated definitions.
-
-**Affected Types**:
-
-| Type | Missing Field | Notes |
-|------|---------------|-------|
-| `mcallinfo_t` | `args` (`mcallargs_t`) | Critical for call analysis |
-
-**SDK mcallinfo_t (has most fields but missing args)**:
+**SDK mcallinfo_t (lines 6009-6037)** - now complete:
 ```cython
 cdef cppclass mcallinfo_t:
-    ea_t callee
-    int solid_args
-    int call_spd
-    int stkargs_top
-    callcnv_t cc
-    int flags
-    funcrole_t role
-    # args field missing!
+    ea_t callee              # address of the called function
+    int solid_args           # number of solid args
+    int call_spd             # sp value at call insn
+    int stkargs_top          # first offset past stack arguments
+    callcnv_t cc             # calling convention
+    mcallargs_t args         # ✅ NOW INCLUDED - call arguments
+    mopvec_t retregs         # return register(s)
+    tinfo_t return_type      # type of returned value
+    argloc_t return_argloc   # location of returned value
+    mlist_t return_regs      # list of values returned
+    mlist_t spoiled          # list of spoiled locations
+    mlist_t pass_regs        # passthrough registers
+    ivlset_t visible_memory  # what memory is visible to call
+    mlist_t dead_regs        # defined but never used registers
+    int flags                # combination of bits
+    funcrole_t role          # function role
+    type_attrs_t fti_attrs   # extended function attributes
 ```
 
-**Manual fix adds**:
-```cython
-cdef cppclass mcallinfo_t:
-    mcallargs_t args  # Added manually - list of call arguments
-```
-
-**Generator Improvement**: Ensure all public fields are parsed from header structs.
+**No longer a gap** - SDK now has complete `mcallinfo_t` definition with `args` field.
 
 ### 4. Custom Helper Functions
 
@@ -158,30 +151,30 @@ cdef inline void* _swig_ptr(object obj):
 
 **Generator Status**: These cannot be auto-generated; they must remain in manual definitions.
 
-### 5. Custom Enums ❌ STILL MISSING
+### 5. Custom Enums (Manual by Design)
 
-**Problem**: Some enums needed for Cython code aren't exposed in SDK headers or use different names.
+**Status**: These enums are Cython conveniences, not SDK gaps. The SDK correctly exposes the underlying types.
 
-**Required Enums**:
+**Custom Enums in `_chexrays.pxd`**:
 
-| Enum | Purpose | SDK Status |
-|------|---------|------------|
-| `MOPT` | Microcode operand type constants | Not in SDK (uses mopt_t values) |
-| `OPERAND_PROPERTIES` | Operand property flags | In SDK as defines, not enum |
-| `LOCOPT_FLAGS` | Local optimization flags | In SDK as defines, not enum |
+| Enum | Purpose | SDK Equivalent |
+|------|---------|----------------|
+| `MOPT` | Named operand type constants | `mopt_t` (uint8) - correct |
+| `OPERAND_PROPERTIES` | Named property flags | `oprops` field (uint8) - correct |
+| `LOCOPT_FLAGS` | Named optimization flags | Integer flags - correct |
 
 **Example**:
 
 ```cython
-# Manual enum in _chexrays.pxd:
+# Cython convenience enum in _chexrays.pxd:
 cdef enum MOPT:
-    ZERO          = 0
-    REGISTER      = 1
-    NUMBER        = 2
+    ZERO          = 0   # Matches mop_z value
+    REGISTER      = 1   # Matches mop_r value
+    NUMBER        = 2   # Matches mop_n value
     # ... etc
 ```
 
-**Generator Improvement**: Parse `#define` constants and generate enum equivalents.
+**No generator change needed** - these are intentional conveniences for D810 code readability.
 
 ### 6. Method Signature Corrections
 
@@ -221,22 +214,24 @@ ctypedef qvector[mop_t] mopvec_t
 
 To migrate from manual `_chexrays.pxd` to SDK-generated files:
 
-### Phase 1: Template Classes
-1. Enhance generator to parse full template definitions
-2. Verify `qvector` and `_qstring` methods compile
-3. Run equivalence tests
+### Phase 1: Template Classes ✅ COMPLETE
+1. ~~Enhance generator to parse full template definitions~~
+2. ~~Verify `qvector` and `_qstring` methods compile~~
+3. ~~Run equivalence tests~~
 
-### Phase 2: Struct Fields
-1. Audit all struct fields in manual file vs SDK
-2. Fix generator for missing fields
-3. Verify field access compiles
+### Phase 2: Struct Fields ✅ COMPLETE
+1. ~~Audit all struct fields in manual file vs SDK~~
+2. ~~Fix generator for missing fields~~
+3. ~~Verify field access compiles~~
 
-### Phase 3: Enums and Defines
-1. Parse `#define` macros into enum equivalents
-2. Generate `MOPT`, `OPERAND_PROPERTIES`, etc.
-3. Verify enum values match IDA SDK
+SDK now has complete definitions for `mop_t`, `mcallinfo_t`, and other critical types.
 
-### Phase 4: Helpers (Manual)
+### Phase 3: Custom Enums (Manual by Design)
+
+Custom enums (`MOPT`, `OPERAND_PROPERTIES`, `LOCOPT_FLAGS`) are Cython conveniences, not SDK gaps.
+These will remain in `_chexrays.pxd` as they provide readable named constants for D810 code.
+
+### Phase 4: Helpers (Manual - By Design)
 1. Keep `swigpyobject.h` and SWIG helpers separate
 2. Create `_helpers.pxd` for custom code
 3. Import helpers alongside SDK types
