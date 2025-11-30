@@ -958,7 +958,9 @@
         {
             "name": "BadWhileLoop",
             "is_activated": true,
-            "config": {}
+            "config": {
+                "min_dispatcher_comparison_value": 2
+            }
         },
         {
             "name": "UnflattenerTigressIndirect",

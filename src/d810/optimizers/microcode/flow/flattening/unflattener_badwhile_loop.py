@@ -196,7 +196,7 @@ class BadWhileLoopCollector(GenericDispatcherCollector):
             return 0
         if not self.specific_checks(disp_info):
             return 0
-        self.dispatcher_list.append(disp_info)
+        # Note: specific_checks already appends to dispatcher_list, so don't append again
         return 0
 
 
