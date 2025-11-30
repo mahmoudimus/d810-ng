@@ -63,9 +63,22 @@ from d810.optimizers.microcode.flow.flattening.utils import (
     check_if_all_values_are_found,
     get_all_possibles_values,
 )
-from d810.hexrays.deferred_modifier import DeferredGraphModifier
+from d810.core.registry import EventEmitter
+from d810.hexrays.deferred_modifier import DeferredGraphModifier, GraphModification
 from d810.optimizers.microcode.flow.flattening.abc_block_splitter import ABCBlockSplitter
 from d810.optimizers.microcode.flow.handler import FlowOptimizationRule
+
+
+class UnflatteningEvent:
+    """Event types for unflattening optimizer coordination."""
+    # Emitted when modifications are scheduled for a future maturity
+    MODIFICATIONS_SCHEDULED = "modifications_scheduled"
+    # Emitted when scheduled modifications are about to be applied
+    MODIFICATIONS_APPLYING = "modifications_applying"
+    # Emitted after scheduled modifications have been applied
+    MODIFICATIONS_APPLIED = "modifications_applied"
+    # Emitted when a dispatcher is resolved
+    DISPATCHER_RESOLVED = "dispatcher_resolved"
 
 unflat_logger = getLogger("D810.unflat")
 
@@ -433,6 +446,71 @@ class GenericUnflatteningRule(FlowOptimizationRule):
         self.cur_maturity_pass = 0
         self.last_pass_nb_patch_done = 0
         self.maturities = self.DEFAULT_UNFLATTENING_MATURITIES
+        # Scheduled modifications for future maturity levels
+        # Key: maturity level (e.g., MMAT_GLBOPT1), Value: list of GraphModification
+        self.scheduled_modifications: dict[int, list[GraphModification]] = {}
+        # Event emitter for cross-optimizer coordination (future use)
+        self.events: EventEmitter = EventEmitter()
+
+    def schedule_for_maturity(
+        self,
+        target_maturity: int,
+        modification: GraphModification,
+    ) -> None:
+        """Schedule a modification to be applied at a future maturity level.
+
+        Args:
+            target_maturity: The maturity level at which to apply (e.g., MMAT_GLBOPT1)
+            modification: The GraphModification to apply
+        """
+        self.scheduled_modifications.setdefault(target_maturity, []).append(modification)
+        unflat_logger.debug(
+            "Scheduled %s for maturity %s: %s",
+            modification.mod_type.name,
+            target_maturity,
+            modification.description,
+        )
+        self.events.emit(
+            UnflatteningEvent.MODIFICATIONS_SCHEDULED,
+            target_maturity=target_maturity,
+            modification=modification,
+            optimizer=self,
+        )
+
+    def _apply_scheduled_modifications(self) -> int:
+        """Apply any modifications scheduled for the current maturity level.
+
+        Returns:
+            Number of modifications applied.
+        """
+        maturity = self.mba.maturity
+        pending = self.scheduled_modifications.pop(maturity, [])
+        if not pending:
+            return 0
+
+        unflat_logger.info(
+            "Applying %d scheduled modifications for maturity %s",
+            len(pending),
+            maturity,
+        )
+        self.events.emit(
+            UnflatteningEvent.MODIFICATIONS_APPLYING,
+            maturity=maturity,
+            modifications=pending,
+            optimizer=self,
+        )
+
+        modifier = DeferredGraphModifier(self.mba)
+        modifier.modifications = pending
+        applied = modifier.apply(run_optimize_local=True, run_deep_cleaning=False)
+
+        self.events.emit(
+            UnflatteningEvent.MODIFICATIONS_APPLIED,
+            maturity=maturity,
+            applied_count=applied,
+            optimizer=self,
+        )
+        return applied
 
     def check_if_rule_should_be_used(self, blk: ida_hexrays.mblock_t) -> bool:
         if self.cur_maturity == self.mba.maturity:
@@ -1238,6 +1316,16 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
         self.mba = blk.mba
         if not self.check_if_rule_should_be_used(blk):
             return 0
+
+        # Apply any modifications scheduled for this maturity level
+        scheduled_changes = self._apply_scheduled_modifications()
+        if scheduled_changes > 0:
+            unflat_logger.info(
+                "Applied %d scheduled modifications at maturity %s",
+                scheduled_changes,
+                self.cur_maturity,
+            )
+
         self.last_pass_nb_patch_done = 0
         unflat_logger.info(
             "Unflattening at maturity %s pass %s",
