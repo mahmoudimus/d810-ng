@@ -346,6 +346,253 @@ class TestNestedDispatcherCharacterization:
                     state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
 
 
+class TestABCF6ConstantsCharacterization:
+    """Characterization tests for ABC magic number range (0xF6xxx / 1010000-1011999).
+
+    These tests exercise the father_patcher_abc_* code path in
+    GenericDispatcherUnflatteningRule that handles constants in the specific range:
+    - Magic constant range: 1010000-1011999 (decimal) = 0xF6950-0xF719F (hex)
+    - Checks: cnst > 1010000 && cnst < 1011999
+
+    See: src/d810/optimizers/microcode/flow/flattening/generic.py:919
+    """
+
+    binary_name = (
+        "libobfuscated.dylib" if platform.system() == "Darwin" else "libobfuscated.dll"
+    )
+
+    def test_abc_f6_add_dispatch(
+        self,
+        libobfuscated_test_setup,
+        d810_state,
+        pseudocode_to_string,
+        capture_stats,
+        load_expected_stats,
+    ):
+        """Test ADD-based state dispatch with 0xF6xxx/101xxxx constants.
+
+        Tests father_patcher_abc_extract_mop for m_add opcode.
+        """
+        func_ea = get_func_ea("abc_f6_add_dispatch")
+        if func_ea == idaapi.BADADDR:
+            pytest.skip("Function 'abc_f6_add_dispatch' not found in binary")
+
+        with d810_state() as state:
+            with state.for_project("example_libobfuscated.json"):
+                state.stop_d810()
+                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_before is not None, "Decompilation failed"
+
+                actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
+
+                state.start_d810()
+                state.stats.reset()
+                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_after is not None, "Decompilation with d810 failed"
+
+                actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
+
+                stats_dict = capture_stats(state.stats)
+                print(f"[CHARACTERIZATION] abc_f6_add_dispatch rules fired: {state.stats.get_fired_rule_names()}")
+                print(f"[CHARACTERIZATION] Before:\n{actual_before[:500]}...")
+                print(f"[CHARACTERIZATION] After:\n{actual_after[:500]}...")
+
+                expected = load_expected_stats()
+                if expected is not None:
+                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+
+    def test_abc_f6_sub_dispatch(
+        self,
+        libobfuscated_test_setup,
+        d810_state,
+        pseudocode_to_string,
+        capture_stats,
+        load_expected_stats,
+    ):
+        """Test SUB-based state dispatch with 0xF6xxx constants.
+
+        Tests father_patcher_abc_extract_mop for m_sub opcode.
+        """
+        func_ea = get_func_ea("abc_f6_sub_dispatch")
+        if func_ea == idaapi.BADADDR:
+            pytest.skip("Function 'abc_f6_sub_dispatch' not found in binary")
+
+        with d810_state() as state:
+            with state.for_project("example_libobfuscated.json"):
+                state.stop_d810()
+                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_before is not None
+
+                actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
+
+                state.start_d810()
+                state.stats.reset()
+                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_after is not None
+
+                actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
+
+                stats_dict = capture_stats(state.stats)
+                print(f"[CHARACTERIZATION] abc_f6_sub_dispatch rules fired: {state.stats.get_fired_rule_names()}")
+
+                expected = load_expected_stats()
+                if expected is not None:
+                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+
+    def test_abc_f6_xor_dispatch(
+        self,
+        libobfuscated_test_setup,
+        d810_state,
+        pseudocode_to_string,
+        capture_stats,
+        load_expected_stats,
+    ):
+        """Test XOR-based state dispatch with 0xF6xxx constants.
+
+        Tests father_patcher_abc_extract_mop for m_xor opcode.
+        """
+        func_ea = get_func_ea("abc_f6_xor_dispatch")
+        if func_ea == idaapi.BADADDR:
+            pytest.skip("Function 'abc_f6_xor_dispatch' not found in binary")
+
+        with d810_state() as state:
+            with state.for_project("example_libobfuscated.json"):
+                state.stop_d810()
+                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_before is not None
+
+                actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
+
+                state.start_d810()
+                state.stats.reset()
+                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_after is not None
+
+                actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
+
+                stats_dict = capture_stats(state.stats)
+                print(f"[CHARACTERIZATION] abc_f6_xor_dispatch rules fired: {state.stats.get_fired_rule_names()}")
+
+                expected = load_expected_stats()
+                if expected is not None:
+                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+
+    def test_abc_f6_or_dispatch(
+        self,
+        libobfuscated_test_setup,
+        d810_state,
+        pseudocode_to_string,
+        capture_stats,
+        load_expected_stats,
+    ):
+        """Test OR-based state dispatch with 0xF6xxx constants.
+
+        Tests father_patcher_abc_extract_mop for m_or opcode.
+        """
+        func_ea = get_func_ea("abc_f6_or_dispatch")
+        if func_ea == idaapi.BADADDR:
+            pytest.skip("Function 'abc_f6_or_dispatch' not found in binary")
+
+        with d810_state() as state:
+            with state.for_project("example_libobfuscated.json"):
+                state.stop_d810()
+                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_before is not None
+
+                actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
+
+                state.start_d810()
+                state.stats.reset()
+                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_after is not None
+
+                actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
+
+                stats_dict = capture_stats(state.stats)
+                print(f"[CHARACTERIZATION] abc_f6_or_dispatch rules fired: {state.stats.get_fired_rule_names()}")
+
+                expected = load_expected_stats()
+                if expected is not None:
+                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+
+    def test_abc_f6_nested(
+        self,
+        libobfuscated_test_setup,
+        d810_state,
+        pseudocode_to_string,
+        capture_stats,
+        load_expected_stats,
+    ):
+        """Test nested conditions with 0xF6xxx constants.
+
+        Tests the recursive nature of father_history_patcher_abc.
+        """
+        func_ea = get_func_ea("abc_f6_nested")
+        if func_ea == idaapi.BADADDR:
+            pytest.skip("Function 'abc_f6_nested' not found in binary")
+
+        with d810_state() as state:
+            with state.for_project("example_libobfuscated.json"):
+                state.stop_d810()
+                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_before is not None
+
+                actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
+
+                state.start_d810()
+                state.stats.reset()
+                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_after is not None
+
+                actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
+
+                stats_dict = capture_stats(state.stats)
+                print(f"[CHARACTERIZATION] abc_f6_nested rules fired: {state.stats.get_fired_rule_names()}")
+
+                expected = load_expected_stats()
+                if expected is not None:
+                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+
+    def test_abc_f6_64bit_pattern(
+        self,
+        libobfuscated_test_setup,
+        d810_state,
+        pseudocode_to_string,
+        capture_stats,
+        load_expected_stats,
+    ):
+        """Test 64-bit constant pattern with high 32 bits in 0xF6xxx range.
+
+        Tests the pattern: high(sub(or(x, #0xF6Axx_0000_0000.8), y))
+        where the ABC value is in the high 32 bits.
+        """
+        func_ea = get_func_ea("abc_f6_64bit_pattern")
+        if func_ea == idaapi.BADADDR:
+            pytest.skip("Function 'abc_f6_64bit_pattern' not found in binary")
+
+        with d810_state() as state:
+            with state.for_project("example_libobfuscated.json"):
+                state.stop_d810()
+                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_before is not None
+
+                actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
+
+                state.start_d810()
+                state.stats.reset()
+                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                assert decompiled_after is not None
+
+                actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
+
+                stats_dict = capture_stats(state.stats)
+                print(f"[CHARACTERIZATION] abc_f6_64bit_pattern rules fired: {state.stats.get_fired_rule_names()}")
+
+                expected = load_expected_stats()
+                if expected is not None:
+                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+
+
 class TestExceptionPathCharacterization:
     """Characterization tests for exception handling paths.
 
