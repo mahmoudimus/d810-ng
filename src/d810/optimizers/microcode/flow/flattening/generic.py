@@ -1,20 +1,20 @@
 """
 Generic unflattening base classes for control flow deobfuscation.
 
-WARNING: CFG MODIFICATION SAFETY
-================================
-This module contains direct CFG modifications that do not use DeferredGraphModifier.
-Specifically, `father_patcher_abc_create_blocks` (lines ~696-874) performs:
-- Direct mba.insert_block() calls
-- Direct predset/succset manipulation
-- Block creation during iteration
+CFG MODIFICATION APPROACH
+=========================
+This module handles ABC (Arithmetic/Bitwise/Constant) patterns that use magic
+numbers in the range 1010000-1011999 (0xF6950-0xF719F).
 
-This pattern is risky but works for the specific obfuscation patterns targeted
-(magic numbers 0xF6xxx, 101xxxx). A full refactor to DeferredGraphModifier
-would be safer but is deferred due to complexity.
+The primary CFG modification path now uses ABCBlockSplitter (deferred pattern):
+- `fix_fathers_from_mop_history()` delegates to ABCBlockSplitter
+- Analysis phase: collect all split operations without modifying CFG
+- Apply phase: perform all splits atomically after analysis
+
+Legacy code paths (`father_patcher_abc_create_blocks`, `father_history_patcher_abc`)
+are retained for reference but no longer called from the main code path.
 
 See: docs/cfg-modification-audit.md for details.
-See: d810ng-dtq for tracking issue.
 """
 from __future__ import annotations
 
@@ -1054,13 +1054,31 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
         dispatcher_entry_block,
         dispatcher_info: GenericDispatcherInfo,
     ):
+        """Fix dispatcher fathers by splitting blocks with ABC patterns.
+
+        This method uses ABCBlockSplitter for deferred CFG modifications:
+        1. Collect all blocks to analyze from father histories
+        2. Analyze each block for ABC patterns (constants in 1010000-1011999 range)
+        3. Apply all splits atomically after analysis is complete
+        4. Recursively handle newly created blocks
+
+        This is safer than the previous approach which modified CFG during iteration.
+        """
         father_histories = self.get_dispatcher_father_histories(
             dispatcher_father, dispatcher_entry_block, dispatcher_info
         )
-        total_n = 0
+
+        # Use ABCBlockSplitter for deferred CFG modifications
+        splitter = ABCBlockSplitter(self.mba)
+
+        # Analysis phase: collect all blocks that need splitting
         for father_history in father_histories:
             for block in father_history.block_path:
-                total_n += self.father_history_patcher_abc(block)
+                splitter.analyze_block(block)
+
+        # Apply phase: perform all splits atomically (handles recursion internally)
+        total_n = splitter.apply()
+
         return total_n
 
     def find_bad_while_loops(self, blk):
