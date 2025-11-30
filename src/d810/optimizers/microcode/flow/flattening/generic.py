@@ -70,7 +70,65 @@ from d810.optimizers.microcode.flow.handler import FlowOptimizationRule
 
 
 class UnflatteningEvent:
-    """Event types for unflattening optimizer coordination."""
+    """Event types for unflattening optimizer coordination.
+
+    These events enable cross-maturity scheduling and future cross-optimizer
+    coordination via the EventEmitter pattern.
+
+    Flow
+    ----
+    ::
+
+        MMAT_CALLS → optimize()
+            ├── _apply_scheduled_modifications()  # Apply anything queued for MMAT_CALLS
+            └── ... normal processing ...
+                 └── schedule_for_maturity(MMAT_GLBOPT1, mod)  # Queue cleanup
+
+        MMAT_GLBOPT1 → optimize()
+            ├── _apply_scheduled_modifications()  # Applies the queued mod
+            └── ... normal processing ...
+
+    Example: Scheduling modifications for a future maturity
+    -------------------------------------------------------
+    ::
+
+        from d810.hexrays.deferred_modifier import GraphModification, ModificationType
+
+        # During MMAT_CALLS, schedule cleanup for GLBOPT1
+        mod = GraphModification(
+            mod_type=ModificationType.BLOCK_GOTO_CHANGE,
+            block_serial=42,
+            new_target=50,
+            description="cleanup residual edge"
+        )
+        self.schedule_for_maturity(ida_hexrays.MMAT_GLBOPT1, mod)
+
+    Example: Hooking into events for cross-optimizer coordination
+    -------------------------------------------------------------
+    ::
+
+        def my_handler(maturity, applied_count, optimizer):
+            print(f"Applied {applied_count} mods at maturity {maturity}")
+
+        self.events.on(UnflatteningEvent.MODIFICATIONS_APPLIED, my_handler)
+
+    Event Payloads
+    --------------
+    MODIFICATIONS_SCHEDULED:
+        target_maturity (int): Target maturity level
+        modification (GraphModification): The queued modification
+        optimizer: The optimizer instance
+
+    MODIFICATIONS_APPLYING:
+        maturity (int): Current maturity level
+        modifications (list[GraphModification]): Modifications about to apply
+        optimizer: The optimizer instance
+
+    MODIFICATIONS_APPLIED:
+        maturity (int): Current maturity level
+        applied_count (int): Number of successfully applied modifications
+        optimizer: The optimizer instance
+    """
     # Emitted when modifications are scheduled for a future maturity
     MODIFICATIONS_SCHEDULED = "modifications_scheduled"
     # Emitted when scheduled modifications are about to be applied
