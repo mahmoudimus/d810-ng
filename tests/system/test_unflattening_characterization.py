@@ -49,7 +49,7 @@ class TestABCPatternCharacterization:
     """
 
     binary_name = (
-        "libobfuscated_test.dylib" if platform.system() == "Darwin" else "libobfuscated_test.dll"
+        "libobfuscated.dylib" if platform.system() == "Darwin" else "libobfuscated.dll"
     )
 
     def test_abc_xor_dispatch(
@@ -186,7 +186,7 @@ class TestNestedDispatcherCharacterization:
     """
 
     binary_name = (
-        "libobfuscated_test.dylib" if platform.system() == "Darwin" else "libobfuscated_test.dll"
+        "libobfuscated.dylib" if platform.system() == "Darwin" else "libobfuscated.dll"
     )
 
     def test_nested_simple(
@@ -357,7 +357,7 @@ class TestExceptionPathCharacterization:
     """
 
     binary_name = (
-        "libobfuscated_test.dylib" if platform.system() == "Darwin" else "libobfuscated_test.dll"
+        "libobfuscated.dylib" if platform.system() == "Darwin" else "libobfuscated.dll"
     )
 
     def test_unresolvable_external(

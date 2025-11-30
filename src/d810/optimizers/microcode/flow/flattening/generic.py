@@ -58,6 +58,7 @@ from d810.optimizers.microcode.flow.flattening.utils import (
     check_if_all_values_are_found,
     get_all_possibles_values,
 )
+from d810.optimizers.microcode.flow.flattening.abc_block_splitter import ABCBlockSplitter
 from d810.optimizers.microcode.flow.handler import FlowOptimizationRule
 
 unflat_logger = getLogger("D810.unflat")
