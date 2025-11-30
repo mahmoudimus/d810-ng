@@ -11,13 +11,17 @@ import ida_kernwin
 import idaapi
 
 from d810.qt_shim import QtCore, QtWidgets, qt_flag_or
+from d810.ui.testbed import TestRunnerForm
 
 if typing.TYPE_CHECKING:
     from d810.manager import D810State
 
-from d810.conf import ProjectConfiguration, RuleConfiguration
-from d810.conf.loggers import LoggerConfigurator, getLogger
-from d810.ui.testbed import TestRunnerForm
+from d810.core import (
+    LoggerConfigurator,
+    ProjectConfiguration,
+    RuleConfiguration,
+    getLogger,
+)
 
 logger = getLogger("D810.ui")
 cast = typing.cast
@@ -35,7 +39,7 @@ class LoggingConfigDialog(QtWidgets.QDialog):
     chosen level on reload).
 
     The dialog relies on :pymod:`PyQt5` for the UI layer and the existing
-    :class:`~d810.conf.loggers.LoggerConfigurator` helper for the heavy
+    :class:`~d810.core.logging.LoggerConfigurator` helper for the heavy
     lifting.
     """
 
@@ -650,12 +654,12 @@ class D810ConfigForm_t(ida_kernwin.PluginForm):
         btn_split.addWidget(self.btn_stop)
 
         # --- Profiling buttons ---
-        self.btn_start_profiling = QtWidgets.QPushButton("Start Profiling")
-        self.btn_start_profiling.clicked.connect(self._start_profiling)
+        self.btn_start_profiling = QtWidgets.QPushButton("Enable Profiling")
+        self.btn_start_profiling.clicked.connect(self._enable_profiling)
         btn_split.addWidget(self.btn_start_profiling)
 
-        self.btn_stop_profiling = QtWidgets.QPushButton("Stop Profiling")
-        self.btn_stop_profiling.clicked.connect(self._stop_profiling)
+        self.btn_stop_profiling = QtWidgets.QPushButton("Disable Profiling")
+        self.btn_stop_profiling.clicked.connect(self._disable_profiling)
         btn_split.addWidget(self.btn_stop_profiling)
 
         if TestRunnerForm is not None:
@@ -877,18 +881,18 @@ class D810ConfigForm_t(ida_kernwin.PluginForm):
         )
         return
 
-    def _start_profiling(self):
-        logger.debug("Calling _start_profiling")
-        if hasattr(self.state, "manager") and self.state.manager:
-            self.state.manager.start_profiling()
-            logger.info("Profiling started.")
+    def _enable_profiling(self):
+        logger.debug("Calling _enable_profiling")
+        if self.state.manager:
+            self.state.manager.enable_profiling()
+            logger.info("Profiling enabled.")
         else:
-            logger.warning("D810 manager not initialized; cannot start profiling.")
+            logger.warning("D810 manager not initialized; cannot enable profiling.")
 
-    def _stop_profiling(self):
-        logger.debug("Calling _stop_profiling")
-        if hasattr(self.state, "manager") and self.state.manager:
-            output_path = self.state.manager.stop_profiling()
+    def _disable_profiling(self):
+        logger.debug("Calling _disable_profiling")
+        if self.state.manager:
+            output_path = self.state.manager.disable_profiling()
             if output_path:
                 logger.info("Profiling stopped. Report saved to: %s", output_path)
                 QtWidgets.QMessageBox.information(
@@ -897,7 +901,7 @@ class D810ConfigForm_t(ida_kernwin.PluginForm):
                     f"Profiling report saved to:\n{str(output_path)}",
                 )
         else:
-            logger.warning("D810 manager not initialized; cannot stop profiling.")
+            logger.warning("D810 manager not initialized; cannot disable profiling.")
 
     def _show_test_runner(self):
         if self.test_runner is None:
