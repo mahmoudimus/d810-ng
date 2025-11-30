@@ -19,8 +19,10 @@ from d810.optimizers.microcode.flow.flattening.generic import (
     GenericDispatcherUnflatteningRule,
 )
 
-MIN_MAGIC = 0xF6000
-MAX_MAGIC = 0xF6FFF
+# Default: accept any large constant as potential state variable
+# These can be overridden via config
+DEFAULT_MIN_MAGIC = 0x1000  # Skip small constants (likely not state vars)
+DEFAULT_MAX_MAGIC = 0xFFFFFFFF
 
 
 class SingleIterationBlockInfo(GenericDispatcherBlockInfo):
@@ -29,6 +31,16 @@ class SingleIterationBlockInfo(GenericDispatcherBlockInfo):
 
 class SingleIterationDispatcherInfo(GenericDispatcherInfo):
     """Dispatcher info for simple jnz-based residual loops."""
+
+    # Configurable magic constant range
+    min_magic: int = DEFAULT_MIN_MAGIC
+    max_magic: int = DEFAULT_MAX_MAGIC
+
+    def _is_magic_constant(self, val: int) -> bool:
+        """Check if value is within the magic constant range."""
+        # Handle both signed and unsigned interpretations
+        unsigned_val = val & 0xFFFFFFFF
+        return self.min_magic <= unsigned_val <= self.max_magic
 
     def explore(self, blk: ida_hexrays.mblock_t) -> bool:
         self.reset()
@@ -46,7 +58,7 @@ class SingleIterationDispatcherInfo(GenericDispatcherInfo):
             check_const = blk.tail.l.signed_value()
             self.mop_compared = blk.tail.r
 
-        if check_const is None or not (MIN_MAGIC <= check_const <= MAX_MAGIC):
+        if check_const is None or not self._is_magic_constant(check_const):
             return False
 
         # Set up entry block
@@ -82,7 +94,7 @@ class SingleIterationDispatcherInfo(GenericDispatcherInfo):
             if insn.opcode == ida_hexrays.m_mov:
                 if insn.l and insn.l.t == ida_hexrays.mop_n:
                     val = insn.l.signed_value()
-                    if MIN_MAGIC <= val <= MAX_MAGIC:
+                    if self._is_magic_constant(val):
                         return val
             insn = insn.next
         return None
