@@ -277,6 +277,14 @@ class ABCBlockSplitter:
             logger.warning("Block %d not found", split_op.block_serial)
             return []
 
+        # ABC pattern only works on single-successor blocks
+        if dispatcher_father.nsucc() != 1:
+            logger.warning(
+                "Block %d has %d successors (expected 1), skipping ABC split",
+                split_op.block_serial, dispatcher_father.nsucc()
+            )
+            return []
+
         # Find the trigger instruction
         curr_inst = dispatcher_father.head
         while curr_inst is not None:
@@ -413,13 +421,31 @@ class ABCBlockSplitter:
         """Update CFG after block split - all edge modifications in one place."""
         mba = self.mba
 
+        logger.debug(
+            "CFG update: father=%d, new0=%d (serial=%d), new1=%d (serial=%d), goto=%d",
+            dispatcher_father.serial, new_id0_serial, new_block0.serial,
+            new_id1_serial, new_block1.serial, childs_goto_serial
+        )
+        logger.debug(
+            "Before update - father preds=%s, succs=%s",
+            list(dispatcher_father.predset), list(dispatcher_father.succset)
+        )
+
         # Update old successors: replace father with new blocks as predecessor
         prev_successor_serials = list(dispatcher_father.succset)
         for prev_successor_serial in prev_successor_serials:
             prev_succ = mba.get_mblock(prev_successor_serial)
+            logger.debug(
+                "  Updating successor %d: old preds=%s",
+                prev_successor_serial, list(prev_succ.predset)
+            )
             prev_succ.predset._del(dispatcher_father.serial)
             prev_succ.predset.add_unique(new_id0_serial)
             prev_succ.predset.add_unique(new_id1_serial)
+            logger.debug(
+                "  Updating successor %d: new preds=%s",
+                prev_successor_serial, list(prev_succ.predset)
+            )
             if prev_succ.serial != mba.qty - 1:
                 prev_succ.mark_lists_dirty()
 
@@ -458,3 +484,22 @@ class ABCBlockSplitter:
         new_block1.start = dispatcher_father.start
         new_block0.end = dispatcher_father.end
         new_block1.end = dispatcher_father.end
+
+        logger.debug(
+            "After update - father preds=%s, succs=%s",
+            list(dispatcher_father.predset), list(dispatcher_father.succset)
+        )
+        logger.debug(
+            "After update - new0 preds=%s, succs=%s",
+            list(new_block0.predset), list(new_block0.succset)
+        )
+        logger.debug(
+            "After update - new1 preds=%s, succs=%s",
+            list(new_block1.predset), list(new_block1.succset)
+        )
+        logger.debug(
+            "After update - goto block %d preds=%s, succs=%s",
+            childs_goto_serial,
+            list(mba.get_mblock(childs_goto_serial).predset),
+            list(mba.get_mblock(childs_goto_serial).succset)
+        )
