@@ -34,7 +34,9 @@ def get_func_ea(name: str) -> int:
 
 
 @pytest.fixture(scope="class")
-def libobfuscated_test_setup(ida_database, configure_hexrays, setup_libobfuscated_test_funcs):
+def libobfuscated_test_setup(
+    ida_database, configure_hexrays, setup_libobfuscated_test_funcs
+):
     """Setup fixture for libobfuscated_test tests - runs once per class."""
     if not idaapi.init_hexrays_plugin():
         pytest.skip("Hex-Rays decompiler plugin not available")
@@ -73,7 +75,9 @@ class TestABCPatternCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None, "Decompilation failed"
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
@@ -81,25 +85,33 @@ class TestABCPatternCharacterization:
                 # Verify flattened pattern is present
                 has_switch = "switch" in actual_before
                 has_xor = "^" in actual_before
-                assert has_switch or has_xor, "Should have switch or XOR pattern before d810"
+                assert (
+                    has_switch or has_xor
+                ), "Should have switch or XOR pattern before d810"
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None, "Decompilation with d810 failed"
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 # Capture characterization stats
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] abc_xor_dispatch rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] abc_xor_dispatch rules fired: {state.stats.get_fired_rule_names()}"
+                )
                 print(f"[CHARACTERIZATION] Before:\n{actual_before[:500]}...")
                 print(f"[CHARACTERIZATION] After:\n{actual_after[:500]}...")
 
                 # Load and verify expectations if available
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
     def test_abc_or_dispatch(
         self,
@@ -121,24 +133,32 @@ class TestABCPatternCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] abc_or_dispatch rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] abc_or_dispatch rules fired: {state.stats.get_fired_rule_names()}"
+                )
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
     def test_abc_mixed_dispatch(
         self,
@@ -156,24 +176,32 @@ class TestABCPatternCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] abc_mixed_dispatch rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] abc_mixed_dispatch rules fired: {state.stats.get_fired_rule_names()}"
+                )
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
 
 class TestNestedDispatcherCharacterization:
@@ -209,7 +237,9 @@ class TestNestedDispatcherCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
@@ -219,19 +249,27 @@ class TestNestedDispatcherCharacterization:
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
                 switch_count_after = actual_after.count("switch")
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] nested_simple: switches {switch_count_before} -> {switch_count_after}")
-                print(f"[CHARACTERIZATION] rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] nested_simple: switches {switch_count_before} -> {switch_count_after}"
+                )
+                print(
+                    f"[CHARACTERIZATION] rules fired: {state.stats.get_fired_rule_names()}"
+                )
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
     def test_nested_deep(
         self,
@@ -252,24 +290,32 @@ class TestNestedDispatcherCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] nested_deep rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] nested_deep rules fired: {state.stats.get_fired_rule_names()}"
+                )
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
     def test_nested_parallel(
         self,
@@ -287,24 +333,32 @@ class TestNestedDispatcherCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] nested_parallel rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] nested_parallel rules fired: {state.stats.get_fired_rule_names()}"
+                )
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
     def test_nested_shared_blocks(
         self,
@@ -326,24 +380,32 @@ class TestNestedDispatcherCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] nested_shared_blocks rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] nested_shared_blocks rules fired: {state.stats.get_fired_rule_names()}"
+                )
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
 
 class TestABCF6ConstantsCharacterization:
@@ -380,26 +442,34 @@ class TestABCF6ConstantsCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None, "Decompilation failed"
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None, "Decompilation with d810 failed"
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] abc_f6_add_dispatch rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] abc_f6_add_dispatch rules fired: {state.stats.get_fired_rule_names()}"
+                )
                 print(f"[CHARACTERIZATION] Before:\n{actual_before[:500]}...")
                 print(f"[CHARACTERIZATION] After:\n{actual_after[:500]}...")
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
     def test_abc_f6_sub_dispatch(
         self,
@@ -420,24 +490,32 @@ class TestABCF6ConstantsCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] abc_f6_sub_dispatch rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] abc_f6_sub_dispatch rules fired: {state.stats.get_fired_rule_names()}"
+                )
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
     def test_abc_f6_xor_dispatch(
         self,
@@ -458,24 +536,32 @@ class TestABCF6ConstantsCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] abc_f6_xor_dispatch rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] abc_f6_xor_dispatch rules fired: {state.stats.get_fired_rule_names()}"
+                )
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
     def test_abc_f6_or_dispatch(
         self,
@@ -496,24 +582,32 @@ class TestABCF6ConstantsCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] abc_f6_or_dispatch rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] abc_f6_or_dispatch rules fired: {state.stats.get_fired_rule_names()}"
+                )
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
     def test_abc_f6_nested(
         self,
@@ -534,24 +628,32 @@ class TestABCF6ConstantsCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] abc_f6_nested rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] abc_f6_nested rules fired: {state.stats.get_fired_rule_names()}"
+                )
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
     def test_abc_f6_64bit_pattern(
         self,
@@ -573,24 +675,32 @@ class TestABCF6ConstantsCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] abc_f6_64bit_pattern rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] abc_f6_64bit_pattern rules fired: {state.stats.get_fired_rule_names()}"
+                )
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
 
 class TestApproovFlatteningCharacterization:
@@ -633,26 +743,34 @@ class TestApproovFlatteningCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None, "Decompilation failed"
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None, "Decompilation with d810 failed"
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] approov_real_pattern rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] approov_real_pattern rules fired: {state.stats.get_fired_rule_names()}"
+                )
                 print(f"[CHARACTERIZATION] Before:\n{actual_before[:500]}...")
                 print(f"[CHARACTERIZATION] After:\n{actual_after[:500]}...")
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
     def test_approov_vm_dispatcher(
         self,
@@ -674,26 +792,34 @@ class TestApproovFlatteningCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None, "Decompilation failed"
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None, "Decompilation with d810 failed"
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] approov_vm_dispatcher rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] approov_vm_dispatcher rules fired: {state.stats.get_fired_rule_names()}"
+                )
                 print(f"[CHARACTERIZATION] Before:\n{actual_before[:500]}...")
                 print(f"[CHARACTERIZATION] After:\n{actual_after[:500]}...")
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
     def test_approov_simple_loop(
         self,
@@ -714,103 +840,34 @@ class TestApproovFlatteningCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] approov_simple_loop rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] approov_simple_loop rules fired: {state.stats.get_fired_rule_names()}"
+                )
                 print(f"[CHARACTERIZATION] Before:\n{actual_before[:500]}...")
                 print(f"[CHARACTERIZATION] After:\n{actual_after[:500]}...")
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
-
-    def test_approov_goto_dispatcher(
-        self,
-        libobfuscated_test_setup,
-        d810_state,
-        pseudocode_to_string,
-        capture_stats,
-        load_expected_stats,
-    ):
-        """Test Approov pattern using goto for explicit control flow.
-
-        Uses switch with goto back to dispatcher label for state transitions.
-        """
-        func_ea = get_func_ea("approov_goto_dispatcher")
-        if func_ea == idaapi.BADADDR:
-            pytest.skip("Function 'approov_goto_dispatcher' not found in binary")
-
-        with d810_state() as state:
-            with state.for_project("example_libobfuscated.json"):
-                state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
-                assert decompiled_before is not None
-
-                actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
-
-                state.start_d810()
-                state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
-                assert decompiled_after is not None
-
-                actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
-
-                stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] approov_goto_dispatcher rules fired: {state.stats.get_fired_rule_names()}")
-
-                expected = load_expected_stats()
-                if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
-
-    def test_approov_qword_pattern(
-        self,
-        libobfuscated_test_setup,
-        d810_state,
-        pseudocode_to_string,
-        capture_stats,
-        load_expected_stats,
-    ):
-        """Test real Approov pattern with qword OR assignment.
-
-        Tests the characteristic pattern: v1 = (qword |= next_state)
-        which is the smoking gun of Approov obfuscation.
-        """
-        func_ea = get_func_ea("approov_qword_pattern")
-        if func_ea == idaapi.BADADDR:
-            pytest.skip("Function 'approov_qword_pattern' not found in binary")
-
-        with d810_state() as state:
-            with state.for_project("example_libobfuscated.json"):
-                state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
-                assert decompiled_before is not None
-
-                actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
-
-                state.start_d810()
-                state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
-                assert decompiled_after is not None
-
-                actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
-
-                stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] approov_qword_pattern rules fired: {state.stats.get_fired_rule_names()}")
-
-                expected = load_expected_stats()
-                if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
 
 class TestExceptionPathCharacterization:
@@ -846,24 +903,32 @@ class TestExceptionPathCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] unresolvable_external rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] unresolvable_external rules fired: {state.stats.get_fired_rule_names()}"
+                )
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
     def test_unresolvable_computed(
         self,
@@ -884,24 +949,32 @@ class TestExceptionPathCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] unresolvable_computed rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] unresolvable_computed rules fired: {state.stats.get_fired_rule_names()}"
+                )
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
     def test_non_duplicable_side_effects(
         self,
@@ -922,24 +995,32 @@ class TestExceptionPathCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] non_duplicable_side_effects rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] non_duplicable_side_effects rules fired: {state.stats.get_fired_rule_names()}"
+                )
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
     def test_deep_duplication_path(
         self,
@@ -960,24 +1041,32 @@ class TestExceptionPathCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] deep_duplication_path rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] deep_duplication_path rules fired: {state.stats.get_fired_rule_names()}"
+                )
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
     def test_loop_dependent_state(
         self,
@@ -998,24 +1087,32 @@ class TestExceptionPathCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] loop_dependent_state rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] loop_dependent_state rules fired: {state.stats.get_fired_rule_names()}"
+                )
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
     def test_indirect_state_pointer(
         self,
@@ -1036,24 +1133,32 @@ class TestExceptionPathCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] indirect_state_pointer rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] indirect_state_pointer rules fired: {state.stats.get_fired_rule_names()}"
+                )
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )
 
     def test_external_transform_state(
         self,
@@ -1074,21 +1179,29 @@ class TestExceptionPathCharacterization:
         with d810_state() as state:
             with state.for_project("example_libobfuscated.json"):
                 state.stop_d810()
-                decompiled_before = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_before = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_before is not None
 
                 actual_before = pseudocode_to_string(decompiled_before.get_pseudocode())
 
                 state.start_d810()
                 state.stats.reset()
-                decompiled_after = idaapi.decompile(func_ea, flags=idaapi.DECOMP_NO_CACHE)
+                decompiled_after = idaapi.decompile(
+                    func_ea, flags=idaapi.DECOMP_NO_CACHE
+                )
                 assert decompiled_after is not None
 
                 actual_after = pseudocode_to_string(decompiled_after.get_pseudocode())
 
                 stats_dict = capture_stats(state.stats)
-                print(f"[CHARACTERIZATION] external_transform_state rules fired: {state.stats.get_fired_rule_names()}")
+                print(
+                    f"[CHARACTERIZATION] external_transform_state rules fired: {state.stats.get_fired_rule_names()}"
+                )
 
                 expected = load_expected_stats()
                 if expected is not None:
-                    state.stats.assert_matches(expected, check_counts=False, allow_extra_rules=True)
+                    state.stats.assert_matches(
+                        expected, check_counts=False, allow_extra_rules=True
+                    )

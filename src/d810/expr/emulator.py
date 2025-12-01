@@ -17,13 +17,21 @@ from d810.core.bits import (
     signed_to_unsigned,
     unsigned_to_signed,
 )
+from d810.core.cymode import CythonMode
 
-try:
-    from d810.speedups.cythxr._chexrays_api import get_stack_or_reg_name
-    from d810.speedups.cythxr._chexrays_api import hash_mop as cy_hash_mop
-except ImportError:
-    get_stack_or_reg_name = None
-    cy_hash_mop = None
+# Try to import Cython speedups if CythonMode is enabled
+get_stack_or_reg_name = None
+cy_hash_mop = None
+if CythonMode().is_enabled():
+    try:
+        from d810.speedups.cythxr._chexrays_api import get_stack_or_reg_name
+        from d810.speedups.cythxr._chexrays_api import hash_mop as cy_hash_mop
+    except ImportError:
+        pass
+
+# Pure Python fallback when Cython is disabled or failed to import
+if get_stack_or_reg_name is None:
+    from d810.hexrays.cfg_utils import get_stack_var_name as get_stack_or_reg_name
 from d810.errors import (
     EmulationException,
     EmulationIndirectJumpException,

@@ -15,6 +15,7 @@ Usage:
     if oracle.has_triton:
         targets = oracle.enumerate_state_transitions(micro_slice, state_var)
 """
+
 from __future__ import annotations
 
 import struct
@@ -25,43 +26,60 @@ from typing import TYPE_CHECKING, Callable
 # Optional imports - gracefully degrade if not available
 try:
     from unicorn import (
-        Uc,
-        UC_ARCH_X86,
         UC_ARCH_ARM64,
-        UC_MODE_64,
-        UC_MODE_32,
-        UC_MODE_ARM,
+        UC_ARCH_X86,
         UC_HOOK_CODE,
         UC_HOOK_MEM_READ,
-        UC_HOOK_MEM_WRITE,
         UC_HOOK_MEM_UNMAPPED,
-        UC_MEM_WRITE,
+        UC_HOOK_MEM_WRITE,
         UC_MEM_READ,
+        UC_MEM_WRITE,
+        UC_MODE_32,
+        UC_MODE_64,
+        UC_MODE_ARM,
     )
+    from unicorn.unicorn import Uc
     from unicorn.x86_const import (
-        UC_X86_REG_RAX, UC_X86_REG_RBX, UC_X86_REG_RCX, UC_X86_REG_RDX,
-        UC_X86_REG_RSI, UC_X86_REG_RDI, UC_X86_REG_RBP, UC_X86_REG_RSP,
-        UC_X86_REG_R8, UC_X86_REG_R9, UC_X86_REG_R10, UC_X86_REG_R11,
-        UC_X86_REG_R12, UC_X86_REG_R13, UC_X86_REG_R14, UC_X86_REG_R15,
-        UC_X86_REG_RIP, UC_X86_REG_EFLAGS,
-        UC_X86_REG_EAX, UC_X86_REG_EBX, UC_X86_REG_ECX, UC_X86_REG_EDX,
-        UC_X86_REG_ESI, UC_X86_REG_EDI, UC_X86_REG_EBP, UC_X86_REG_ESP,
+        UC_X86_REG_EAX,
+        UC_X86_REG_EBP,
+        UC_X86_REG_EBX,
+        UC_X86_REG_ECX,
+        UC_X86_REG_EDI,
+        UC_X86_REG_EDX,
+        UC_X86_REG_EFLAGS,
         UC_X86_REG_EIP,
+        UC_X86_REG_ESI,
+        UC_X86_REG_ESP,
+        UC_X86_REG_R8,
+        UC_X86_REG_R9,
+        UC_X86_REG_R10,
+        UC_X86_REG_R11,
+        UC_X86_REG_R12,
+        UC_X86_REG_R13,
+        UC_X86_REG_R14,
+        UC_X86_REG_R15,
+        UC_X86_REG_RAX,
+        UC_X86_REG_RBP,
+        UC_X86_REG_RBX,
+        UC_X86_REG_RCX,
+        UC_X86_REG_RDI,
+        UC_X86_REG_RDX,
+        UC_X86_REG_RIP,
+        UC_X86_REG_RSI,
+        UC_X86_REG_RSP,
     )
+
     UNICORN_AVAILABLE = True
 except ImportError:
     UNICORN_AVAILABLE = False
     Uc = None
 
 try:
-    from triton import (
-        TritonContext,
-        ARCH as TRITON_ARCH,
-        Instruction as TritonInstruction,
-        MemoryAccess,
-        CPUSIZE,
-        AST_REPRESENTATION,
-    )
+    from triton import ARCH as TRITON_ARCH
+    from triton import AST_REPRESENTATION, CPUSIZE
+    from triton import Instruction as TritonInstruction
+    from triton import MemoryAccess, TritonContext
+
     TRITON_AVAILABLE = True
 except ImportError:
     TRITON_AVAILABLE = False
@@ -74,6 +92,7 @@ logger = getLogger("D810.emulation")
 
 class Architecture(Enum):
     """Supported architectures for emulation."""
+
     X86 = "x86"
     X86_64 = "x86_64"
     ARM64 = "arm64"
@@ -82,6 +101,7 @@ class Architecture(Enum):
 @dataclass
 class EmulationState:
     """State snapshot from emulation."""
+
     registers: dict[str, int] = field(default_factory=dict)
     memory: dict[int, bytes] = field(default_factory=dict)
     flags: int = 0
@@ -93,6 +113,7 @@ class EmulationState:
 @dataclass
 class StateTransition:
     """Represents a state machine transition discovered through emulation."""
+
     from_value: int
     to_value: int
     from_block: int | None = None
@@ -126,7 +147,9 @@ class EmulationOracle:
         self._uc: Uc | None = None
         self._triton: TritonContext | None = None
         self._instruction_count = 0
-        self._memory_accesses: list[tuple[int, int, bool]] = []  # (addr, size, is_write)
+        self._memory_accesses: list[tuple[int, int, bool]] = (
+            []
+        )  # (addr, size, is_write)
 
         self._init_unicorn()
         self._init_triton()
@@ -177,7 +200,11 @@ class EmulationOracle:
 
             # Set up stack pointer
             if self.arch in (Architecture.X86_64, Architecture.X86):
-                sp_reg = UC_X86_REG_RSP if self.arch == Architecture.X86_64 else UC_X86_REG_ESP
+                sp_reg = (
+                    UC_X86_REG_RSP
+                    if self.arch == Architecture.X86_64
+                    else UC_X86_REG_ESP
+                )
                 self._uc.reg_write(sp_reg, self.STACK_BASE + self.STACK_SIZE - 0x1000)
 
             logger.debug("Unicorn initialized for %s", self.arch.value)
@@ -280,8 +307,7 @@ class EmulationOracle:
 
             hook_code_handle = self._uc.hook_add(UC_HOOK_CODE, hook_code)
             hook_mem_handle = self._uc.hook_add(
-                UC_HOOK_MEM_READ | UC_HOOK_MEM_WRITE,
-                hook_mem_access
+                UC_HOOK_MEM_READ | UC_HOOK_MEM_WRITE, hook_mem_access
             )
 
             # Run emulation
@@ -333,7 +359,9 @@ class EmulationOracle:
 
         # Write initial state
         initial_mem = {
-            state_addr: struct.pack("<Q" if self.arch == Architecture.X86_64 else "<I", initial_state)
+            state_addr: struct.pack(
+                "<Q" if self.arch == Architecture.X86_64 else "<I", initial_state
+            )
         }
 
         result = self.emulate_block(code, start_addr, initial_mem=initial_mem)
@@ -343,15 +371,22 @@ class EmulationOracle:
             if is_write and addr == state_addr:
                 # Read new state value
                 try:
-                    new_state_bytes = self._uc.mem_read(state_addr, 8 if self.arch == Architecture.X86_64 else 4)
-                    new_state = struct.unpack("<Q" if self.arch == Architecture.X86_64 else "<I", new_state_bytes)[0]
+                    new_state_bytes = self._uc.mem_read(
+                        state_addr, 8 if self.arch == Architecture.X86_64 else 4
+                    )
+                    new_state = struct.unpack(
+                        "<Q" if self.arch == Architecture.X86_64 else "<I",
+                        new_state_bytes,
+                    )[0]
 
                     if new_state != current_state:
-                        transitions.append(StateTransition(
-                            from_value=current_state,
-                            to_value=new_state,
-                            is_proven=True,  # Concretely observed
-                        ))
+                        transitions.append(
+                            StateTransition(
+                                from_value=current_state,
+                                to_value=new_state,
+                                is_proven=True,  # Concretely observed
+                            )
+                        )
                         current_state = new_state
                 except Exception:
                     pass
@@ -364,24 +399,36 @@ class EmulationOracle:
 
         if self.arch == Architecture.X86_64:
             reg_map = {
-                "rax": UC_X86_REG_RAX, "rbx": UC_X86_REG_RBX,
-                "rcx": UC_X86_REG_RCX, "rdx": UC_X86_REG_RDX,
-                "rsi": UC_X86_REG_RSI, "rdi": UC_X86_REG_RDI,
-                "rbp": UC_X86_REG_RBP, "rsp": UC_X86_REG_RSP,
-                "r8": UC_X86_REG_R8, "r9": UC_X86_REG_R9,
-                "r10": UC_X86_REG_R10, "r11": UC_X86_REG_R11,
-                "r12": UC_X86_REG_R12, "r13": UC_X86_REG_R13,
-                "r14": UC_X86_REG_R14, "r15": UC_X86_REG_R15,
+                "rax": UC_X86_REG_RAX,
+                "rbx": UC_X86_REG_RBX,
+                "rcx": UC_X86_REG_RCX,
+                "rdx": UC_X86_REG_RDX,
+                "rsi": UC_X86_REG_RSI,
+                "rdi": UC_X86_REG_RDI,
+                "rbp": UC_X86_REG_RBP,
+                "rsp": UC_X86_REG_RSP,
+                "r8": UC_X86_REG_R8,
+                "r9": UC_X86_REG_R9,
+                "r10": UC_X86_REG_R10,
+                "r11": UC_X86_REG_R11,
+                "r12": UC_X86_REG_R12,
+                "r13": UC_X86_REG_R13,
+                "r14": UC_X86_REG_R14,
+                "r15": UC_X86_REG_R15,
                 "rip": UC_X86_REG_RIP,
             }
             state.flags = self._uc.reg_read(UC_X86_REG_EFLAGS)
             state.pc = self._uc.reg_read(UC_X86_REG_RIP)
         elif self.arch == Architecture.X86:
             reg_map = {
-                "eax": UC_X86_REG_EAX, "ebx": UC_X86_REG_EBX,
-                "ecx": UC_X86_REG_ECX, "edx": UC_X86_REG_EDX,
-                "esi": UC_X86_REG_ESI, "edi": UC_X86_REG_EDI,
-                "ebp": UC_X86_REG_EBP, "esp": UC_X86_REG_ESP,
+                "eax": UC_X86_REG_EAX,
+                "ebx": UC_X86_REG_EBX,
+                "ecx": UC_X86_REG_ECX,
+                "edx": UC_X86_REG_EDX,
+                "esi": UC_X86_REG_ESI,
+                "edi": UC_X86_REG_EDI,
+                "ebp": UC_X86_REG_EBP,
+                "esp": UC_X86_REG_ESP,
                 "eip": UC_X86_REG_EIP,
             }
             state.flags = self._uc.reg_read(UC_X86_REG_EFLAGS)
@@ -406,22 +453,34 @@ class EmulationOracle:
 
         if self.arch == Architecture.X86_64:
             reg_map = {
-                "rax": UC_X86_REG_RAX, "rbx": UC_X86_REG_RBX,
-                "rcx": UC_X86_REG_RCX, "rdx": UC_X86_REG_RDX,
-                "rsi": UC_X86_REG_RSI, "rdi": UC_X86_REG_RDI,
-                "rbp": UC_X86_REG_RBP, "rsp": UC_X86_REG_RSP,
-                "r8": UC_X86_REG_R8, "r9": UC_X86_REG_R9,
-                "r10": UC_X86_REG_R10, "r11": UC_X86_REG_R11,
-                "r12": UC_X86_REG_R12, "r13": UC_X86_REG_R13,
-                "r14": UC_X86_REG_R14, "r15": UC_X86_REG_R15,
+                "rax": UC_X86_REG_RAX,
+                "rbx": UC_X86_REG_RBX,
+                "rcx": UC_X86_REG_RCX,
+                "rdx": UC_X86_REG_RDX,
+                "rsi": UC_X86_REG_RSI,
+                "rdi": UC_X86_REG_RDI,
+                "rbp": UC_X86_REG_RBP,
+                "rsp": UC_X86_REG_RSP,
+                "r8": UC_X86_REG_R8,
+                "r9": UC_X86_REG_R9,
+                "r10": UC_X86_REG_R10,
+                "r11": UC_X86_REG_R11,
+                "r12": UC_X86_REG_R12,
+                "r13": UC_X86_REG_R13,
+                "r14": UC_X86_REG_R14,
+                "r15": UC_X86_REG_R15,
                 "rip": UC_X86_REG_RIP,
             }
         elif self.arch == Architecture.X86:
             reg_map = {
-                "eax": UC_X86_REG_EAX, "ebx": UC_X86_REG_EBX,
-                "ecx": UC_X86_REG_ECX, "edx": UC_X86_REG_EDX,
-                "esi": UC_X86_REG_ESI, "edi": UC_X86_REG_EDI,
-                "ebp": UC_X86_REG_EBP, "esp": UC_X86_REG_ESP,
+                "eax": UC_X86_REG_EAX,
+                "ebx": UC_X86_REG_EBX,
+                "ecx": UC_X86_REG_ECX,
+                "edx": UC_X86_REG_EDX,
+                "esi": UC_X86_REG_ESI,
+                "edi": UC_X86_REG_EDI,
+                "ebp": UC_X86_REG_EBP,
+                "esp": UC_X86_REG_ESP,
                 "eip": UC_X86_REG_EIP,
             }
         else:
@@ -529,7 +588,12 @@ class EmulationOracle:
                         values.append(value)
                         # Add constraint to exclude this value
                         self._triton.pushPathConstraint(
-                            ast_ctx.lnot(ast_ctx.equal(expr_ast, ast_ctx.bv(value, expr_ast.getBitvectorSize())))
+                            ast_ctx.lnot(
+                                ast_ctx.equal(
+                                    expr_ast,
+                                    ast_ctx.bv(value, expr_ast.getBitvectorSize()),
+                                )
+                            )
                         )
                     else:
                         break

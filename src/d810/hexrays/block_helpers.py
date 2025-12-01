@@ -25,22 +25,29 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import ida_hexrays
 
+from d810.core.cymode import CythonMode
+
 # Flag to track whether Cython speedups are available
 _CYTHON_AVAILABLE = False
 
-try:
-    from d810.speedups.cythxr._cblock_helpers import (
-        get_block_serial,
-        get_block_info,
-        get_pred_serials,
-        get_succ_serials,
-        get_pred_serial_set,
-        get_succ_serial_set,
-        block_has_predecessor,
-        block_has_successor,
-    )
-    _CYTHON_AVAILABLE = True
-except ImportError:
+# Try to import Cython speedups if CythonMode is enabled
+if CythonMode().is_enabled():
+    try:
+        from d810.speedups.cythxr._cblock_helpers import (
+            get_block_serial,
+            get_block_info,
+            get_pred_serials,
+            get_succ_serials,
+            get_pred_serial_set,
+            get_succ_serial_set,
+            block_has_predecessor,
+            block_has_successor,
+        )
+        _CYTHON_AVAILABLE = True
+    except ImportError:
+        pass
+
+if not _CYTHON_AVAILABLE:
     # Cython speedups not available, use pure Python fallbacks
 
     def get_block_serial(py_blk: "ida_hexrays.mblock_t") -> int:

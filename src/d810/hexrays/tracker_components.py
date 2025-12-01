@@ -146,12 +146,14 @@ class MopSet:
     @staticmethod
     def _hash_mop(mop: "ida_hexrays.mop_t") -> int:
         """Compute structural hash for mop."""
-        # Try Cython version first
-        try:
-            from d810.speedups.cythxr._chexrays_api import hash_mop
-            return int(hash_mop(mop, 0))
-        except ImportError:
-            pass
+        # Try Cython version first if CythonMode is enabled
+        from d810.core.cymode import CythonMode
+        if CythonMode().is_enabled():
+            try:
+                from d810.speedups.cythxr._chexrays_api import hash_mop
+                return int(hash_mop(mop, 0))
+            except ImportError:
+                pass
 
         # Fallback: type + key attribute
         t = mop.t

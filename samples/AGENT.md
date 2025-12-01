@@ -5,6 +5,7 @@ Instead, we want to use the project's own Hex-Rays-style headers (include/ida_ty
 ## Current Build System Status
 
 The Makefile now supports cross-platform compilation for:
+
 - **Windows** (x86_64): Creates `.dll` files via Docker cross-compilation
 - **Linux** (x86_64): Creates `.so` files
 - **macOS** (x86_64 and arm64): Creates `.dylib` files
@@ -32,10 +33,12 @@ make test-all-platforms
 ### Debug Symbol Generation
 
 **Windows**: PDB files are **always generated** (required for Windows debugging)
+
 - Generated automatically: `bins/libobfuscated.pdb`
 - Uses `-gcodeview` and `-Wl,--pdb=` flags
 
 **macOS & Linux**: Separate debug symbol files are **optional** (gated by `NIX_DEBUG_SYMBOLS=True`)
+
 - **macOS**: `NIX_DEBUG_SYMBOLS=True make TARGET_OS=darwin` → generates `bins/libobfuscated.dylib.dSYM`
 - **Linux**: `NIX_DEBUG_SYMBOLS=True make TARGET_OS=linux` → generates `bins/libobfuscated.so.debug` (if `objcopy`/`llvm-objcopy` available)
 
@@ -50,7 +53,7 @@ make test-all-platforms
 
 2. **Stub Functions**: External functions that would normally come from Windows SDK are stubbed in `src/c/stubs.c`:
    - Windows API functions (LoadLibraryA, GetProcAddress, WinHTTP functions, etc.)
-   - Interlocked functions (_InterlockedCompareExchange, _InterlockedExchangeW)
+   - Interlocked functions (_InterlockedCompareExchange,_InterlockedExchangeW)
    - Other external symbols referenced by decompiled code
 
 3. **Architecture Normalization**: The Makefile correctly handles architecture detection:
@@ -66,7 +69,7 @@ make test-all-platforms
    • If any such includes exist in samples/include or samples/src, remove or comment them out and replace with project-local stubs where needed.
 
 2. Rely only on include/ida_types.h and include/polyfill.h for Windows types & APIs:
-   • All Windows-looking names (BYTE, WORD, DWORD, LONG, BOOL, CONTEXT, _EXCEPTION_POINTERS, _TEB, NtCurrentTeb, HINTERNET, WINHTTP_*, etc.) must come from these headers (or other project-local headers), not from the system SDK.
+   • All Windows-looking names (BYTE, WORD, DWORD, LONG, BOOL, CONTEXT,_EXCEPTION_POINTERS, _TEB, NtCurrentTeb, HINTERNET, WINHTTP_*, etc.) must come from these headers (or other project-local headers), not from the system SDK.
    • It is OK if these are only partial/inaccurate approximations. They just need to be type-correct enough for this project to compile.
 
 3. Fix all current Windows-related compiler errors that appear when cross-compiling with:
@@ -116,6 +119,7 @@ DWORD g_timeout_msec = 10000;
 Open samples/include/ida_types.h.
 
 There is a block that defines Windows-like base types:
+
 ```c
 #if !defined(_WIN32) && !defined(_WINDOWS_)
 typedef int8 BYTE;
@@ -140,35 +144,39 @@ typedef int BOOL; // uppercase BOOL is usually 4 bytes
 
 This ensures:
    • When _WIN32 or _WINDOWS_ are ever defined, we don't redefine these types and clash with some external SDK.
-   • In our current "no Windows SDK headers at all" scenario, _WIN32 should not be defined in these sample builds, so these typedefs will be active and used across the code.
+   • In our current "no Windows SDK headers at all" scenario,_WIN32 should not be defined in these sample builds, so these typedefs will be active and used across the code.
 
 Do not change all the other macros (BYTE1, WORD1, etc.) unless they are directly causing build errors after we remove Windows headers. They are part of Hex-Rays's usual helper macros.
 
 3. Make polyfill.h provide fake Windows structs & functions unconditionally
 Open samples/include/polyfill.h.
 
-This file already contains a big amount of fake Windows/NT structures and enums (AccessMask, _M128A, _XSAVE_FORMAT, _CONTEXT, _EXCEPTION_RECORD, _EXCEPTION_POINTERS, _NT_TIB, _TEB, NtCurrentTeb, RTL_CRITICAL_SECTION, etc.). Right now, a lot of that content is wrapped in #ifndef _WIN32 guards or similar.
+This file already contains a big amount of fake Windows/NT structures and enums (AccessMask, _M128A,_XSAVE_FORMAT,_CONTEXT, _EXCEPTION_RECORD, _EXCEPTION_POINTERS, _NT_TIB, _TEB, NtCurrentTeb, RTL_CRITICAL_SECTION, etc.). Right now, a lot of that content is wrapped in #ifndef_WIN32 guards or similar.
 
 The goal:
    • All of this fake Windows stuff should be available even when targeting --target=x86_64-w64-mingw32.
    • Because we're no longer including real Windows headers anyway, there's no risk of conflict.
-   • That means: remove or neutralize any #ifndef _WIN32 guarding that prevents these structs from being compiled when _WIN32 is defined.
+   • That means: remove or neutralize any #ifndef_WIN32 guarding that prevents these structs from being compiled when _WIN32 is defined.
 
 ## Known Issues and Solutions
 
 ### Type Redefinition Conflicts
+
 - **Issue**: System headers (especially on macOS) may define `int8_t`, `uint8_t`, etc., causing conflicts with `ida_types.h`
 - **Solution**: Added guards in `ida_types.h` using `!defined(__int8_t_defined)` and `!defined(_INT8_T_DECLARED)` to prevent redefinition
 
 ### Linker Errors for Undefined Symbols
+
 - **Issue**: `lld` doesn't support flags like `--unresolved-symbols=ignore-all` or `--allow-shlib-undefined`
 - **Solution**: Created `src/c/stubs.c` with concrete stub definitions for all external functions. The Makefile includes `stubs.o` in the build.
 
 ### Architecture Detection
+
 - **Issue**: `arm64` was being misclassified as `x86_64` due to order of checks in architecture normalization
 - **Solution**: Reordered checks in Makefile to check for `arm64`/`aarch64` before generic `64` patterns
 
 ### Cross-Platform File Redirections
+
 - **Issue**: `>nul` and `2>nul` create actual files named `nul` on Unix systems
 - **Solution**: Changed to `/dev/null` on Unix systems, kept `NUL` (uppercase) for Windows-specific code paths
 

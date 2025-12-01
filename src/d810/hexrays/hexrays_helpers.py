@@ -144,11 +144,15 @@ except ImportError:
     ida_hexrays = _MockIDAHexrays()
 
 from d810.core import getLogger
+from d810.core.cymode import CythonMode
 
-try:
-    from d810.speedups.cythxr._chexrays_api import hash_mop as cy_hash_mop
-except ImportError:
-    cy_hash_mop = None
+# Try to import Cython hash_mop if CythonMode is enabled
+cy_hash_mop = None
+if CythonMode().is_enabled():
+    try:
+        from d810.speedups.cythxr._chexrays_api import hash_mop as cy_hash_mop
+    except ImportError:
+        pass
 
 logger = getLogger(__name__)
 

@@ -14,23 +14,27 @@
 ### Quick Start
 
 **Check for ready work:**
+
 ```bash
 bd ready --json
 ```
 
 **Create new issues:**
+
 ```bash
 bd create "Issue title" -t bug|feature|task -p 0-4 --json
 bd create "Issue title" -p 1 --deps discovered-from:d810ng-abc --json
 ```
 
 **Claim and update:**
+
 ```bash
 bd update d810ng-xyz --status in_progress --json
 bd update d810ng-xyz --priority 1 --json
 ```
 
 **Complete work:**
+
 ```bash
 bd close d810ng-xyz --reason "Completed" --json
 ```
@@ -77,6 +81,7 @@ Auto-sync is disabled in this repository (stealth mode). The `.beads/` directory
 ### Stealth Mode
 
 This repository runs beads in **stealth mode** (local only, not git-synced):
+
 - `.beads/` is globally gitignored
 - Do NOT run `bd sync` - it will fail
 - Use local commands only: `bd list`, `bd create`, `bd update`, `bd close`
@@ -87,10 +92,13 @@ This repository runs beads in **stealth mode** (local only, not git-synced):
 #### Hyphenated prefix bug (bd 0.25.1 - 0.26.0)
 
 **Symptom:**
+
 ```
 Import failed: prefix mismatch detected: database uses 'd810-ng-' but found issues with prefixes: [d810- (4 issues)]
 ```
+
 or:
+
 ```
 Import failed: failed to rename prefixes: cannot rename issue d810-ng-iid: non-numeric suffix 'ng-iid'
 ```
@@ -98,6 +106,7 @@ Import failed: failed to rename prefixes: cannot rename issue d810-ng-iid: non-n
 **Cause:** Bug in bd 0.25.1-0.26.0 where hyphenated prefixes (like `d810-ng-`) are incorrectly parsed. The parser splits on the first hyphen, so `d810-ng-e68` becomes prefix `d810-` + suffix `ng-e68` instead of `d810-ng-` + `e68`. The `--rename-on-import` flag is also broken for this reason.
 
 **Permanent fix:** Reinitialize with a non-hyphenated prefix:
+
 ```bash
 # Backup existing issues
 bd list --json | jq -c '.[]' > /tmp/beads_backup.jsonl

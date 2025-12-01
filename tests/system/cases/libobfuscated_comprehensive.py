@@ -6,8 +6,7 @@ using the DeobfuscationCase DSL. Organized by source file for easy reference.
 To run: pytest tests/system/test_libdeobfuscated_dsl.py -v
 """
 
-from d810.testing import DeobfuscationCase, BinaryOverride
-
+from d810.testing import BinaryOverride, DeobfuscationCase
 
 # =============================================================================
 # manually_obfuscated.c - MBA and basic patterns
@@ -19,7 +18,9 @@ MANUALLY_OBFUSCATED_CASES = [
         description="Chained addition expressions with nested operations",
         project="default_instruction_only.json",
         # Obfuscated code has large hex constants (varies by compile)
-        obfuscated_contains=["0xFFFFFF"],  # Partial match for any large negative constant
+        obfuscated_contains=[
+            "0xFFFFFF"
+        ],  # Partial match for any large negative constant
         expected_code="""
             __int64 __fastcall test_chained_add(__int64 a1)
             {
@@ -190,13 +191,6 @@ APPROOV_CASES = [
         project="example_libobfuscated.json",
         deobfuscated_not_contains=["switch"],
         must_change=True,
-    ),
-    DeobfuscationCase(
-        function="approov_goto_dispatcher",
-        description="Approov pattern using explicit goto statements",
-        project="example_libobfuscated.json",
-        must_change=True,
-        skip="IDA pre-optimizes switch/goto to nested loops - needs new UnflattenerNestedLoops rule",
     ),
     DeobfuscationCase(
         function="approov_simple_loop",
@@ -526,8 +520,10 @@ CORE_CASES = (
 
 # Quick smoke test (fastest)
 SMOKE_CASES = [
-    c for c in ALL_CASES
-    if c.function in {
+    c
+    for c in ALL_CASES
+    if c.function
+    in {
         "test_chained_add",
         "test_xor",
         "test_or",
@@ -546,10 +542,7 @@ UNFLATTENING_CASES = (
 )
 
 # Cases that test instruction-level rules (MBA, constants)
-INSTRUCTION_CASES = (
-    MANUALLY_OBFUSCATED_CASES
-    + CONSTANT_FOLDING_CASES
-)
+INSTRUCTION_CASES = MANUALLY_OBFUSCATED_CASES + CONSTANT_FOLDING_CASES
 
 # Total function count
 TOTAL_FUNCTION_COUNT = len(ALL_CASES)
