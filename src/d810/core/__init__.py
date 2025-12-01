@@ -70,7 +70,7 @@ from .registry import (
 from .singleton import SingletonMeta, singleton
 
 # Project management
-from .project import ProjectManager
+from .project import ProjectManager, ProjectContext
 
 # Persistence (SQLite storage)
 from .persistence import (
@@ -220,6 +220,7 @@ __all__ = [
     "singleton",
     # project
     "ProjectManager",
+    "ProjectContext",
     # persistence
     "OptimizationStorage",
     "FunctionFingerprint",

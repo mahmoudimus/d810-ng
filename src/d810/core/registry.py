@@ -453,6 +453,18 @@ class Registrant(metaclass=Registry):
         return cast(_R, cls.registry[key])
 
     @classmethod
+    def find(cls, name: str) -> _R | None:  # type: ignore
+        """Find a registered subclass by name (case-insensitive).
+
+        Unlike get(), returns None if not found instead of raising KeyError.
+        Useful for checking if a rule exists before removing it.
+        """
+        try:
+            return cls.get(name)
+        except KeyError:
+            return None
+
+    @classmethod
     def all(cls) -> list[type[Any]]:
         """Return every concrete subclass currently registered for *cls*."""
         return list(cls.registry.values())

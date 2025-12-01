@@ -8,9 +8,14 @@ import pathlib
 import pstats
 import time
 import typing
+from typing import TYPE_CHECKING
 
 # Import IDA module for user directory - only used at initialization
 import idaapi
+
+if TYPE_CHECKING:
+    from d810.optimizers.microcode.flow.handler import FlowOptimizationRule
+    from d810.optimizers.microcode.instructions.handler import InstructionOptimizationRule
 
 from d810.core import (
     CythonMode,
@@ -18,6 +23,7 @@ from d810.core import (
     EventEmitter,
     OptimizationStatistics,
     ProjectConfiguration,
+    ProjectContext,
     ProjectManager,
     SingletonMeta,
     clear_logs,
@@ -430,16 +436,32 @@ class D810State(metaclass=SingletonMeta):
         self._is_loaded = False
 
     @contextlib.contextmanager
-    def for_project(self, name: str) -> typing.Generator[int, None, None]:
+    def for_project(self, name: str) -> typing.Generator[ProjectContext, None, None]:
+        """Context manager for temporarily switching to a project.
+
+        Yields a ProjectContext that allows dynamic rule filtering:
+
+            with state.for_project("example_libobfuscated.json") as ctx:
+                ctx.remove_rule("FixPredecessorOfConditionalJumpBlock")
+                state.start_d810()
+                # decompile...
+
+        The original project and rules are restored on exit.
+        """
         _old_project_index = self.current_project_index
         project_index = self.project_manager.index(name)
         if project_index != _old_project_index:
             logger.info("switching to project %s", name)
         self.load_project(project_index)
-        yield project_index
-        if project_index != _old_project_index:
-            logger.info("switching back to project %s", _old_project_index)
-            self.load_project(_old_project_index)
+
+        ctx = ProjectContext(state=self, project_index=project_index)
+        try:
+            yield ctx
+        finally:
+            ctx.restore()
+            if project_index != _old_project_index:
+                logger.info("switching back to project %s", _old_project_index)
+                self.load_project(_old_project_index)
 
     def enable_cython_speedups(self):
         self._cython_mode.enable()
