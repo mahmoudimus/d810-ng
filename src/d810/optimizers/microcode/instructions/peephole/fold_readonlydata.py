@@ -375,25 +375,34 @@ class FoldReadonlyDataRule(PeepholeSimplificationRule):
             # the effective address can be resolved to &sym + const in a RO segment.
             if inner.opcode in (ida_hexrays.m_xdu, ida_hexrays.m_xds):
                 src = inner.l
+                ea = None
+                mem_size = getattr(src, "size", 0) or 0
+
+                # Case 1: mop_b (memory operand with base+index)
                 if src and getattr(src, "t", None) == ida_hexrays.mop_b:
                     ea = self._ea_from_mop_b(src)
-                    if ea is not None and self._segment_is_read_only(ea):
-                        mem_size = getattr(src, "size", 0) or 0
-                        out_size = (
-                            getattr(op, "size", 0) or getattr(inner, "size", 0) or 0
-                        )
-                        if mem_size in (1, 2, 4, 8) and out_size in (1, 2, 4, 8):
-                            val = self._fetch_constant(ea, mem_size)
-                            if val is not None:
-                                # Apply sign/zero extension
-                                if inner.opcode == ida_hexrays.m_xds:
-                                    sign_bit = 1 << (mem_size * 8 - 1)
-                                    if val & sign_bit:
-                                        val = val - (1 << (mem_size * 8))
-                                mask = (1 << (out_size * 8)) - 1
-                                folded = val & mask
-                                op.make_number(folded, out_size)
-                                return True
+
+                # Case 2: mop_v (direct global variable reference like $unk_CAEB.1)
+                # These represent direct reads from global addresses.
+                elif src and getattr(src, "t", None) == ida_hexrays.mop_v:
+                    ea = src.g
+
+                if ea is not None and self._segment_is_read_only(ea):
+                    out_size = (
+                        getattr(op, "size", 0) or getattr(inner, "size", 0) or 0
+                    )
+                    if mem_size in (1, 2, 4, 8) and out_size in (1, 2, 4, 8):
+                        val = self._fetch_constant(ea, mem_size)
+                        if val is not None:
+                            # Apply sign/zero extension
+                            if inner.opcode == ida_hexrays.m_xds:
+                                sign_bit = 1 << (mem_size * 8 - 1)
+                                if val & sign_bit:
+                                    val = val - (1 << (mem_size * 8))
+                            mask = (1 << (out_size * 8)) - 1
+                            folded = val & mask
+                            op.make_number(folded, out_size)
+                            return True
             # Otherwise, recurse into sub-operands of the inner instruction
             return self._fold_readonly_inplace(inner.l) or self._fold_readonly_inplace(
                 inner.r
