@@ -1230,6 +1230,26 @@ class TestLibDeobfuscated:
                         f"Rules fired: {state.stats.get_fired_rule_names()}"
                     )
 
+                # The function should fold to return the constant 0x8B8D2D6A09D84F79
+                assert "0x8B8D2D6A09D84F79" in actual_after or "8B8D2D6A09D84F79" in actual_after.upper(), (
+                    f"constant_folding_test2 should fold to return 0x8B8D2D6A09D84F79.\n\n"
+                    f"AFTER:\n{actual_after}\n\n"
+                    f"Rules fired: {state.stats.get_fired_rule_names()}"
+                )
+
+                # Verify that PeepholeOptimizer and RotateHelperInlineRule were used
+                fired_rules = state.stats.get_fired_rule_names()
+                assert "RotateHelperInlineRule" in fired_rules, (
+                    f"RotateHelperInlineRule should have fired.\n"
+                    f"Rules fired: {fired_rules}"
+                )
+                stats_dict = capture_stats(state.stats)
+                peephole_count = stats_dict.get("optimizer_matches", {}).get("PeepholeOptimizer", 0)
+                assert peephole_count >= 1, (
+                    f"PeepholeOptimizer should have been used at least once.\n"
+                    f"Stats: {stats_dict}"
+                )
+
                 # Verify statistics - expectations file is required
                 expected = load_expected_stats()
                 assert expected is not None, (
