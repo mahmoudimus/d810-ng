@@ -169,39 +169,39 @@ APPROOV_CASES = [
     DeobfuscationCase(
         function="approov_real_pattern",
         description="Exact decompiled output from real Approov-obfuscated code",
-        project="default_unflattening_approov.json",
+        project="example_libobfuscated.json",
         must_change=True,
     ),
     DeobfuscationCase(
         function="approov_simplified",
         description="Simplified Approov pattern using while(!=)",
-        project="default_unflattening_approov.json",
+        project="example_libobfuscated.json",
         must_change=True,
     ),
     DeobfuscationCase(
         function="approov_multistate",
         description="Approov pattern with multiple state transitions",
-        project="default_unflattening_approov.json",
+        project="example_libobfuscated.json",
         must_change=True,
     ),
     DeobfuscationCase(
         function="approov_vm_dispatcher",
         description="Approov VM dispatcher using switch statement",
-        project="default_unflattening_approov.json",
+        project="example_libobfuscated.json",
         deobfuscated_not_contains=["switch"],
         must_change=True,
     ),
     DeobfuscationCase(
         function="approov_goto_dispatcher",
         description="Approov pattern using explicit goto statements",
-        project="default_unflattening_approov.json",
+        project="example_libobfuscated.json",
         must_change=True,
         skip="IDA pre-optimizes switch/goto to nested loops - needs new UnflattenerNestedLoops rule",
     ),
     DeobfuscationCase(
         function="approov_simple_loop",
         description="Simple loop pattern generating jz instruction",
-        project="default_unflattening_approov.json",
+        project="example_libobfuscated.json",
         must_change=True,
     ),
 ]
@@ -255,14 +255,14 @@ DISPATCHER_PATTERN_CASES = [
     DeobfuscationCase(
         function="high_fan_in_pattern",
         description="HIGH_FAN_IN dispatcher with multiple case blocks",
-        project="default_unflattening_switch_case.json",
+        project="example_libobfuscated.json",
         must_change=True,
     ),
     DeobfuscationCase(
         function="state_comparison_pattern",
         description="STATE_COMPARISON pattern with large constants",
-        project="default_unflattening_ollvm.json",
-        obfuscated_contains=["0x10000"],
+        project="example_libobfuscated.json",
+        obfuscated_contains=["0x6F5E1A2B"],
         must_change=True,
     ),
     DeobfuscationCase(
@@ -275,27 +275,27 @@ DISPATCHER_PATTERN_CASES = [
     DeobfuscationCase(
         function="switch_case_ollvm_pattern",
         description="SWITCH_JUMP pattern with O-LLVM style jtbl",
-        project="default_unflattening_switch_case.json",
+        project="example_libobfuscated.json",
         obfuscated_contains=["switch", "case"],
         must_change=True,
     ),
     DeobfuscationCase(
         function="mixed_dispatcher_pattern",
         description="Combination of multiple dispatcher strategies",
-        project="default_unflattening_ollvm.json",
+        project="example_libobfuscated.json",
         must_change=True,
         skip="Causes timeout/infinite loop - needs investigation",
     ),
     DeobfuscationCase(
         function="predecessor_uniformity_pattern",
         description="PREDECESSOR_UNIFORM detection pattern",
-        project="default_unflattening_switch_case.json",
+        project="example_libobfuscated.json",
         must_change=True,
     ),
     DeobfuscationCase(
         function="test_all_patterns",
         description="Test harness calling all dispatcher patterns",
-        project="default_unflattening_ollvm.json",
+        project="example_libobfuscated.json",
         must_change=False,  # This is just a caller
     ),
 ]
@@ -383,25 +383,25 @@ NESTED_DISPATCHER_CASES = [
     DeobfuscationCase(
         function="nested_simple",
         description="Simple nested dispatcher with outer/inner state machines",
-        project="default_unflattening_ollvm.json",
+        project="example_libobfuscated.json",
         must_change=True,
     ),
     DeobfuscationCase(
         function="nested_deep",
         description="Deeply nested dispatchers (3 levels: L1 -> L2 -> L3)",
-        project="default_unflattening_ollvm.json",
+        project="example_libobfuscated.json",
         must_change=True,
     ),
     DeobfuscationCase(
         function="nested_parallel",
         description="Parallel nested dispatchers at same nesting level",
-        project="default_unflattening_ollvm.json",
+        project="example_libobfuscated.json",
         must_change=True,
     ),
     DeobfuscationCase(
         function="nested_shared_blocks",
         description="Dispatcher with shared internal blocks",
-        project="default_unflattening_ollvm.json",
+        project="example_libobfuscated.json",
         must_change=True,
     ),
 ]
