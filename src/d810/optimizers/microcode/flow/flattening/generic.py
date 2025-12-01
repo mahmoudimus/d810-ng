@@ -729,6 +729,8 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
         self.max_duplication_passes = self.DEFAULT_MAX_DUPLICATION_PASSES
         self.max_passes = self.DEFAULT_MAX_PASSES
         self.non_significant_changes = 0
+        # Track processed (source_block, target) pairs to prevent duplicates
+        self._processed_dispatcher_fathers: set[tuple[int, int]] = set()
 
     @property
     @abc.abstractmethod
@@ -1292,6 +1294,19 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
             dispatcher_father_histories[0]
         )
         if target_blk is not None:
+            # Check if this (source, target) pair has already been processed
+            pair_key = (dispatcher_father.serial, target_blk.serial)
+            if pair_key in self._processed_dispatcher_fathers:
+                unflat_logger.info(
+                    "Skipping already-processed dispatcher father: %s -> %s",
+                    dispatcher_father.serial,
+                    target_blk.serial,
+                )
+                return 0
+
+            # Mark this pair as processed
+            self._processed_dispatcher_fathers.add(pair_key)
+
             if unflat_logger.debug_on:
                 unflat_logger.debug(
                     "Unflattening graph: Making %s goto %s",
@@ -1420,6 +1435,9 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
         total_nb_change = 0
         self.non_significant_changes = ensure_last_block_is_goto(self.mba)
         self.non_significant_changes += self.ensure_all_dispatcher_fathers_are_direct()
+
+        # Reset tracking for this optimization pass
+        self._processed_dispatcher_fathers.clear()
 
         # Create deferred modifier for all resolve_dispatcher_father operations
         deferred_modifier = DeferredGraphModifier(self.mba)
