@@ -42,6 +42,51 @@ if TYPE_CHECKING:
 logger = getLogger("D810.deferred_modifier")
 
 
+def _format_block_info(blk: ida_hexrays.mblock_t) -> str:
+    """Format detailed block information for debugging."""
+    if blk is None:
+        return "<None>"
+
+    # Block type names
+    blk_type_names = {
+        ida_hexrays.BLT_NONE: "NONE",
+        ida_hexrays.BLT_STOP: "STOP",
+        ida_hexrays.BLT_0WAY: "0WAY",
+        ida_hexrays.BLT_1WAY: "1WAY",
+        ida_hexrays.BLT_2WAY: "2WAY",
+        ida_hexrays.BLT_NWAY: "NWAY",
+        ida_hexrays.BLT_XTRN: "XTRN",
+    }
+    blk_type = blk_type_names.get(blk.type, f"UNK({blk.type})")
+
+    # Successors
+    succs = []
+    for i in range(blk.nsucc()):
+        succs.append(blk.succ(i))
+    succ_str = f"succs={succs}" if succs else "succs=[]"
+
+    # Predecessors
+    preds = []
+    for i in range(blk.npred()):
+        preds.append(blk.pred(i))
+    pred_str = f"preds={preds}" if preds else "preds=[]"
+
+    # Tail instruction
+    tail_str = "tail=None"
+    if blk.tail:
+        opcode_name = ida_hexrays.get_mreg_name(blk.tail.opcode, 1) or str(blk.tail.opcode)
+        tail_str = f"tail.opcode={blk.tail.opcode} tail.ea={hex(blk.tail.ea)}"
+
+    return f"blk[{blk.serial}] type={blk_type} {succ_str} {pred_str} {tail_str}"
+
+
+def _format_insn_info(insn: ida_hexrays.minsn_t) -> str:
+    """Format instruction information for debugging."""
+    if insn is None:
+        return "<None>"
+    return f"insn[ea={hex(insn.ea)} opcode={insn.opcode}]"
+
+
 class ModificationType(Enum):
     """Types of graph modifications that can be queued."""
     BLOCK_GOTO_CHANGE = auto()       # Change goto destination
@@ -221,6 +266,83 @@ class DeferredGraphModifier:
         """Check if there are any queued modifications."""
         return len(self.modifications) > 0
 
+    def coalesce(self) -> int:
+        """
+        Coalesce queued modifications to remove duplicates and optimize the queue.
+
+        This method:
+        1. Removes exact duplicate modifications (same type, block_serial, new_target)
+        2. Detects and warns about conflicting modifications for the same block
+        3. For BLOCK_CREATE_WITH_REDIRECT: keeps only the first modification per source block
+
+        Returns:
+            Number of modifications removed.
+        """
+        if not self.modifications:
+            return 0
+
+        original_count = len(self.modifications)
+
+        # Track seen modifications by (mod_type, block_serial, new_target) for deduplication
+        seen_keys: set[tuple] = set()
+        # Track blocks that have been modified to detect conflicts
+        block_modifications: dict[int, list[GraphModification]] = {}
+
+        unique_modifications = []
+
+        for mod in self.modifications:
+            # Create a key for deduplication
+            # For BLOCK_CREATE_WITH_REDIRECT, we key by (type, source_block, target)
+            # since multiple redirects to different targets would conflict
+            if mod.mod_type == ModificationType.BLOCK_CREATE_WITH_REDIRECT:
+                key = (mod.mod_type, mod.block_serial, mod.new_target)
+            else:
+                key = (mod.mod_type, mod.block_serial, mod.new_target)
+
+            if key in seen_keys:
+                logger.debug(
+                    "Removing duplicate modification: %s block=%d target=%s",
+                    mod.mod_type.name, mod.block_serial, mod.new_target
+                )
+                continue
+
+            seen_keys.add(key)
+
+            # Track all modifications per block for conflict detection
+            if mod.block_serial not in block_modifications:
+                block_modifications[mod.block_serial] = []
+            block_modifications[mod.block_serial].append(mod)
+
+            unique_modifications.append(mod)
+
+        # Detect conflicting modifications for the same block
+        for block_serial, mods in block_modifications.items():
+            if len(mods) > 1:
+                # Check if they're the same type with different targets (conflict)
+                type_targets = [(m.mod_type, m.new_target) for m in mods]
+                unique_types = set(m.mod_type for m in mods)
+
+                # Same type, different targets = conflict
+                for mod_type in unique_types:
+                    same_type_mods = [m for m in mods if m.mod_type == mod_type]
+                    if len(same_type_mods) > 1:
+                        targets = [m.new_target for m in same_type_mods]
+                        if len(set(targets)) > 1:
+                            logger.warning(
+                                "CONFLICT: Block %d has %d %s modifications with different targets: %s",
+                                block_serial, len(same_type_mods), mod_type.name, targets
+                            )
+
+        removed_count = original_count - len(unique_modifications)
+        if removed_count > 0:
+            logger.info(
+                "Coalesced modifications: removed %d duplicates (%d -> %d)",
+                removed_count, original_count, len(unique_modifications)
+            )
+
+        self.modifications = unique_modifications
+        return removed_count
+
     def apply(
         self,
         run_optimize_local: bool = True,
@@ -244,25 +366,56 @@ class DeferredGraphModifier:
             logger.debug("No modifications to apply")
             return 0
 
+        # Coalesce duplicates and detect conflicts before applying
+        self.coalesce()
+
+        if not self.modifications:
+            logger.debug("No modifications after coalescing")
+            return 0
+
         # Sort by priority (lower = earlier)
         sorted_mods = sorted(self.modifications, key=lambda m: m.priority)
 
         logger.info("Applying %d queued graph modifications", len(sorted_mods))
 
+        # Log all queued modifications before applying
+        logger.info("=== QUEUED MODIFICATIONS (sorted by priority) ===")
+        for i, mod in enumerate(sorted_mods):
+            blk = self.mba.get_mblock(mod.block_serial)
+            logger.info(
+                "  [%d] %s (priority=%d) target_blk=%d new_target=%s",
+                i, mod.mod_type.name, mod.priority, mod.block_serial, mod.new_target
+            )
+            logger.info("      BEFORE: %s", _format_block_info(blk))
+            if mod.new_target is not None:
+                target_blk = self.mba.get_mblock(mod.new_target)
+                logger.info("      TARGET: %s", _format_block_info(target_blk))
+
         successful = 0
         failed = 0
 
-        for mod in sorted_mods:
+        for i, mod in enumerate(sorted_mods):
+            blk = self.mba.get_mblock(mod.block_serial)
+            logger.info("--- Applying [%d]: %s ---", i, mod.description)
+            logger.info("    BEFORE: %s", _format_block_info(blk))
+
             try:
-                if self._apply_single(mod):
+                result = self._apply_single(mod)
+                # Re-fetch block after modification
+                blk_after = self.mba.get_mblock(mod.block_serial)
+                logger.info("    AFTER:  %s", _format_block_info(blk_after))
+
+                if result:
                     successful += 1
-                    logger.debug("Applied: %s", mod.description)
+                    logger.info("    RESULT: SUCCESS")
                 else:
                     failed += 1
-                    logger.warning("Failed to apply: %s", mod.description)
+                    logger.warning("    RESULT: FAILED")
             except Exception as e:
                 failed += 1
-                logger.error("Exception applying %s: %s", mod.description, e)
+                logger.error("    RESULT: EXCEPTION: %s", e)
+                import traceback
+                logger.error("    TRACEBACK: %s", traceback.format_exc())
 
         logger.info(
             "Applied %d/%d modifications (%d failed)",
@@ -318,6 +471,318 @@ class DeferredGraphModifier:
             logger.warning("Unknown modification type: %s", mod.mod_type)
             return False
 
+    def _apply_goto_change(self, blk: ida_hexrays.mblock_t, new_target: int) -> bool:
+        """Change an unconditional goto's destination."""
+        if blk.tail is None or blk.tail.opcode != ida_hexrays.m_goto:
+            logger.warning(
+                "Block %d doesn't end with goto (opcode=%s)",
+                blk.serial,
+                blk.tail.opcode if blk.tail else "none"
+            )
+            return False
+
+        return change_1way_block_successor(blk, new_target)
+
+    def _apply_target_change(self, blk: ida_hexrays.mblock_t, new_target: int) -> bool:
+        """Change a conditional jump's target."""
+        if blk.tail is None:
+            return False
+
+        # Check if it's a conditional jump
+        if blk.tail.opcode not in [
+            ida_hexrays.m_jnz, ida_hexrays.m_jz,
+            ida_hexrays.m_jae, ida_hexrays.m_jb,
+            ida_hexrays.m_ja, ida_hexrays.m_jbe,
+            ida_hexrays.m_jg, ida_hexrays.m_jge,
+            ida_hexrays.m_jl, ida_hexrays.m_jle,
+        ]:
+            logger.warning(
+                "Block %d doesn't end with conditional jump",
+                blk.serial
+            )
+            return False
+
+        return change_2way_block_conditional_successor(blk, new_target)
+
+    def _apply_convert_to_goto(self, blk: ida_hexrays.mblock_t, goto_target: int) -> bool:
+        """Convert a 2-way block to a 1-way goto."""
+        return make_2way_block_goto(blk, goto_target)
+
+    def _apply_insn_remove(self, blk: ida_hexrays.mblock_t, insn_ea: int) -> bool:
+        """Remove an instruction by its EA."""
+        insn = blk.head
+        while insn:
+            if insn.ea == insn_ea:
+                blk.remove_from_block(insn)
+                return True
+            insn = insn.next
+
+        logger.warning(
+            "Instruction at EA %s not found in block %d",
+            hex(insn_ea), blk.serial
+        )
+        return False
+
+    def _apply_insn_nop(self, blk: ida_hexrays.mblock_t, insn_ea: int) -> bool:
+        """NOP an instruction by its EA."""
+        insn = blk.head
+        while insn:
+            if insn.ea == insn_ea:
+                blk.make_nop(insn)
+                return True
+            insn = insn.next
+
+        logger.warning(
+            "Instruction at EA %s not found in block %d",
+            hex(insn_ea), blk.serial
+        )
+        return False
+
+    def _apply_create_and_redirect(
+        self,
+        source_blk: ida_hexrays.mblock_t,
+        final_target: int,
+        instructions_to_copy: list,
+        is_0_way: bool,
+    ) -> bool:
+        """
+        Create an intermediate block and redirect source through it to target.
+
+        Creates: source_blk -> new_block -> final_target
+        The new block contains copies of instructions_to_copy.
+        """
+        if not instructions_to_copy:
+            logger.warning(
+                "No instructions to copy for create_and_redirect on block %d",
+                source_blk.serial
+            )
+            return False
+
+        mba = self.mba
+
+        # Find reference block for insertion (tail block, avoiding XTRN/STOP)
+        tail_serial = mba.qty - 1
+        ref_block = mba.get_mblock(tail_serial)
+        while ref_block.type in (ida_hexrays.BLT_XTRN, ida_hexrays.BLT_STOP):
+            tail_serial -= 1
+            ref_block = mba.get_mblock(tail_serial)
+
+        # Get target block to check if it's 0-way
+        target_blk = mba.get_mblock(final_target)
+        actual_is_0_way = is_0_way or (target_blk and target_blk.type == ida_hexrays.BLT_0WAY)
+
+        try:
+            # Create the intermediate block with the instructions
+            new_block = create_block(ref_block, instructions_to_copy, is_0_way=actual_is_0_way)
+
+            # Redirect source block to the new block
+            if not change_1way_block_successor(source_blk, new_block.serial):
+                logger.warning(
+                    "Failed to redirect block %d to new block %d",
+                    source_blk.serial, new_block.serial
+                )
+                return False
+
+            # If not 0-way, redirect new block to final target
+            if not actual_is_0_way:
+                if not change_1way_block_successor(new_block, final_target):
+                    logger.warning(
+                        "Failed to redirect new block %d to target %d",
+                        new_block.serial, final_target
+                    )
+                    return False
+
+            logger.debug(
+                "Created block %d: %d -> %d -> %d",
+                new_block.serial, source_blk.serial, new_block.serial, final_target
+            )
+            return True
+
+        except Exception as e:
+            logger.error(
+                "Exception in create_and_redirect for block %d: %s",
+                source_blk.serial, e
+            )
+            return False
+
+
+@dataclass
+class ImmediateGraphModifier:
+    """
+    Graph modifier that applies changes immediately instead of batching them.
+
+    This provides the same interface as DeferredGraphModifier but applies
+    each modification immediately when queue_* is called. The apply() method
+    is a no-op since changes are already applied.
+
+    Usage:
+        modifier = ImmediateGraphModifier(mba)
+
+        # Modifications are applied immediately
+        modifier.queue_goto_change(block_serial=10, new_target=20)
+        modifier.queue_convert_to_goto(block_serial=15, goto_target=25)
+
+        # apply() is a no-op, changes already applied
+        modifier.apply()
+    """
+    mba: ida_hexrays.mba_t
+    modifications_applied: int = 0
+    _applied: bool = False
+
+    def reset(self) -> None:
+        """Reset the modifier state."""
+        self.modifications_applied = 0
+        self._applied = False
+
+    def queue_goto_change(
+        self,
+        block_serial: int,
+        new_target: int,
+        description: str = "",
+    ) -> None:
+        """Apply a change to an unconditional goto's destination immediately."""
+        blk = self.mba.get_mblock(block_serial)
+        if blk is None:
+            logger.warning("Block %d not found", block_serial)
+            return
+
+        logger.debug("Immediate goto change: block %d -> %d", block_serial, new_target)
+        if self._apply_goto_change(blk, new_target):
+            self.modifications_applied += 1
+
+    def queue_conditional_target_change(
+        self,
+        block_serial: int,
+        new_target: int,
+        description: str = "",
+    ) -> None:
+        """Apply a change to a conditional jump's target immediately."""
+        blk = self.mba.get_mblock(block_serial)
+        if blk is None:
+            logger.warning("Block %d not found", block_serial)
+            return
+
+        logger.debug("Immediate target change: block %d -> %d", block_serial, new_target)
+        if self._apply_target_change(blk, new_target):
+            self.modifications_applied += 1
+
+    def queue_convert_to_goto(
+        self,
+        block_serial: int,
+        goto_target: int,
+        description: str = "",
+    ) -> None:
+        """Convert a 2-way block to a 1-way goto immediately."""
+        blk = self.mba.get_mblock(block_serial)
+        if blk is None:
+            logger.warning("Block %d not found", block_serial)
+            return
+
+        logger.debug("Immediate convert to goto: block %d -> %d", block_serial, goto_target)
+        if self._apply_convert_to_goto(blk, goto_target):
+            self.modifications_applied += 1
+
+    def queue_insn_remove(
+        self,
+        block_serial: int,
+        insn_ea: int,
+        description: str = "",
+    ) -> None:
+        """Remove a specific instruction immediately."""
+        blk = self.mba.get_mblock(block_serial)
+        if blk is None:
+            logger.warning("Block %d not found", block_serial)
+            return
+
+        logger.debug("Immediate insn remove: block %d, ea=%s", block_serial, hex(insn_ea))
+        if self._apply_insn_remove(blk, insn_ea):
+            self.modifications_applied += 1
+
+    def queue_insn_nop(
+        self,
+        block_serial: int,
+        insn_ea: int,
+        description: str = "",
+    ) -> None:
+        """NOP a specific instruction immediately."""
+        blk = self.mba.get_mblock(block_serial)
+        if blk is None:
+            logger.warning("Block %d not found", block_serial)
+            return
+
+        logger.debug("Immediate insn nop: block %d, ea=%s", block_serial, hex(insn_ea))
+        if self._apply_insn_nop(blk, insn_ea):
+            self.modifications_applied += 1
+
+    def queue_create_and_redirect(
+        self,
+        source_block_serial: int,
+        final_target_serial: int,
+        instructions_to_copy: list,
+        is_0_way: bool = False,
+        description: str = "",
+    ) -> None:
+        """Create an intermediate block and redirect immediately."""
+        blk = self.mba.get_mblock(source_block_serial)
+        if blk is None:
+            logger.warning("Block %d not found", source_block_serial)
+            return
+
+        logger.debug(
+            "Immediate create_and_redirect: %d -> (new) -> %d with %d instructions",
+            source_block_serial, final_target_serial, len(instructions_to_copy)
+        )
+        if self._apply_create_and_redirect(
+            blk, final_target_serial, instructions_to_copy, is_0_way
+        ):
+            self.modifications_applied += 1
+
+    def has_modifications(self) -> bool:
+        """Check if any modifications were applied."""
+        return self.modifications_applied > 0
+
+    def apply(
+        self,
+        run_optimize_local: bool = True,
+        run_deep_cleaning: bool = False,
+    ) -> int:
+        """
+        No-op apply method since changes are already applied.
+
+        Args:
+            run_optimize_local: If True, call mba.optimize_local(0)
+            run_deep_cleaning: If True, run mba_deep_cleaning
+
+        Returns:
+            Number of modifications that were applied immediately
+        """
+        if self._applied:
+            logger.warning("ImmediateGraphModifier.apply() called twice")
+            return 0
+
+        logger.info(
+            "ImmediateGraphModifier.apply(): %d modifications already applied",
+            self.modifications_applied
+        )
+
+        if self.modifications_applied > 0:
+            self.mba.mark_chains_dirty()
+
+            if run_deep_cleaning:
+                mba_deep_cleaning(self.mba, call_mba_combine_block=True)
+            elif run_optimize_local:
+                self.mba.optimize_local(0)
+
+            safe_verify(
+                self.mba,
+                "after immediate modifications",
+                logger_func=logger.error,
+            )
+
+        self._applied = True
+        return self.modifications_applied
+
+    # Reuse the same implementation methods from DeferredGraphModifier
     def _apply_goto_change(self, blk: ida_hexrays.mblock_t, new_target: int) -> bool:
         """Change an unconditional goto's destination."""
         if blk.tail is None or blk.tail.opcode != ida_hexrays.m_goto:
