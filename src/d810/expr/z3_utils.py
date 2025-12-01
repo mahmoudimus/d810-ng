@@ -322,10 +322,16 @@ def mop_list_to_z3_expression_list(mop_list: list[ida_hexrays.mop_t]):
             [format_mop_t(mop) for mop in mop_list],
         )
     ast_list = [mop_to_ast(mop) for mop in mop_list]
+    # Filter out None ASTs - callers check length to detect conversion failures
+    valid_ast_list = [ast for ast in ast_list if ast is not None]
+    if len(valid_ast_list) != len(ast_list):
+        logger.debug(
+            "mop_list_to_z3_expression_list: %d of %d mops failed AST conversion",
+            len(ast_list) - len(valid_ast_list),
+            len(ast_list),
+        )
     ast_leaf_list = []
-    for ast in ast_list:
-        if ast is None:
-            continue
+    for ast in valid_ast_list:
         ast_leaf_list += ast.get_leaf_list()
     _ = create_z3_vars(ast_leaf_list)
     if logger.debug_on:
@@ -333,7 +339,7 @@ def mop_list_to_z3_expression_list(mop_list: list[ida_hexrays.mop_t]):
             "mop_list_to_z3_expression_list: ast_leaf_list: %s",
             ast_leaf_list,
         )
-    return [ast_to_z3_expression(ast) for ast in ast_list]
+    return [ast_to_z3_expression(ast) for ast in valid_ast_list]
 
 
 # Module-level memoization for Z3 checks
