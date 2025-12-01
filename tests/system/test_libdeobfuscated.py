@@ -1166,9 +1166,10 @@ class TestLibDeobfuscated:
                         f"Rules fired: {state.stats.get_fired_rule_names()}"
                     )
 
-                # The function should fold to return 1 (the constant result)
-                assert "return 1" in actual_after.lower() or "return 1;" in actual_after, (
-                    f"constant_folding_test1 should fold to 'return 1'.\n\n"
+                # The function should fold to return 0 (the constant result)
+                # The complex expression (... == 0x4F) evaluates to false (0)
+                assert "return 0" in actual_after.lower() or "return 0;" in actual_after, (
+                    f"constant_folding_test1 should fold to 'return 0'.\n\n"
                     f"AFTER:\n{actual_after}\n\n"
                     f"Rules fired: {state.stats.get_fired_rule_names()}"
                 )
