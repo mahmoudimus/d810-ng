@@ -1230,6 +1230,13 @@ class TestLibDeobfuscated:
                         f"Rules fired: {state.stats.get_fired_rule_names()}"
                     )
 
+                # The function should fold to return the constant 0x8B8D2D6A09D84F79
+                assert "0x8B8D2D6A09D84F79" in actual_after or "8B8D2D6A09D84F79" in actual_after.upper(), (
+                    f"constant_folding_test2 should fold to return 0x8B8D2D6A09D84F79.\n\n"
+                    f"AFTER:\n{actual_after}\n\n"
+                    f"Rules fired: {state.stats.get_fired_rule_names()}"
+                )
+
                 # Verify statistics - expectations file is required
                 expected = load_expected_stats()
                 assert expected is not None, (
