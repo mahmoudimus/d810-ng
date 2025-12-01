@@ -1127,7 +1127,7 @@ class TestLibDeobfuscated:
             pytest.skip("Function 'constant_folding_test1' not found in this binary")
 
         with d810_state() as state:
-            with state.for_project("example_libobfuscated.json"):
+            with state.for_project("example_libobfuscated.json") as ctx:
                 state.stop_d810()
                 decompiled_before = idaapi.decompile(
                     func_ea, flags=idaapi.DECOMP_NO_CACHE
@@ -1139,6 +1139,10 @@ class TestLibDeobfuscated:
                 # Verify complex constant expressions are present
                 has_rol = "__ROL" in actual_before
                 has_complex = "<<" in actual_before or ">>" in actual_before
+
+                # Remove FixPredecessorOfConditionalJumpBlock as it incorrectly
+                # transforms this function into an infinite loop
+                ctx.remove_rule("FixPredecessorOfConditionalJumpBlock")
 
                 state.start_d810()
                 decompiled_after = idaapi.decompile(
@@ -1154,12 +1158,6 @@ class TestLibDeobfuscated:
                 # Log what rules fired for debugging
                 print(f"Rules fired: {state.stats.get_fired_rule_names()}")
 
-                # Note: FoldReadonlyDataRule may not fire because table indices are
-                # dynamically computed (e.g., v46 >> 0x34), not compile-time constants.
-                # The rule requires statically-known array indices to fold lookups.
-                # We rely on must_change=True (via has_rol/has_complex check) to verify
-                # that deobfuscation is working, which is the correct semantic check.
-
                 # MUST: If complex patterns exist, code MUST change
                 if has_rol or has_complex:
                     assert actual_before != actual_after, (
@@ -1167,6 +1165,44 @@ class TestLibDeobfuscated:
                         f"BEFORE:\n{actual_before}\n\n"
                         f"Rules fired: {state.stats.get_fired_rule_names()}"
                     )
+
+                # The function should fold to return 1 (the constant result)
+                assert "return 1" in actual_after.lower() or "return 1;" in actual_after, (
+                    f"constant_folding_test1 should fold to 'return 1'.\n\n"
+                    f"AFTER:\n{actual_after}\n\n"
+                    f"Rules fired: {state.stats.get_fired_rule_names()}"
+                )
+
+                # Verify that the key optimizers and rules were used
+                fired_rules = state.stats.get_fired_rule_names()
+
+                # These rules must fire for proper constant folding
+                assert "FoldReadonlyDataRule" in fired_rules, (
+                    f"FoldReadonlyDataRule should have fired.\n"
+                    f"Rules fired: {fired_rules}"
+                )
+                assert "RotateHelperInlineRule" in fired_rules, (
+                    f"RotateHelperInlineRule should have fired.\n"
+                    f"Rules fired: {fired_rules}"
+                )
+                assert "OrChain" in fired_rules, (
+                    f"OrChain should have fired.\n"
+                    f"Rules fired: {fired_rules}"
+                )
+
+                # Verify optimizer usage counts
+                optimizer_matches = stats_dict.get("optimizer_matches", {})
+                peephole_count = optimizer_matches.get("PeepholeOptimizer", 0)
+                chain_count = optimizer_matches.get("ChainOptimizer", 0)
+
+                assert peephole_count >= 10, (
+                    f"PeepholeOptimizer should have been used many times (got {peephole_count}).\n"
+                    f"Stats: {stats_dict}"
+                )
+                assert chain_count >= 5, (
+                    f"ChainOptimizer should have been used several times (got {chain_count}).\n"
+                    f"Stats: {stats_dict}"
+                )
 
                 # Verify statistics - expectations file is required
                 expected = load_expected_stats()
