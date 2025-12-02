@@ -33,8 +33,10 @@ class BlockSplitOperation:
     compare_mop_left: ida_hexrays.mop_t
     compare_mop_right: ida_hexrays.mop_t
     opcode: int
-    # Instructions to copy (from tail backwards to the trigger instruction)
-    instructions_to_copy: list[ida_hexrays.minsn_t] = field(default_factory=list)
+    # NOTE: We intentionally do NOT store instructions_to_copy here.
+    # Storing live minsn_t pointers during analysis causes stale pointer bugs
+    # when other CFG passes modify the graph before apply() runs.
+    # Instead, we collect instructions fresh at apply time.
 
 
 @dataclass
@@ -78,13 +80,8 @@ class ABCBlockSplitter:
             if result is not None:
                 cnst, compare_mop_left, compare_mop_right, opcode = result
                 if self.ABC_CONST_MIN < cnst < self.ABC_CONST_MAX:
-                    # Collect instructions to copy (from tail to trigger)
-                    instructions_to_copy = []
-                    tail_inst = block.tail
-                    while tail_inst is not None and tail_inst.dstr() != curr_inst.dstr():
-                        instructions_to_copy.append(tail_inst)
-                        tail_inst = tail_inst.prev
-
+                    # Record the split operation - DO NOT store instruction pointers
+                    # Instructions will be collected fresh at apply time
                     self.pending_splits.append(BlockSplitOperation(
                         block_serial=block.serial,
                         instruction_ea=curr_inst.ea,
@@ -92,7 +89,6 @@ class ABCBlockSplitter:
                         compare_mop_left=compare_mop_left,
                         compare_mop_right=compare_mop_right,
                         opcode=opcode,
-                        instructions_to_copy=instructions_to_copy,
                     ))
                     patterns_found += 1
                     logger.debug(
@@ -231,19 +227,20 @@ class ABCBlockSplitter:
 
         Returns the total number of splits applied.
 
-        NOTE: Currently disabled due to CFG corruption bug - stores live minsn_t
-        pointers during analysis that become stale before apply() is called.
-        See issue d810ng-viv for details.
+        NOTE: Still disabled due to stale pointer bugs. The instructions_to_copy
+        issue was fixed (now collected at apply time), but compare_mop_left and
+        compare_mop_right mop_t objects may also become stale between analysis
+        and apply phases. A full fix requires serializing mop_t data.
+        See d810ng-ury for details.
         """
         if not self.pending_splits:
             return 0
 
-        # DISABLED: ABCBlockSplitter has a bug where instructions_to_copy contains
-        # live minsn_t pointers that become stale after CFG modifications by other
-        # passes. This causes malformed goto references like @)(00000000000000306).
-        # Until this is fixed, skip all ABC block splits.
+        # DISABLED: While the instructions_to_copy stale pointer bug is fixed,
+        # the compare_mop_* mop_t objects stored during analysis can also become
+        # stale. A full fix requires serializing mop_t operand data.
         logger.warning(
-            "ABCBlockSplitter disabled: %d pending splits skipped (see d810ng-viv)",
+            "ABCBlockSplitter disabled: %d pending splits skipped (mop_t staleness)",
             len(self.pending_splits)
         )
         self.pending_splits.clear()
@@ -312,6 +309,14 @@ class ABCBlockSplitter:
                          split_op.instruction_ea, split_op.block_serial)
             return []
 
+        # Collect instructions to copy NOW (at apply time, not during analysis)
+        # This avoids stale pointer bugs from storing minsn_t references
+        instructions_to_copy = []
+        tail_inst = dispatcher_father.tail
+        while tail_inst is not None and tail_inst.dstr() != curr_inst.dstr():
+            instructions_to_copy.append(tail_inst)
+            tail_inst = tail_inst.prev
+
         # Remove goto if present
         if dispatcher_father.tail is not None and dispatcher_father.tail.opcode == ida_hexrays.m_goto:
             dispatcher_father.remove_from_block(dispatcher_father.tail)
@@ -334,7 +339,7 @@ class ABCBlockSplitter:
 
         # Copy instructions to both new blocks
         ea = split_op.instruction_ea
-        for inst in split_op.instructions_to_copy:
+        for inst in instructions_to_copy:
             insert_inst0 = ida_hexrays.minsn_t(inst)
             insert_inst1 = ida_hexrays.minsn_t(inst)
             insert_inst0.setaddr(ea)
