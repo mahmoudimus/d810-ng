@@ -19,6 +19,7 @@ import ida_hexrays
 
 from d810.core import getLogger
 from d810.hexrays.cfg_utils import safe_verify
+from d810.hexrays.hexrays_helpers import dup_mop
 
 logger = getLogger("D810.abc_splitter")
 
@@ -170,16 +171,16 @@ class ABCBlockSplitter:
     ) -> tuple[int, ida_hexrays.mop_t, ida_hexrays.mop_t, int] | None:
         """Extract pattern from sub instruction."""
         if sub_instruction.l.t == ida_hexrays.mop_d:
-            compare_mop_right = ida_hexrays.mop_t(sub_instruction.r)
+            compare_mop_right = dup_mop(sub_instruction.r)
             sub_sub_instruction = sub_instruction.l.d
             if sub_sub_instruction.opcode == ida_hexrays.m_or:
                 if sub_sub_instruction.r.t == 2:  # mop_n (number)
                     cnst = sub_sub_instruction.r.signed_value() >> 32
-                    compare_mop_left = ida_hexrays.mop_t(sub_sub_instruction.l)
+                    compare_mop_left = dup_mop(sub_sub_instruction.l)
                     return (cnst, compare_mop_left, compare_mop_right, ida_hexrays.m_sub)
 
         elif sub_instruction.l.t == ida_hexrays.mop_n:
-            compare_mop_right = ida_hexrays.mop_t(sub_instruction.r)
+            compare_mop_right = dup_mop(sub_instruction.r)
             cnst = sub_instruction.l.signed_value() >> 32
             compare_mop_left = ida_hexrays.mop_t()
             compare_mop_left.make_number(
@@ -206,15 +207,15 @@ class ABCBlockSplitter:
         if target_instruction.opcode in [ida_hexrays.m_add, ida_hexrays.m_sub]:
             if target_instruction.r.t == 2:  # mop_n
                 cnst = target_instruction.r.signed_value()
-                compare_mop = ida_hexrays.mop_t(target_instruction.l)
+                compare_mop = dup_mop(target_instruction.l)
             elif target_instruction.l.t == 2:  # mop_n
                 cnst = target_instruction.l.signed_value()
-                compare_mop = ida_hexrays.mop_t(target_instruction.r)
+                compare_mop = dup_mop(target_instruction.r)
 
         elif target_instruction.opcode in [ida_hexrays.m_or, ida_hexrays.m_xor]:
             if target_instruction.r.t == 2:  # mop_n
                 cnst = target_instruction.r.signed_value()
-                compare_mop = ida_hexrays.mop_t(target_instruction.l)
+                compare_mop = dup_mop(target_instruction.l)
 
         if cnst is not None and compare_mop is not None:
             return (cnst, compare_mop, target_instruction.opcode)
@@ -226,25 +227,9 @@ class ABCBlockSplitter:
         Apply all pending block splits.
 
         Returns the total number of splits applied.
-
-        NOTE: Still disabled due to stale pointer bugs. The instructions_to_copy
-        issue was fixed (now collected at apply time), but compare_mop_left and
-        compare_mop_right mop_t objects may also become stale between analysis
-        and apply phases. A full fix requires serializing mop_t data.
-        See d810ng-ury for details.
         """
         if not self.pending_splits:
             return 0
-
-        # DISABLED: While the instructions_to_copy stale pointer bug is fixed,
-        # the compare_mop_* mop_t objects stored during analysis can also become
-        # stale. A full fix requires serializing mop_t operand data.
-        logger.warning(
-            "ABCBlockSplitter disabled: %d pending splits skipped (mop_t staleness)",
-            len(self.pending_splits)
-        )
-        self.pending_splits.clear()
-        return 0
 
         logger.info("Applying %d ABC block splits", len(self.pending_splits))
 
