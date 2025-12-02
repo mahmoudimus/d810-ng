@@ -213,7 +213,7 @@ def _get_fired_rules(
 
     # Get rule executions from stats
     if hasattr(stats, "rule_executions"):
-        for execution in stats.rule_executions:
+        for execution in stats.rule_executions.values():
             if function_name and hasattr(execution, "function_name"):
                 if execution.function_name != function_name:
                     continue
