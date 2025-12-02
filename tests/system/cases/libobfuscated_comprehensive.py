@@ -35,6 +35,7 @@ MANUALLY_OBFUSCATED_CASES = [
         project="default_instruction_only.json",
         obfuscated_contains=["0x222E69C2", "0x50211120"],
         acceptable_patterns=["0x222E69C0", "0xD32B5931", "0xA29"],
+        must_change=True,  # Original test explicitly requires code change
     ),
     DeobfuscationCase(
         function="test_opaque_predicate",
@@ -42,6 +43,7 @@ MANUALLY_OBFUSCATED_CASES = [
         project="example_libobfuscated.json",
         obfuscated_contains=["v4", "v3"],
         deobfuscated_contains=["= 1;"],
+        must_change=True,  # Original test explicitly requires code change
     ),
     DeobfuscationCase(
         function="test_xor",
@@ -50,6 +52,7 @@ MANUALLY_OBFUSCATED_CASES = [
         # Obfuscated code has MBA patterns with & and - operators
         obfuscated_contains=["&", "-", "2 *"],
         deobfuscated_contains=["^"],  # Should simplify to XOR
+        must_change=True,  # Original test explicitly requires code change
     ),
     DeobfuscationCase(
         function="test_or",
@@ -57,6 +60,7 @@ MANUALLY_OBFUSCATED_CASES = [
         project="example_libobfuscated.json",
         obfuscated_contains=["^", "&"],
         deobfuscated_contains=["|"],
+        must_change=True,  # Original test explicitly requires code change
     ),
     DeobfuscationCase(
         function="test_and",
@@ -64,6 +68,7 @@ MANUALLY_OBFUSCATED_CASES = [
         project="example_libobfuscated.json",
         obfuscated_contains=["^", "|"],
         deobfuscated_contains=["&"],
+        must_change=True,  # Original test explicitly requires code change
     ),
     DeobfuscationCase(
         function="test_neg",
@@ -426,10 +431,12 @@ TIGRESS_CASES = [
         function="tigress_minmaxarray",
         description="Tigress flattened min/max array search",
         project="example_libobfuscated.json",
-        # Tigress uses while loops or switch for flattening
-        obfuscated_contains=["while"],
-        # Note: Tigress unflattening may not match current rules
-        must_change=False,
+        # Tigress uses switch/case state machine (not while loops)
+        # Original test: expects 10+ case statements, reduced after deobfuscation
+        obfuscated_contains=["switch", "case"],
+        # Must restore natural control flow (for/if instead of switch cases)
+        deobfuscated_contains=["for ("],
+        must_change=True,  # Original test: case_count_after < case_count_before
     ),
 ]
 
