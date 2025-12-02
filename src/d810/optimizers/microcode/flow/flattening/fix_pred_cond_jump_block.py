@@ -7,10 +7,16 @@ Performance optimizations (merged from v2):
 1. Cache predecessor analysis results - avoids re-tracing same paths
 2. Lazy logging - avoid formatting strings when logging disabled
 3. State var repr caching - avoid repeated string formatting
+
+Architecture:
+Uses deferred CFG modification pattern to avoid race conditions.
+All analysis happens first, then modifications are applied atomically.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+from enum import Enum, auto
 from typing import Optional
 
 import ida_hexrays
@@ -23,6 +29,7 @@ from d810.hexrays.cfg_utils import (
     safe_verify,
     update_blk_successor,
 )
+from d810.hexrays.deferred_modifier import DeferredGraphModifier
 from d810.hexrays.hexrays_formatters import dump_microcode_for_debug, format_minsn_t
 from d810.hexrays.tracker import MopTracker
 from d810.optimizers.microcode.flow.flattening.dispatcher_detection import (
@@ -139,10 +146,32 @@ def clear_cache() -> None:
     _pred_analysis_cache = PredecessorAnalysisCache()
 
 
+class PredecessorModificationType(Enum):
+    """Type of modification to apply to a predecessor."""
+    ALWAYS_TAKEN = auto()  # Jump is always taken -> redirect to jump target
+    NEVER_TAKEN = auto()   # Jump is never taken -> redirect to fallthrough
+
+
+@dataclass
+class PredecessorModification:
+    """Represents a queued modification for a predecessor of a conditional block."""
+    mod_type: PredecessorModificationType
+    pred_serial: int          # Predecessor block to modify
+    cond_block_serial: int    # The conditional block being analyzed
+    target_serial: int        # Target serial to redirect to
+    description: str = ""
+
+
 class FixPredecessorOfConditionalJumpBlock(GenericUnflatteningRule):
     """Detect if a predecessor of a conditional block always takes the same path and patch it.
 
     Works for O-LLVM style control flow flattening.
+
+    Architecture:
+    Uses deferred modification pattern:
+    1. analyze_blk() queues all needed modifications (stores only serials)
+    2. _apply_queued_modifications() applies them after analysis completes
+    3. No live pointers stored across CFG modifications
     """
 
     DESCRIPTION = "Detect if a predecessor of a conditional block always takes the same path and patch it (works for O-LLVM style control flow flattening)"
@@ -156,6 +185,8 @@ class FixPredecessorOfConditionalJumpBlock(GenericUnflatteningRule):
     def __init__(self):
         super().__init__()
         self._state_var_repr_cache: dict[int, str] = {}  # blk_serial -> repr
+        self._pending_modifications: list[PredecessorModification] = []
+        self._modifier: Optional[DeferredGraphModifier] = None
 
     def _get_state_var_repr(self, blk: ida_hexrays.mblock_t) -> str:
         """Get cached string representation of the state variable being compared."""
@@ -372,7 +403,10 @@ class FixPredecessorOfConditionalJumpBlock(GenericUnflatteningRule):
         return pred_jmp_always_taken, pred_jmp_never_taken, pred_jmp_unk
 
     def analyze_blk(self, blk: ida_hexrays.mblock_t) -> int:
-        """Analyze a block and patch predecessors with known jump outcomes."""
+        """Analyze a block and queue modifications for predecessors with known jump outcomes.
+
+        Returns the number of modifications queued.
+        """
         if blk.tail is None or blk.tail.opcode not in JMP_OPCODE_HANDLED:
             return 0
         if blk.tail.r.t != ida_hexrays.mop_n:
@@ -400,60 +434,211 @@ class FixPredecessorOfConditionalJumpBlock(GenericUnflatteningRule):
                 len(pred_jmp_unk)
             )
 
-        nb_change = 0
+        nb_queued = 0
 
-        # Patch always-taken predecessors
-        if pred_jmp_always_taken:
+        # Queue modifications for always-taken predecessors
+        # Target: conditional jump target (blk.tail.d.b)
+        for pred_blk in pred_jmp_always_taken:
+            self._pending_modifications.append(PredecessorModification(
+                mod_type=PredecessorModificationType.ALWAYS_TAKEN,
+                pred_serial=pred_blk.serial,
+                cond_block_serial=blk.serial,
+                target_serial=blk.tail.d.b,  # Jump target
+                description=f"pred {pred_blk.serial} always takes jump in block {blk.serial}"
+            ))
+            nb_queued += 1
+
+            if unflat_logger.isEnabledFor(10):  # DEBUG level
+                unflat_logger.debug(
+                    "Queued ALWAYS_TAKEN: pred %d -> cond block %d -> target %d",
+                    pred_blk.serial, blk.serial, blk.tail.d.b
+                )
+
+        # Queue modifications for never-taken predecessors
+        # Target: fallthrough (blk.serial + 1)
+        for pred_blk in pred_jmp_never_taken:
+            self._pending_modifications.append(PredecessorModification(
+                mod_type=PredecessorModificationType.NEVER_TAKEN,
+                pred_serial=pred_blk.serial,
+                cond_block_serial=blk.serial,
+                target_serial=blk.serial + 1,  # Fallthrough
+                description=f"pred {pred_blk.serial} never takes jump in block {blk.serial}"
+            ))
+            nb_queued += 1
+
+            if unflat_logger.isEnabledFor(10):  # DEBUG level
+                unflat_logger.debug(
+                    "Queued NEVER_TAKEN: pred %d -> cond block %d -> fallthrough %d",
+                    pred_blk.serial, blk.serial, blk.serial + 1
+                )
+
+        return nb_queued
+
+    def _apply_queued_modifications(self) -> int:
+        """Apply all queued predecessor modifications.
+
+        Returns the number of modifications successfully applied.
+        """
+        if not self._pending_modifications:
+            return 0
+
+        if unflat_logger.isEnabledFor(20):  # INFO level
+            unflat_logger.info(
+                "Applying %d queued predecessor modifications",
+                len(self._pending_modifications)
+            )
+
+        applied_count = 0
+
+        # Group modifications by conditional block for better debugging
+        mods_by_cond_block: dict[int, list[PredecessorModification]] = {}
+        for mod in self._pending_modifications:
+            if mod.cond_block_serial not in mods_by_cond_block:
+                mods_by_cond_block[mod.cond_block_serial] = []
+            mods_by_cond_block[mod.cond_block_serial].append(mod)
+
+        # Process each conditional block's modifications
+        for cond_block_serial, mods in mods_by_cond_block.items():
+            # Re-fetch the conditional block (fresh pointer)
+            cond_blk = self.mba.get_mblock(cond_block_serial)
+            if cond_blk is None:
+                unflat_logger.warning(
+                    "Conditional block %d not found, skipping %d modifications",
+                    cond_block_serial, len(mods)
+                )
+                continue
+
             if self.dump_intermediate_microcode:
                 dump_microcode_for_debug(
                     self.mba, self.log_dir,
-                    f"{self.cur_maturity_pass}_{blk.serial}_before_jmp_always_fix"
+                    f"{self.cur_maturity_pass}_{cond_block_serial}_before_pred_fix"
                 )
 
-            for pred_blk in pred_jmp_always_taken:
-                new_jmp_block, _ = duplicate_block(blk)
-                make_2way_block_goto(new_jmp_block, blk.tail.d.b)
-                update_blk_successor(pred_blk, blk.serial, new_jmp_block.serial)
+            # Apply modifications for this conditional block
+            for mod in mods:
+                try:
+                    if self._apply_single_modification(mod, cond_blk):
+                        applied_count += 1
+                except Exception as e:
+                    unflat_logger.error(
+                        "Exception applying modification %s: %s",
+                        mod.description, e
+                    )
+                    import traceback
+                    unflat_logger.error("Traceback: %s", traceback.format_exc())
 
             if self.dump_intermediate_microcode:
                 dump_microcode_for_debug(
                     self.mba, self.log_dir,
-                    f"{self.cur_maturity_pass}_{blk.serial}_after_jmp_always_fix"
+                    f"{self.cur_maturity_pass}_{cond_block_serial}_after_pred_fix"
                 )
 
-            nb_change += len(pred_jmp_always_taken)
+        # Clear pending modifications after applying
+        self._pending_modifications.clear()
 
-        # Patch never-taken predecessors
-        if pred_jmp_never_taken:
-            if self.dump_intermediate_microcode:
-                dump_microcode_for_debug(
-                    self.mba, self.log_dir,
-                    f"{self.cur_maturity_pass}_{blk.serial}_before_jmp_never_fix"
+        if unflat_logger.isEnabledFor(20):  # INFO level
+            unflat_logger.info(
+                "Applied %d predecessor modifications successfully",
+                applied_count
+            )
+
+        return applied_count
+
+    def _apply_single_modification(
+        self,
+        mod: PredecessorModification,
+        cond_blk: ida_hexrays.mblock_t
+    ) -> bool:
+        """Apply a single predecessor modification.
+
+        Args:
+            mod: The modification to apply
+            cond_blk: Fresh pointer to the conditional block
+
+        Returns:
+            True if successful, False otherwise
+        """
+        # Re-fetch predecessor block (fresh pointer)
+        pred_blk = self.mba.get_mblock(mod.pred_serial)
+        if pred_blk is None:
+            unflat_logger.warning(
+                "Predecessor block %d not found for modification %s",
+                mod.pred_serial, mod.description
+            )
+            return False
+
+        if unflat_logger.isEnabledFor(10):  # DEBUG level
+            unflat_logger.debug(
+                "Applying modification: %s (pred %d -> cond %d -> target %d)",
+                mod.mod_type.name, mod.pred_serial,
+                mod.cond_block_serial, mod.target_serial
+            )
+
+        try:
+            # Duplicate the conditional block
+            new_jmp_block, _ = duplicate_block(cond_blk)
+
+            # Convert 2-way block to 1-way goto pointing to target
+            if not make_2way_block_goto(new_jmp_block, mod.target_serial):
+                unflat_logger.warning(
+                    "Failed to convert block %d to goto %d",
+                    new_jmp_block.serial, mod.target_serial
+                )
+                return False
+
+            # Update predecessor to point to new block instead of original conditional block
+            if not update_blk_successor(pred_blk, mod.cond_block_serial, new_jmp_block.serial):
+                unflat_logger.warning(
+                    "Failed to update predecessor %d: %d -> %d",
+                    mod.pred_serial, mod.cond_block_serial, new_jmp_block.serial
+                )
+                return False
+
+            if unflat_logger.isEnabledFor(10):  # DEBUG level
+                unflat_logger.debug(
+                    "Successfully applied: created block %d, redirected pred %d",
+                    new_jmp_block.serial, mod.pred_serial
                 )
 
-            for pred_blk in pred_jmp_never_taken:
-                new_jmp_block, _ = duplicate_block(blk)
-                make_2way_block_goto(new_jmp_block, blk.serial + 1)
-                update_blk_successor(pred_blk, blk.serial, new_jmp_block.serial)
+            return True
 
-            if self.dump_intermediate_microcode:
-                dump_microcode_for_debug(
-                    self.mba, self.log_dir,
-                    f"{self.cur_maturity_pass}_{blk.serial}_after_jmp_never_fix"
-                )
-
-            nb_change += len(pred_jmp_never_taken)
-
-        return nb_change
+        except Exception as e:
+            unflat_logger.error(
+                "Exception in _apply_single_modification for %s: %s",
+                mod.description, e
+            )
+            return False
 
     def optimize(self, blk: ida_hexrays.mblock_t) -> int:
-        """Main optimization entry point."""
+        """Main optimization entry point.
+
+        Architecture:
+        1. Clear pending modifications from previous pass
+        2. Check if rule should be used
+        3. Analyze block and queue modifications
+        4. Apply all queued modifications atomically
+        5. Clean up and verify
+        """
         self.mba = blk.mba
+
+        # Initialize modifier if needed
+        if self._modifier is None:
+            self._modifier = DeferredGraphModifier(self.mba)
+
+        # Clear pending modifications from previous pass
+        self._pending_modifications.clear()
 
         if not self.check_if_rule_should_be_used(blk):
             return 0
 
-        self.last_pass_nb_patch_done = self.analyze_blk(blk)
+        # Phase 1: Analysis - queue all modifications
+        nb_queued = self.analyze_blk(blk)
+
+        if nb_queued == 0:
+            return 0
+
+        # Phase 2: Apply - execute all modifications
+        self.last_pass_nb_patch_done = self._apply_queued_modifications()
 
         if self.last_pass_nb_patch_done > 0:
             # Invalidate cache after CFG modification
