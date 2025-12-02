@@ -224,40 +224,62 @@ class ABCBlockSplitter:
 
     def apply(self) -> int:
         """
-        Apply all pending block splits.
+        Apply all pending block splits with iterative re-analysis.
 
-        Returns the total number of splits applied.
+        This method applies splits in passes to handle newly created blocks:
+        1. Apply all pending splits
+        2. Analyze newly created blocks
+        3. If new patterns found, repeat from step 1
+
+        Returns the total number of splits applied across all passes.
+
+        NOTE: This uses an iterative approach instead of recursion to prevent
+        stack overflow and make the control flow more explicit.
         """
         if not self.pending_splits:
             return 0
 
-        logger.info("Applying %d ABC block splits", len(self.pending_splits))
-
         total_applied = 0
-        newly_created_blocks: list[ida_hexrays.mblock_t] = []
+        pass_num = 0
 
-        # Apply splits in order
-        for split_op in self.pending_splits:
-            try:
-                new_blocks = self._apply_single_split(split_op)
-                if new_blocks:
-                    newly_created_blocks.extend(new_blocks)
-                    total_applied += 1
-            except Exception as e:
-                logger.error("Failed to apply split for block %d: %s",
-                           split_op.block_serial, e)
+        # Iterative approach: keep processing until no new splits are found
+        while self.pending_splits:
+            pass_num += 1
+            current_batch_size = len(self.pending_splits)
+            logger.info(
+                "ABC splitter pass %d: applying %d block splits",
+                pass_num, current_batch_size
+            )
 
-        # Clear pending after applying
-        self.pending_splits.clear()
+            newly_created_blocks: list[ida_hexrays.mblock_t] = []
 
-        # Recursively analyze newly created blocks
-        if newly_created_blocks:
-            for new_block in newly_created_blocks:
-                self.analyze_block(new_block)
+            # Apply all splits in current batch
+            for split_op in self.pending_splits:
+                try:
+                    new_blocks = self._apply_single_split(split_op)
+                    if new_blocks:
+                        newly_created_blocks.extend(new_blocks)
+                        total_applied += 1
+                except Exception as e:
+                    logger.error("Failed to apply split for block %d: %s",
+                               split_op.block_serial, e)
 
-            if self.pending_splits:
-                total_applied += self.apply()  # Recursive apply
+            # Clear pending after applying this batch
+            self.pending_splits.clear()
 
+            # Analyze newly created blocks to find more patterns
+            if newly_created_blocks:
+                logger.debug(
+                    "Analyzing %d newly created blocks for ABC patterns",
+                    len(newly_created_blocks)
+                )
+                for new_block in newly_created_blocks:
+                    self.analyze_block(new_block)
+
+            # Loop continues if new patterns were found during analysis
+
+        logger.info("ABC splitter completed: %d total splits in %d passes",
+                   total_applied, pass_num)
         return total_applied
 
     def _apply_single_split(
