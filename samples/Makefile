@@ -102,6 +102,20 @@ ifeq ($(HOST_OS),windows)
     endif
 endif
 
+# Check if we should use Docker for Windows builds
+USE_DOCKER := 0
+ifeq ($(TARGET_OS),windows)
+    ifneq ($(USING_CLANG_CL),1)
+        MINGW_SYSROOT ?=
+        ifeq ($(MINGW_SYSROOT),)
+            # Check if docker is available
+            ifneq ($(shell command -v docker 2>/dev/null),)
+                USE_DOCKER := 1
+            endif
+        endif
+    endif
+endif
+
 # Target-specific compiler/linker selection
 ifeq ($(TARGET_OS),windows)
     ifneq ($(USING_CLANG_CL),1)
@@ -115,34 +129,33 @@ ifeq ($(TARGET_OS),windows)
         LD  := $(CC_BASE) --target=$(TRIPLE) -fuse-ld=lld
         MINGW_SYSROOT ?=
         ifeq ($(MINGW_SYSROOT),)
-            $(warning [Makefile] No MinGW / Windows sysroot specified (MINGW_SYSROOT is empty))
-            $(warning [Makefile] To cross-compile to Windows from macOS/Linux you must first install a Windows toolchain.)
-            # Host-specific hints
-            ifeq ($(HOST_OS),darwin)
-                $(warning [Makefile] Detected host: macOS (Darwin). Example setup with Homebrew:)
-                $(warning [Makefile]   brew install llvm-mingw)
-                $(warning [Makefile] Then build with:)
-                $(warning [Makefile]   make TARGET_OS=windows MINGW_SYSROOT=$$(brew --prefix llvm-mingw))
-            else ifeq ($(HOST_OS),linux)
-                $(warning [Makefile] Detected host: Linux. Example setup on Debian/Ubuntu:)
-                $(warning [Makefile]   sudo apt-get update && sudo apt-get install -y mingw-w64)
-                $(warning [Makefile] Then point MINGW_SYSROOT at the MinGW prefix (e.g. /usr or /usr/x86_64-w64-mingw32).)
-                $(warning [Makefile]   make TARGET_OS=windows MINGW_SYSROOT=/usr)
+            # Only show warnings if we're actually building (not just cleaning)
+            ifeq ($(filter clean,$(MAKECMDGOALS)),)
+                ifeq ($(USE_DOCKER),0)
+                    $(warning [Makefile] No MinGW / Windows sysroot specified (MINGW_SYSROOT is empty))
+                    $(warning [Makefile] To cross-compile to Windows from macOS/Linux you must first install a Windows toolchain.)
+                    # Host-specific hints
+                    ifeq ($(HOST_OS),darwin)
+                        $(warning [Makefile] Detected host: macOS (Darwin). Example setup with Homebrew:)
+                        $(warning [Makefile]   brew install llvm-mingw)
+                        $(warning [Makefile] Then build with:)
+                        $(warning [Makefile]   make TARGET_OS=windows MINGW_SYSROOT=$$(brew --prefix llvm-mingw))
+                    else ifeq ($(HOST_OS),linux)
+                        $(warning [Makefile] Detected host: Linux. Example setup on Debian/Ubuntu:)
+                        $(warning [Makefile]   sudo apt-get update && sudo apt-get install -y mingw-w64)
+                        $(warning [Makefile] Then point MINGW_SYSROOT at the MinGW prefix (e.g. /usr or /usr/x86_64-w64-mingw32).)
+                        $(warning [Makefile]   make TARGET_OS=windows MINGW_SYSROOT=/usr)
+                    endif
+                    $(warning [Makefile] ------------------------------------------------------------)
+                    $(warning [Makefile] NOTE: This Makefile is used for decompilation samples.)
+                    $(warning [Makefile] If you only need the sample to compile, you may simply remove)
+                    $(warning [Makefile] or comment out the offending '#include <stdlib.h>' (or similar))
+                    $(warning [Makefile] in the generated C file. Most samples do not actually need it.)
+                    $(warning [Makefile] ------------------------------------------------------------)
+                    $(warning [Makefile] Continuing without a sysroot — Clang may still fail later when)
+                    $(warning [Makefile] attempting to include Windows headers like <stdlib.h>.)
+                endif
             endif
-            # Docker hint if available
-            ifneq ($(shell command -v docker 2>/dev/null),)
-                $(warning [Makefile] Detected 'docker' in PATH. As an alternative, you can build inside a container:)
-                $(warning [Makefile]   make docker-windows-dockerfile)
-                $(warning [Makefile] This will create Dockerfile.windows with a minimal clang+mingw-w64 environment.)
-            endif
-            $(warning [Makefile] ------------------------------------------------------------)
-            $(warning [Makefile] NOTE: This Makefile is used for decompilation samples.)
-            $(warning [Makefile] If you only need the sample to compile, you may simply remove)
-            $(warning [Makefile] or comment out the offending '#include <stdlib.h>' (or similar))
-            $(warning [Makefile] in the generated C file. Most samples do not actually need it.)
-            $(warning [Makefile] ------------------------------------------------------------)
-            $(warning [Makefile] Continuing without a sysroot — Clang may still fail later when)
-            $(warning [Makefile] attempting to include Windows headers like <stdlib.h>.)
         else
             CC := $(CC) --sysroot=$(MINGW_SYSROOT)
             LD := $(LD) --sysroot=$(MINGW_SYSROOT)
@@ -228,9 +241,16 @@ SRCS := $(wildcard src/c/*.c)
 OBJS := $(SRCS:.c=.o)
 
 # ----------------------------- Rules -----------------------------
-.PHONY: all clean docker-windows-dockerfile test-all-platforms
+.PHONY: all clean docker-windows-dockerfile docker-windows-setup docker-windows-build test-all-platforms
 
+# If using Docker, intercept and run in container
+ifeq ($(USE_DOCKER),1)
+all: docker-windows-setup
+	@echo "[Makefile] Using Docker for Windows cross-compilation..."
+	@docker run --rm -v "$$PWD":/work win-build sh -c "make clean && make TARGET_OS=windows BUILD_ARCH=$(BUILD_ARCH) BINARY_NAME=$(BINARY_NAME) NIX_DEBUG_SYMBOLS=$(NIX_DEBUG_SYMBOLS)"
+else
 all: bins $(TARGET_LIB)
+endif
 
 bins:
 	@$(MKDIR) bins >/dev/null 2>&1 || $(MKDIR) bins
@@ -298,6 +318,19 @@ docker-windows-dockerfile:
 	@echo "  docker build -t win-build -f Dockerfile.windows ."
 	@echo "Then run your Windows build with:"
 	@echo "  docker run --rm -v \"$$PWD\":/work win-build"
+
+# ---------------------------------------------------------------------------
+# Auto-setup Docker for Windows builds
+# ---------------------------------------------------------------------------
+docker-windows-setup: docker-windows-dockerfile
+	@if ! docker images -q win-build 2>/dev/null | grep -q .; then \
+		echo "[Makefile] Building Docker image 'win-build' (this may take a few minutes on first run)..."; \
+		docker build -t win-build -f Dockerfile.windows . > /dev/null 2>&1 || \
+		(echo "[Makefile] Error: Failed to build Docker image. Check Dockerfile.windows and try again." && exit 1); \
+		echo "[Makefile] ✓ Docker image 'win-build' ready."; \
+	else \
+		echo "[Makefile] ✓ Docker image 'win-build' already exists."; \
+	fi
 
 # ---------------------------------------------------------------------------
 # Build and test all platforms
