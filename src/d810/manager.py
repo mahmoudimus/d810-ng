@@ -43,6 +43,8 @@ from d810.hexrays.hexrays_hooks import (
 from d810.optimizers.caching import MOP_CONSTANT_CACHE, MOP_TO_AST_CACHE
 from d810.optimizers.microcode.flow.handler import FlowOptimizationRule
 from d810.optimizers.microcode.instructions.handler import InstructionOptimizationRule
+from d810.mba.rules import VerifiableRule
+from d810.mba.backends.ida import adapt_rules
 
 # Import GUI only when needed (not in headless/test mode)
 if idaapi.is_idaq():
@@ -399,14 +401,22 @@ class D810State(metaclass=SingletonMeta):
 
         # Build lists of available rules, skipping abstract / hidden ones.
         # Traditional rules come from InstructionOptimizationRule.registry.
-        # Verifiable rules (from RULE_REGISTRY) are injected directly into
-        # PatternOptimizer at construction time in InstructionOptimizerManager,
-        # so they don't need to be merged here.
         self.known_ins_rules = [
             rule_cls()
             for rule_cls in InstructionOptimizationRule.registry.values()
             if not inspect.isabstract(rule_cls)
         ]
+
+        # Add pattern-matching rules from VerifiableRule.registry
+        # These are adapted to work with IDA's optimization system
+        verifiable_instances = VerifiableRule.instantiate_all()
+        verifiable_adapted = adapt_rules(verifiable_instances)
+        self.known_ins_rules.extend(verifiable_adapted)
+        logger.debug(
+            "Loaded %d traditional rules and %d pattern matching rules",
+            len(self.known_ins_rules) - len(verifiable_adapted),
+            len(verifiable_adapted)
+        )
 
         self.known_blk_rules = [
             rule_cls()
