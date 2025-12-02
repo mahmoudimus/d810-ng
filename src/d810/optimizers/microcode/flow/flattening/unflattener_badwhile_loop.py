@@ -114,12 +114,16 @@ class BadWhileLoopInfo(GenericDispatcherInfo):
     def _collect_exit_blocks(self, blk, min_constant, max_constant):
         """Collect dispatcher exit blocks and their associated comparison values.
 
-        Strict pattern: entry jz/jnz + prevb mov + nextb jz/jnz (all with magic constants)
+        Relaxed pattern for ABC support:
+        - entry jz/jnz and nextb jz/jnz MUST have magic constants
+        - prevb mov with magic constant is OPTIONAL (adds Exit 2 if present)
+
+        Minimum 2 exits are collected from nextb (jump target + fall-through).
         """
         # Get entry block constant
         entry_const = self._get_jump_constant(blk.tail)
 
-        # Get previous block constant (from mov instruction)
+        # Get previous block constant (from mov instruction) - optional for ABC
         prevb_const = None
         if blk.prevb and blk.prevb.tail and blk.prevb.tail.opcode == ida_hexrays.m_mov:
             if blk.prevb.tail.l and blk.prevb.tail.l.t == ida_hexrays.mop_n:
@@ -130,10 +134,9 @@ class BadWhileLoopInfo(GenericDispatcherInfo):
         if blk.nextb and blk.nextb.tail and self._is_conditional_jump(blk.nextb.tail.opcode):
             nextb_const = self._get_jump_constant(blk.nextb.tail)
 
-        # All three must have magic constants (strict pattern)
+        # Entry and nextb MUST have magic constants
         if not (
             self._is_constant_in_range(entry_const, min_constant, max_constant)
-            and self._is_constant_in_range(prevb_const, min_constant, max_constant)
             and self._is_constant_in_range(nextb_const, min_constant, max_constant)
         ):
             return
@@ -153,17 +156,23 @@ class BadWhileLoopInfo(GenericDispatcherInfo):
             self.dispatcher_exit_blocks.append(exit_block1)
             self.comparison_values.append(entry_const)
 
-        # Exit 2: prevb (the mov block itself acts as an exit path)
-        exit_block2 = BadWhileLoopBlockInfo(
-            blk.mba.get_mblock(blk.prevb.serial), self.entry_block
-        )
-        self.dispatcher_exit_blocks.append(exit_block2)
-        self.comparison_values.append(prevb_const)
-
-        unflat_logger.debug(
-            "Block %d: strict pattern matched, %d exits",
-            blk.serial, len(self.dispatcher_exit_blocks)
-        )
+        # Exit 2: prevb (OPTIONAL - only if it has magic constant)
+        # This is the original "Approov-style" pattern; ABC patterns skip this
+        if blk.prevb and self._is_constant_in_range(prevb_const, min_constant, max_constant):
+            exit_block2 = BadWhileLoopBlockInfo(
+                blk.mba.get_mblock(blk.prevb.serial), self.entry_block
+            )
+            self.dispatcher_exit_blocks.append(exit_block2)
+            self.comparison_values.append(prevb_const)
+            unflat_logger.debug(
+                "Block %d: full pattern matched (3 exits with prevb)",
+                blk.serial
+            )
+        else:
+            unflat_logger.debug(
+                "Block %d: ABC pattern matched (2 exits without prevb)",
+                blk.serial
+            )
 
     def _is_conditional_jump(self, opcode):
         """Check if opcode is a conditional jump we support."""
@@ -197,11 +206,14 @@ class BadWhileLoopInfo(GenericDispatcherInfo):
     def _is_candidate_for_dispatcher_entry_block(self, blk, min_constant, max_constant):
         """Check if block could be a dispatcher entry.
 
-        Pattern requirements (strict matching):
+        Pattern requirements:
         1. Block ends with conditional jump (jz/jnz/jle/jge/jl/jg)
         2. Jump compares against constant in magic range (0xF6000-0xF6FFF)
-        3. Previous block ends with mov #magic, reg (constant in range)
-        4. Next block ends with conditional jump with constant in range
+        3. Next block ends with conditional jump with constant in range
+        4. Previous block with mov #magic, reg is OPTIONAL (for ABC pattern support)
+
+        The ABC patterns (from abc_f6_constants.c) may have prevb with mov #0, reg
+        instead of mov #F6xxx, reg, but entry and nextb still have F6xxx constants.
         """
         if blk.tail is None:
             return False
@@ -210,8 +222,8 @@ class BadWhileLoopInfo(GenericDispatcherInfo):
         if not self._is_conditional_jump(blk.tail.opcode):
             return False
 
-        # 2. Must have both prev and next blocks
-        if blk.nextb is None or blk.prevb is None:
+        # 2. Must have next block (prevb is optional for ABC patterns)
+        if blk.nextb is None:
             return False
 
         # 3. Jump constant must be in magic range
@@ -219,18 +231,7 @@ class BadWhileLoopInfo(GenericDispatcherInfo):
         if not self._is_constant_in_range(entry_const, min_constant, max_constant):
             return False
 
-        # 4. Previous block must have mov #magic, reg
-        if blk.prevb.tail is None:
-            return False
-        if blk.prevb.tail.opcode != ida_hexrays.m_mov:
-            return False
-        if blk.prevb.tail.l is None or blk.prevb.tail.l.t != ida_hexrays.mop_n:
-            return False
-        prevb_const = blk.prevb.tail.l.signed_value()
-        if not self._is_constant_in_range(prevb_const, min_constant, max_constant):
-            return False
-
-        # 5. Next block must have conditional jump with magic constant (strict)
+        # 4. Next block must have conditional jump with magic constant
         if blk.nextb.tail is None:
             return False
         if not self._is_conditional_jump(blk.nextb.tail.opcode):
@@ -238,6 +239,22 @@ class BadWhileLoopInfo(GenericDispatcherInfo):
         nextb_const = self._get_jump_constant(blk.nextb.tail)
         if not self._is_constant_in_range(nextb_const, min_constant, max_constant):
             return False
+
+        # 5. Optional: Check prevb for additional confidence (log if missing)
+        if blk.prevb is not None and blk.prevb.tail is not None:
+            if blk.prevb.tail.opcode == ida_hexrays.m_mov:
+                if blk.prevb.tail.l and blk.prevb.tail.l.t == ida_hexrays.mop_n:
+                    prevb_const = blk.prevb.tail.l.signed_value()
+                    if self._is_constant_in_range(prevb_const, min_constant, max_constant):
+                        unflat_logger.debug(
+                            "Block %d: prevb has magic constant 0x%X (full pattern)",
+                            blk.serial, prevb_const
+                        )
+                    else:
+                        unflat_logger.debug(
+                            "Block %d: prevb has non-magic constant 0x%X (ABC pattern)",
+                            blk.serial, prevb_const
+                        )
 
         return True
 
@@ -251,8 +268,8 @@ class BadWhileLoopInfo(GenericDispatcherInfo):
 class BadWhileLoopCollector(GenericDispatcherCollector):
     DISPATCHER_CLASS = BadWhileLoopInfo
     DEFAULT_DISPATCHER_MIN_INTERNAL_BLOCK = 1
-    DEFAULT_DISPATCHER_MIN_EXIT_BLOCK = 3
-    DEFAULT_DISPATCHER_MIN_COMPARISON_VALUE = 3
+    DEFAULT_DISPATCHER_MIN_EXIT_BLOCK = 2  # Reduced from 3 for ABC pattern support
+    DEFAULT_DISPATCHER_MIN_COMPARISON_VALUE = 2  # Reduced from 3 for ABC pattern support
     DEFAULT_MIN_CONSTANT = 0xF6000
     DEFAULT_MAX_CONSTANT = 0xF6FFF
 
