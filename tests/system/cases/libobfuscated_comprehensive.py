@@ -193,7 +193,7 @@ APPROOV_CASES = [
     DeobfuscationCase(
         function="approov_vm_dispatcher",
         description="Approov VM dispatcher using switch statement",
-        project="example_libobfuscated.json",
+        project="default_unflattening_approov.json",  # Requires Approov-specific unflattener
         deobfuscated_not_contains=["switch"],
         must_change=True,
     ),

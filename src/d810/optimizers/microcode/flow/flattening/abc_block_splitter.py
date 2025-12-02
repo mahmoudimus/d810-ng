@@ -230,9 +230,24 @@ class ABCBlockSplitter:
         Apply all pending block splits.
 
         Returns the total number of splits applied.
+
+        NOTE: Currently disabled due to CFG corruption bug - stores live minsn_t
+        pointers during analysis that become stale before apply() is called.
+        See issue d810ng-viv for details.
         """
         if not self.pending_splits:
             return 0
+
+        # DISABLED: ABCBlockSplitter has a bug where instructions_to_copy contains
+        # live minsn_t pointers that become stale after CFG modifications by other
+        # passes. This causes malformed goto references like @)(00000000000000306).
+        # Until this is fixed, skip all ABC block splits.
+        logger.warning(
+            "ABCBlockSplitter disabled: %d pending splits skipped (see d810ng-viv)",
+            len(self.pending_splits)
+        )
+        self.pending_splits.clear()
+        return 0
 
         logger.info("Applying %d ABC block splits", len(self.pending_splits))
 
