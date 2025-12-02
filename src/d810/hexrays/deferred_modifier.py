@@ -17,6 +17,174 @@ Supported modification types:
 - block_nop_insns: NOP specific instructions in a block
 - block_convert_to_goto: Convert a 2-way block to a 1-way goto
 - insn_remove: Remove a specific instruction (deferred until end)
+
+Choosing Between Deferred and Immediate Modifiers
+=================================================
+
+Use **DeferredGraphModifier** when:
+- Your optimizer iterates over multiple blocks before making changes
+- Other rules may be analyzing the same CFG concurrently
+- You need atomic "all-or-nothing" modification semantics
+- The optimizer is part of a multi-rule pass (e.g., unflattening)
+
+Use **ImmediateGraphModifier** when:
+- Changes are isolated and don't affect other blocks being analyzed
+- You need changes to be visible immediately for subsequent analysis
+- The optimizer runs in isolation (single-rule pass)
+- Performance is critical and queuing overhead is undesirable
+
+Example: Deferred Optimizer (Recommended Pattern)
+=================================================
+
+This pattern separates analysis from modification, preventing stale pointers::
+
+    from dataclasses import dataclass
+    from d810.hexrays.deferred_modifier import DeferredGraphModifier
+
+    @dataclass
+    class PendingChange:
+        '''Store only serials/EAs - NEVER live pointers.'''
+        block_serial: int
+        target_serial: int
+        description: str = ""
+
+    class MyDeferredOptimizer(GenericUnflatteningRule):
+        '''Optimizer using deferred CFG modification pattern.'''
+
+        def __init__(self):
+            super().__init__()
+            self._pending_changes: list[PendingChange] = []
+            self._modifier: DeferredGraphModifier | None = None
+
+        def optimize(self, blk: mblock_t) -> int:
+            '''Main entry point - orchestrates analyze-then-apply.'''
+            # Initialize modifier for this optimization pass
+            self._modifier = DeferredGraphModifier(self.mba)
+            self._pending_changes.clear()
+
+            # Phase 1: Analysis - queue all modifications
+            # IMPORTANT: Do NOT modify CFG here, only collect what needs changing
+            nb_queued = self.analyze_blk(blk)
+
+            if nb_queued == 0:
+                return 0
+
+            # Phase 2: Apply - execute all modifications atomically
+            return self._apply_queued_modifications()
+
+        def analyze_blk(self, blk: mblock_t) -> int:
+            '''Analyze block and queue modifications. Returns count queued.'''
+            # Store only serials, not pointers!
+            if self._should_redirect(blk):
+                self._pending_changes.append(PendingChange(
+                    block_serial=blk.serial,        # int, not mblock_t*
+                    target_serial=blk.succ(0),      # int, not mblock_t*
+                    description=f"redirect block {blk.serial}"
+                ))
+                return 1
+            return 0
+
+        def _apply_queued_modifications(self) -> int:
+            '''Apply all queued modifications with fresh pointers.'''
+            applied = 0
+            for change in self._pending_changes:
+                # Re-fetch block using serial (fresh pointer)
+                blk = self.mba.get_mblock(change.block_serial)
+                if blk is None:
+                    continue  # Block may have been removed
+
+                # Now safe to use the modifier
+                self._modifier.queue_goto_change(
+                    block_serial=change.block_serial,
+                    new_target=change.target_serial,
+                    description=change.description
+                )
+                applied += 1
+
+            # Apply all queued changes
+            if self._modifier.has_modifications():
+                return self._modifier.apply()
+            return 0
+
+Example: Immediate Optimizer (Simple Cases)
+===========================================
+
+Use this pattern only when modifications are isolated::
+
+    from d810.hexrays.deferred_modifier import ImmediateGraphModifier
+
+    class MyImmediateOptimizer(GenericUnflatteningRule):
+        '''Optimizer using immediate CFG modification pattern.
+
+        WARNING: Only use when changes don't affect other blocks being
+        analyzed in the same pass. For multi-block analysis, use
+        DeferredGraphModifier instead.
+        '''
+
+        def __init__(self):
+            super().__init__()
+            self._modifier: ImmediateGraphModifier | None = None
+
+        def optimize(self, blk: mblock_t) -> int:
+            '''Analyze and modify single block immediately.'''
+            self._modifier = ImmediateGraphModifier(self.mba)
+
+            # Analysis and modification happen together
+            if self._should_redirect(blk):
+                # Change is applied immediately
+                self._modifier.queue_goto_change(
+                    block_serial=blk.serial,
+                    new_target=self._compute_target(blk),
+                    description=f"redirect block {blk.serial}"
+                )
+
+            # Finalize (runs optimize_local, verify)
+            return self._modifier.apply()
+
+Best Practices
+==============
+
+1. **Never store live pointers across CFG modifications**::
+
+       # BAD - pointer may become stale
+       self.saved_block = blk
+       self.modify_cfg()
+       self.saved_block.tail  # CRASH: stale pointer
+
+       # GOOD - store serial, re-fetch when needed
+       self.saved_serial = blk.serial
+       self.modify_cfg()
+       fresh_blk = self.mba.get_mblock(self.saved_serial)
+
+2. **Use dup_mop() for operand copies**::
+
+       from d810.hexrays.hexrays_helpers import dup_mop
+
+       # BAD - shallow copy, shares underlying data
+       saved_op = mop_t(blk.tail.l)
+
+       # GOOD - deep copy, safe to use after CFG changes
+       saved_op = dup_mop(blk.tail.l)
+
+3. **Clear pending changes after apply**::
+
+       def _apply_queued_modifications(self) -> int:
+           result = self._modifier.apply()
+           self._pending_changes.clear()  # Prevent accidental reuse
+           return result
+
+4. **Check block existence before use**::
+
+       blk = self.mba.get_mblock(saved_serial)
+       if blk is None:
+           logger.warning("Block %d no longer exists", saved_serial)
+           return 0
+
+See Also
+========
+- ABCBlockSplitter: Reference implementation of deferred pattern
+- FixPredecessorOfConditionalJumpBlock: Another deferred pattern example
+- GenericDispatcherUnflatteningRule: Orchestrates multiple deferred rules
 """
 from __future__ import annotations
 
@@ -125,16 +293,46 @@ class DeferredGraphModifier:
     """
     Queue-based graph modifier that defers all changes until apply() is called.
 
-    Usage:
+    This is the **recommended** modifier for most optimizers. It prevents race
+    conditions by separating analysis from modification.
+
+    Basic Usage::
+
         modifier = DeferredGraphModifier(mba)
 
-        # Queue modifications during analysis
+        # Queue modifications during analysis (no CFG changes yet)
         modifier.queue_goto_change(block_serial=10, new_target=20)
         modifier.queue_convert_to_goto(block_serial=15, goto_target=25)
         modifier.queue_insn_remove(block_serial=10, insn_ea=0x1234)
 
-        # Apply all modifications at once
+        # Apply all modifications atomically
         changes = modifier.apply()
+
+    Integration with Optimizer::
+
+        class MyOptimizer(GenericUnflatteningRule):
+            def optimize(self, blk: mblock_t) -> int:
+                modifier = DeferredGraphModifier(self.mba)
+
+                # Phase 1: Analysis - collect changes
+                for serial in range(self.mba.qty):
+                    block = self.mba.get_mblock(serial)
+                    if self._needs_redirect(block):
+                        modifier.queue_goto_change(
+                            block_serial=serial,
+                            new_target=self._compute_target(block)
+                        )
+
+                # Phase 2: Apply all changes
+                return modifier.apply()
+
+    Key Features:
+        - Coalesces duplicate modifications automatically
+        - Detects conflicting modifications and warns
+        - Applies in priority order (block changes before insn removes)
+        - Runs mba.optimize_local() and safe_verify() after apply
+
+    See module docstring for complete examples and best practices.
     """
     mba: ida_hexrays.mba_t
     modifications: list[GraphModification] = field(default_factory=list)
@@ -611,19 +809,50 @@ class ImmediateGraphModifier:
     """
     Graph modifier that applies changes immediately instead of batching them.
 
+    .. warning::
+
+        Use with caution! Immediate modification can cause stale pointer bugs
+        when other rules are analyzing the same CFG. Prefer DeferredGraphModifier
+        for most use cases.
+
     This provides the same interface as DeferredGraphModifier but applies
     each modification immediately when queue_* is called. The apply() method
-    is a no-op since changes are already applied.
+    runs cleanup (optimize_local, verify) but changes are already applied.
 
-    Usage:
+    When to Use::
+
+        # SAFE: Single-block analysis, no iteration over other blocks
+        class SimplePeepholeOptimizer(GenericRule):
+            def optimize(self, blk: mblock_t) -> int:
+                modifier = ImmediateGraphModifier(self.mba)
+                if blk.tail and blk.tail.opcode == m_goto:
+                    modifier.queue_goto_change(blk.serial, optimized_target)
+                return modifier.apply()
+
+    When NOT to Use::
+
+        # UNSAFE: Multi-block iteration - use DeferredGraphModifier instead!
+        class UnsafeOptimizer(GenericRule):
+            def optimize(self, blk: mblock_t) -> int:
+                modifier = ImmediateGraphModifier(self.mba)
+                for serial in range(self.mba.qty):  # Iterating all blocks
+                    block = self.mba.get_mblock(serial)
+                    modifier.queue_goto_change(...)  # DANGER: may invalidate
+                    # blocks we haven't visited yet!
+                return modifier.apply()
+
+    Basic Usage::
+
         modifier = ImmediateGraphModifier(mba)
 
         # Modifications are applied immediately
         modifier.queue_goto_change(block_serial=10, new_target=20)
         modifier.queue_convert_to_goto(block_serial=15, goto_target=25)
 
-        # apply() is a no-op, changes already applied
+        # apply() runs cleanup, changes already applied
         modifier.apply()
+
+    See module docstring for complete examples and best practices.
     """
     mba: ida_hexrays.mba_t
     modifications_applied: int = 0
