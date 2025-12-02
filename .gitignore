@@ -67,3 +67,6 @@ src/d810/**/*.so.dSYM
 
 .env
 _indexable
+
+# Test capture database
+tests/system/.test_results.db

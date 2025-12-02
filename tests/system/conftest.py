@@ -573,3 +573,78 @@ def pytest_addoption(parser):
         default=False,
         help="Capture deobfuscation statistics to expectation files",
     )
+    parser.addoption(
+        "--capture-to-db",
+        action="store_true",
+        default=False,
+        help="Capture test results to SQLite database",
+    )
+
+
+def pytest_configure(config):
+    """Configure pytest plugins."""
+    # Register the test capture plugin if --capture-to-db is enabled
+    if config.getoption("--capture-to-db"):
+        from tests.system.test_capture import CapturePlugin
+        config.pluginmanager.register(CapturePlugin(config), "capture_plugin")
+
+
+# =============================================================================
+# Pytest Fixture - Database Capture
+# =============================================================================
+
+
+@pytest.fixture
+def db_capture(request):
+    """Fixture for manually capturing test results in tests.
+
+    Usage:
+        def test_something(self, d810_state, db_capture):
+            with d810_state() as state:
+                # ... run test ...
+                db_capture.record(
+                    function_name="test_func",
+                    code_before=before,
+                    code_after=after,
+                    stats=state.stats,
+                    passed=True
+                )
+    """
+    if not request.config.getoption("--capture-to-db", default=False):
+        # Return a no-op object if capture is disabled
+        class NoOpCapture:
+            def record(self, **kwargs):
+                pass
+        return NoOpCapture()
+
+    # Get test context
+    test_suite = pathlib.Path(request.fspath).name
+    test_name = request.node.name
+    test_class = request.cls.__name__ if request.cls else None
+    binary_name = getattr(request.cls, "binary_name", None)
+
+    class CaptureHelper:
+        """Helper for manual result capture."""
+
+        def record(
+            self,
+            function_name: str,
+            code_before: str,
+            code_after: str,
+            stats,
+            passed: bool,
+            function_address: str = None,
+            error_message: str = None,
+        ):
+            """Record a test result."""
+            # Store as user properties so pytest hooks can access
+            request.node.user_properties.append(("function_name", function_name))
+            request.node.user_properties.append(("code_before", code_before))
+            request.node.user_properties.append(("code_after", code_after))
+            request.node.user_properties.append(("stats_dict", stats.to_dict()))
+            if binary_name:
+                request.node.user_properties.append(("binary_name", binary_name))
+            if function_address:
+                request.node.user_properties.append(("function_address", function_address))
+
+    return CaptureHelper()

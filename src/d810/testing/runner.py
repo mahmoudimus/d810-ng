@@ -63,6 +63,7 @@ def run_deobfuscation_test(
     code_comparator: Optional[Any] = None,
     capture_stats: Optional[Callable] = None,
     load_expected_stats: Optional[Callable] = None,
+    db_capture: Optional[Any] = None,
 ) -> None:
     """Run a deobfuscation test case.
 
@@ -80,6 +81,7 @@ def run_deobfuscation_test(
         code_comparator: Optional CodeComparator for AST comparison.
         capture_stats: Optional function to capture statistics.
         load_expected_stats: Optional function to load expected stats.
+        db_capture: Optional database capture fixture.
 
     Raises:
         pytest.skip: If the test should be skipped.
@@ -219,6 +221,19 @@ def run_deobfuscation_test(
                         check_counts=False,
                         allow_extra_rules=True,
                     )
+
+        # ==========================================
+        # DATABASE CAPTURE: Record results if enabled
+        # ==========================================
+        if db_capture:
+            db_capture.record(
+                function_name=effective_case.function,
+                code_before=code_before,
+                code_after=code_after,
+                stats=state.stats,
+                passed=True,  # If we got here, test passed
+                function_address=hex(func_ea) if func_ea else None,
+            )
 
 
 def create_parametrized_test(
