@@ -385,6 +385,7 @@ Only if session performance becomes a bottleneck on large binaries.
 5. **Heuristics matter**: 90% predecessor check prevents cascading unreachability
 6. **Don't over-engineer**: Session-only caching was sufficient; SQLite persistence wasn't needed
 7. **Test before refactor**: Regressions without tests are silent failures
+8. **Protocols for isinstance()**: Never use `isinstance(obj, ConcreteClass)` in hot-reloadable code - class identity changes between reloads. Use `@runtime_checkable Protocol` for structural typing instead.
 
 ---
 
