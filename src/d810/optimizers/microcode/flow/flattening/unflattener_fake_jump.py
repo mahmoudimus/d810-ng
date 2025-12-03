@@ -48,6 +48,8 @@ class UnflattenerFakeJump(GenericUnflatteningRule):
             # dispatcher back-edges (loops back before finding constant assignments)
             # which are expected in flattened control flow
             resolved_histories = [h for h in pred_histories if h.is_resolved()]
+            unresolved_count = len(pred_histories) - len(resolved_histories)
+
             if len(resolved_histories) == 0:
                 # No resolved paths at all - can't determine values for this predecessor
                 unflat_logger.debug(
@@ -55,6 +57,28 @@ class UnflattenerFakeJump(GenericUnflatteningRule):
                     pred_serial,
                 )
                 continue  # Try next predecessor instead of failing entirely
+
+            # SAFETY CHECK: If unresolved paths outnumber resolved paths, bail out
+            # Z3 analysis shows ignoring unresolved paths is unsafe when they could
+            # have different state values leading to different jump outcomes.
+            # Conservative heuristic: only trust resolved paths when they're the majority.
+            if unresolved_count > len(resolved_histories):
+                unflat_logger.warning(
+                    "Pred %s has more unresolved (%d) than resolved (%d) paths - "
+                    "unsafe to ignore unresolved, skipping",
+                    pred_serial,
+                    unresolved_count,
+                    len(resolved_histories),
+                )
+                continue
+
+            if unresolved_count > 0:
+                unflat_logger.debug(
+                    "Pred %s has %d unresolved and %d resolved paths - using resolved only",
+                    pred_serial,
+                    unresolved_count,
+                    len(resolved_histories),
+                )
 
             pred_values = get_all_possibles_values(resolved_histories, [op_compared])
             pred_values = [x[0] for x in pred_values]
