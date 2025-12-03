@@ -18,7 +18,7 @@ import ida_hexrays
 
 from d810.core import getLogger
 from d810.expr.ast import AstNode, AstLeaf, AstConstant, minsn_to_ast
-from d810.mba.dsl import SymbolicExpression
+from d810.mba.dsl import SymbolicExpression, SymbolicExpressionProtocol
 from d810.mba.constraints import (
     ComparisonConstraint,
     EqualityConstraint,
@@ -235,8 +235,8 @@ class IDANodeVisitor:
         if isinstance(expr, int):
             return AstConstant(str(expr), expr)
 
-        # Ensure we have a SymbolicExpression
-        if not isinstance(expr, SymbolicExpression):
+        # Use Protocol for structural typing - survives hot reloads
+        if not isinstance(expr, SymbolicExpressionProtocol):
             raise ValueError(f"Expected SymbolicExpression, got {type(expr).__name__}")
 
         if expr.is_leaf():

@@ -14,10 +14,23 @@ Example:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from d810.mba.constraints import ConstraintExpr
+
+
+@runtime_checkable
+class SymbolicExpressionProtocol(Protocol):
+    """Protocol for structural typing of SymbolicExpression - survives hot reloads."""
+
+    operation: str | None
+    left: "SymbolicExpressionProtocol | None"
+    right: "SymbolicExpressionProtocol | None"
+    name: str | None
+    value: int | None
+
+    def is_leaf(self) -> bool: ...
 
 
 class SymbolicExpression:
