@@ -22,9 +22,99 @@ To convert constraints to Z3 for verification:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
-from .dsl import SymbolicExpression
+from .dsl import SymbolicExpression, SymbolicExpressionProtocol
+
+
+# =============================================================================
+# Protocols for hot-reload-safe isinstance() checks
+# =============================================================================
+
+
+@runtime_checkable
+class ConstraintExprProtocol(Protocol):
+    """Protocol for structural typing of ConstraintExpr - survives hot reloads.
+
+    Used for isinstance() checks that need to work after hot reload when class
+    identity changes. Any class implementing check() and eval_and_define() methods
+    is compatible with this protocol.
+    """
+
+    def check(self, candidate: dict[str, Any]) -> bool:
+        """Check if constraint holds for concrete candidate values."""
+        ...
+
+    def eval_and_define(
+        self, candidate: dict[str, Any]
+    ) -> tuple[str | None, int | None]:
+        """Try to extract a variable definition from this constraint."""
+        ...
+
+
+@runtime_checkable
+class EqualityConstraintProtocol(Protocol):
+    """Protocol for structural typing of EqualityConstraint - survives hot reloads.
+
+    Attributes accessed after isinstance() checks:
+    - left: Left-hand side expression
+    - right: Right-hand side expression
+    """
+
+    left: Any
+    right: Any
+
+
+@runtime_checkable
+class ComparisonConstraintProtocol(Protocol):
+    """Protocol for structural typing of ComparisonConstraint - survives hot reloads.
+
+    Attributes accessed after isinstance() checks:
+    - left: Left-hand side expression
+    - right: Right-hand side expression
+    - op_name: Operation name ("ne", "lt", "gt", "le", "ge")
+    """
+
+    left: Any
+    right: Any
+    op_name: str
+
+
+@runtime_checkable
+class AndConstraintProtocol(Protocol):
+    """Protocol for structural typing of AndConstraint - survives hot reloads.
+
+    Attributes accessed after isinstance() checks:
+    - left: Left constraint
+    - right: Right constraint
+    """
+
+    left: "ConstraintExprProtocol"
+    right: "ConstraintExprProtocol"
+
+
+@runtime_checkable
+class OrConstraintProtocol(Protocol):
+    """Protocol for structural typing of OrConstraint - survives hot reloads.
+
+    Attributes accessed after isinstance() checks:
+    - left: Left constraint
+    - right: Right constraint
+    """
+
+    left: "ConstraintExprProtocol"
+    right: "ConstraintExprProtocol"
+
+
+@runtime_checkable
+class NotConstraintProtocol(Protocol):
+    """Protocol for structural typing of NotConstraint - survives hot reloads.
+
+    Attributes accessed after isinstance() checks:
+    - operand: The constraint to negate
+    """
+
+    operand: "ConstraintExprProtocol"
 
 
 @dataclass
@@ -162,8 +252,9 @@ class EqualityConstraint(ConstraintExpr):
 
         # Check if this is a structural BNOT constraint: left == ~right
         # This needs special handling because we compare AST structure, not values
+        # Use Protocol for hot-reload safety
         if (
-            isinstance(self.right, SymbolicExpression)
+            isinstance(self.right, SymbolicExpressionProtocol)
             and self.right.operation == "bnot"
             and self.right.left is not None
         ):
@@ -205,8 +296,9 @@ class EqualityConstraint(ConstraintExpr):
 
         # Get the operand of the BNOT (e.g., "y" from ~y)
         bnot_operand = self.right.left
+        # Use Protocol for hot-reload safety
         if (
-            not isinstance(bnot_operand, SymbolicExpression)
+            not isinstance(bnot_operand, SymbolicExpressionProtocol)
             or not bnot_operand.is_leaf()
         ):
             logger.debug("_check_bnot_constraint: bnot_operand is not a leaf")
@@ -240,7 +332,8 @@ class EqualityConstraint(ConstraintExpr):
     def _is_simple_constant(self, expr) -> bool:
         """Check if expression is a simple constant (not compound)."""
 
-        if isinstance(expr, SymbolicExpression):
+        # Use Protocol for hot-reload safety
+        if isinstance(expr, SymbolicExpressionProtocol):
             return expr.is_leaf() and expr.name is not None
 
         return False
@@ -248,7 +341,8 @@ class EqualityConstraint(ConstraintExpr):
     def _get_name(self, expr) -> str:
         """Get the name of a constant."""
 
-        if isinstance(expr, SymbolicExpression):
+        # Use Protocol for hot-reload safety
+        if isinstance(expr, SymbolicExpressionProtocol):
             if expr.name:
                 return expr.name
             raise ValueError(f"SymbolicExpression has no name: {expr}")
@@ -266,7 +360,8 @@ class EqualityConstraint(ConstraintExpr):
             Integer result of evaluation
         """
 
-        if isinstance(expr, SymbolicExpression):
+        # Use Protocol for hot-reload safety
+        if isinstance(expr, SymbolicExpressionProtocol):
             return self._eval_symbolic_expr(expr, candidate)
 
         raise ValueError(
@@ -463,5 +558,9 @@ class NotConstraint(ConstraintExpr):
 
 
 def is_constraint_expr(obj: Any) -> bool:
-    """Check if an object is a ConstraintExpr instance."""
-    return isinstance(obj, ConstraintExpr)
+    """Check if an object is a ConstraintExpr instance.
+
+    Uses ConstraintExprProtocol for hot-reload safety - survives class identity
+    changes after plugin reload.
+    """
+    return isinstance(obj, ConstraintExprProtocol)

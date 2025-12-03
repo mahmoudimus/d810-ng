@@ -34,7 +34,16 @@ import typing
 import ida_hexrays  # noqa: F401,F403
 
 from d810.core import getLogger
-from d810.expr.ast import AstBase, AstConstant, AstLeaf, AstNode, minsn_to_ast
+from d810.expr.ast import (
+    AstBase,
+    AstConstant,
+    AstConstantProtocol,
+    AstLeaf,
+    AstLeafProtocol,
+    AstNode,
+    AstNodeProtocol,
+    minsn_to_ast,
+)
 from d810.hexrays.hexrays_formatters import format_minsn_t
 
 # Additional helpers for some rules.  These functions and tables are
@@ -252,16 +261,16 @@ def match_pattern(
     # One is None and the other is not: mismatch
     if pattern is None or candidate is None:
         return False
-    # Pattern leaf: bind variable
-    if isinstance(pattern, AstLeaf):
+    # Pattern leaf: bind variable (use Protocol for hot-reload safety)
+    if isinstance(pattern, AstLeafProtocol):
         var_name = pattern.name
         if var_name in mapping:
             return _ast_equal(mapping[var_name], candidate)
         # Record the first occurrence of this variable
         mapping[var_name] = candidate
         return True
-    # Pattern constant: capture or literal
-    if isinstance(pattern, AstConstant):
+    # Pattern constant: capture or literal (use Protocol for hot-reload safety)
+    if isinstance(pattern, AstConstantProtocol):
         if pattern.value is None:
             # Capturing constant variable
             var_name = pattern.name
@@ -270,16 +279,16 @@ def match_pattern(
                 bound = mapping[var_name]
                 # Both must be constants and have the same value
                 return (
-                    isinstance(bound, AstConstant)
-                    and isinstance(candidate, AstConstant)
+                    isinstance(bound, AstConstantProtocol)
+                    and isinstance(candidate, AstConstantProtocol)
                     and bound.value == typing.cast(AstConstant, candidate).value
                 )
-            if not isinstance(candidate, AstConstant):
+            if not isinstance(candidate, AstConstantProtocol):
                 return False
             mapping[var_name] = candidate
             return True
         # Literal constant: require exact match of the numeric value
-        if not isinstance(candidate, AstConstant):
+        if not isinstance(candidate, AstConstantProtocol):
             return False
         return pattern.value == typing.cast(AstConstant, candidate).value
     # Pattern is an AST node: candidate must be a node with the same opcode
@@ -316,19 +325,19 @@ def substitute_pattern(
     """
     if pattern is None:
         return None
-    # Leaf: return the bound candidate
-    if isinstance(pattern, AstLeaf):
+    # Leaf: return the bound candidate (use Protocol for hot-reload safety)
+    if isinstance(pattern, AstLeafProtocol):
         var_name = pattern.name
         return copy.deepcopy(mapping[var_name])
-    # Capturing constant: substitute the bound constant
-    if isinstance(pattern, AstConstant):
+    # Capturing constant: substitute the bound constant (use Protocol for hot-reload safety)
+    if isinstance(pattern, AstConstantProtocol):
         if pattern.value is None:
             var_name = pattern.name
             return copy.deepcopy(mapping[var_name])
         # Literal constant: return a copy
         return copy.deepcopy(pattern)
     # Node: rebuild with substituted children
-    assert isinstance(pattern, AstNode)
+    assert isinstance(pattern, AstNodeProtocol)
     new_left = substitute_pattern(pattern.left, mapping)
     new_right = substitute_pattern(pattern.right, mapping)
     return AstNode(

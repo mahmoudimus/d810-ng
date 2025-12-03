@@ -17,7 +17,7 @@ import abc
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Protocol, runtime_checkable
 
-from d810.mba.dsl import SymbolicExpression
+from d810.mba.dsl import SymbolicExpression, SymbolicExpressionProtocol
 
 # =============================================================================
 # Verification Options
@@ -305,7 +305,8 @@ class ConstrainedMBARule(MBARule):
             engine = get_default_engine()
 
         # Skip verification if replacement is not a SymbolicExpression
-        if not isinstance(self.replacement, SymbolicExpression):
+        # Use Protocol for hot-reload safety
+        if not isinstance(self.replacement, SymbolicExpressionProtocol):
             return True
 
         # Collect all variable names from pattern and replacement
@@ -408,7 +409,8 @@ def verify_transformation(
 
 def _collect_var_names(expr: SymbolicExpression, var_names: set) -> None:
     """Recursively collect variable and constant names from expression."""
-    if expr is None or not isinstance(expr, SymbolicExpression):
+    # Use Protocol for hot-reload safety
+    if expr is None or not isinstance(expr, SymbolicExpressionProtocol):
         return
     if expr.is_leaf():
         if expr.name and expr.value is None:

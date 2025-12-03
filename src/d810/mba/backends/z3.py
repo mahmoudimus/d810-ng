@@ -477,20 +477,21 @@ class Z3VerificationVisitor:
         Raises:
             ValueError: If constraint type is unsupported
         """
+        # Use Protocols for hot-reload-safe isinstance() checks
         from d810.mba.constraints import (
-            AndConstraint,
-            ComparisonConstraint,
-            EqualityConstraint,
-            NotConstraint,
-            OrConstraint,
+            AndConstraintProtocol,
+            ComparisonConstraintProtocol,
+            EqualityConstraintProtocol,
+            NotConstraintProtocol,
+            OrConstraintProtocol,
         )
 
-        if isinstance(constraint, EqualityConstraint):
+        if isinstance(constraint, EqualityConstraintProtocol):
             left_z3 = self._expr_to_z3_helper(constraint.left)
             right_z3 = self._expr_to_z3_helper(constraint.right)
             return left_z3 == right_z3
 
-        if isinstance(constraint, ComparisonConstraint):
+        if isinstance(constraint, ComparisonConstraintProtocol):
             left_z3 = self._expr_to_z3_helper(constraint.left)
             right_z3 = self._expr_to_z3_helper(constraint.right)
 
@@ -508,18 +509,18 @@ class Z3VerificationVisitor:
                 case _:
                     raise ValueError(f"Unsupported comparison operator: {constraint.op_name}")
 
-        if isinstance(constraint, AndConstraint):
+        if isinstance(constraint, AndConstraintProtocol):
             left_bool = self._constraint_to_z3(constraint.left)
             right_bool = self._constraint_to_z3(constraint.right)
             return z3.And(left_bool, right_bool)
 
-        if isinstance(constraint, OrConstraint):
+        if isinstance(constraint, OrConstraintProtocol):
             left_bool = self._constraint_to_z3(constraint.left)
             right_bool = self._constraint_to_z3(constraint.right)
             return z3.Or(left_bool, right_bool)
 
-        if isinstance(constraint, NotConstraint):
-            inner_bool = self._constraint_to_z3(constraint.constraint)
+        if isinstance(constraint, NotConstraintProtocol):
+            inner_bool = self._constraint_to_z3(constraint.operand)
             return z3.Not(inner_bool)
 
         raise ValueError(f"Unsupported constraint type: {type(constraint)}")
@@ -533,9 +534,10 @@ class Z3VerificationVisitor:
         Returns:
             Z3 BitVecRef
         """
-        from d810.mba.dsl import SymbolicExpression
+        from d810.mba.dsl import SymbolicExpressionProtocol
 
-        if isinstance(expr, SymbolicExpression):
+        # Use Protocol for hot-reload safety
+        if isinstance(expr, SymbolicExpressionProtocol):
             return self.visit(expr)
 
         # Handle raw integer values (from constraint evaluation)
@@ -709,7 +711,7 @@ def verify_rule(
     logger.debug(f"Verifying {getattr(rule, 'name', 'unknown')} with bit_width={bit_width}")
 
     # Import here to avoid circular imports
-    from d810.mba.dsl import SymbolicExpression
+    from d810.mba.dsl import SymbolicExpressionProtocol
 
     pattern = rule.pattern
     replacement = rule.replacement
@@ -720,7 +722,8 @@ def verify_rule(
         logger.debug(f"Skipping verification for {rule_name}: pattern is None")
         return True
 
-    if not isinstance(replacement, SymbolicExpression):
+    # Use Protocol for hot-reload safety
+    if not isinstance(replacement, SymbolicExpressionProtocol):
         logger.debug(f"Skipping verification for {rule_name}: replacement is {type(replacement).__name__}, not SymbolicExpression")
         return True
 
@@ -838,20 +841,21 @@ def constraint_to_z3(constraint, z3_vars: dict[str, z3.BitVecRef]) -> z3.BoolRef
         >>> z3_vars = {"x": z3.BitVec("x", 32), "c": z3.BitVec("c", 32)}
         >>> z3_bool = constraint_to_z3(constraint, z3_vars)
     """
+    # Use Protocols for hot-reload-safe isinstance() checks
     from d810.mba.constraints import (
-        EqualityConstraint,
-        ComparisonConstraint,
-        AndConstraint,
-        OrConstraint,
-        NotConstraint,
+        EqualityConstraintProtocol,
+        ComparisonConstraintProtocol,
+        AndConstraintProtocol,
+        OrConstraintProtocol,
+        NotConstraintProtocol,
     )
 
-    if isinstance(constraint, EqualityConstraint):
+    if isinstance(constraint, EqualityConstraintProtocol):
         left_z3 = _constraint_expr_to_z3(constraint.left, z3_vars)
         right_z3 = _constraint_expr_to_z3(constraint.right, z3_vars)
         return left_z3 == right_z3
 
-    elif isinstance(constraint, ComparisonConstraint):
+    elif isinstance(constraint, ComparisonConstraintProtocol):
         left_z3 = _constraint_expr_to_z3(constraint.left, z3_vars)
         right_z3 = _constraint_expr_to_z3(constraint.right, z3_vars)
 
@@ -869,17 +873,17 @@ def constraint_to_z3(constraint, z3_vars: dict[str, z3.BitVecRef]) -> z3.BoolRef
             case _:
                 raise ValueError(f"Unknown comparison: {constraint.op_name}")
 
-    elif isinstance(constraint, AndConstraint):
+    elif isinstance(constraint, AndConstraintProtocol):
         left_z3 = constraint_to_z3(constraint.left, z3_vars)
         right_z3 = constraint_to_z3(constraint.right, z3_vars)
         return z3.And(left_z3, right_z3)
 
-    elif isinstance(constraint, OrConstraint):
+    elif isinstance(constraint, OrConstraintProtocol):
         left_z3 = constraint_to_z3(constraint.left, z3_vars)
         right_z3 = constraint_to_z3(constraint.right, z3_vars)
         return z3.Or(left_z3, right_z3)
 
-    elif isinstance(constraint, NotConstraint):
+    elif isinstance(constraint, NotConstraintProtocol):
         operand_z3 = constraint_to_z3(constraint.operand, z3_vars)
         return z3.Not(operand_z3)
 
@@ -900,9 +904,10 @@ def _constraint_expr_to_z3(expr, z3_vars: dict[str, z3.BitVecRef]) -> z3.BitVecR
     Raises:
         ValueError: If expr is not a SymbolicExpression
     """
-    from d810.mba.dsl import SymbolicExpression
+    from d810.mba.dsl import SymbolicExpressionProtocol
 
-    if isinstance(expr, SymbolicExpression):
+    # Use Protocol for hot-reload safety
+    if isinstance(expr, SymbolicExpressionProtocol):
         visitor = Z3VerificationVisitor(bit_width=32, var_map=z3_vars)
         return visitor.visit(expr)
 
@@ -916,9 +921,10 @@ def _collect_symbolic_names(expr, names: set) -> None:
         expr: A SymbolicExpression to traverse.
         names: Set to add discovered names to.
     """
-    from d810.mba.dsl import SymbolicExpression
+    from d810.mba.dsl import SymbolicExpressionProtocol
 
-    if expr is None or not isinstance(expr, SymbolicExpression):
+    # Use Protocol for hot-reload safety
+    if expr is None or not isinstance(expr, SymbolicExpressionProtocol):
         return
 
     if expr.is_leaf():

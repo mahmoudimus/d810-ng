@@ -1,12 +1,13 @@
 import abc
 import dataclasses
 import itertools
+import logging
 import typing
 
 import ida_hexrays
 
 from d810.core import getLogger
-from d810.expr.ast import AstBase, AstNode, minsn_to_ast
+from d810.expr.ast import AstBase, AstNode, AstNodeProtocol, minsn_to_ast
 from d810.hexrays.hexrays_formatters import format_minsn_t
 from d810.optimizers.microcode.instructions.handler import (
     GenericPatternRule,
@@ -14,8 +15,8 @@ from d810.optimizers.microcode.instructions.handler import (
     InstructionOptimizer,
 )
 
-optimizer_logger = getLogger("D810.optimizer")
-pattern_search_logger = getLogger("D810.pattern_search")
+optimizer_logger = getLogger("D810.optimizer", logging.DEBUG)
+pattern_search_logger = getLogger("D810.pattern_search", logging.DEBUG)
 
 if typing.TYPE_CHECKING:
     from d810.core import OptimizationStatistics
@@ -277,6 +278,8 @@ class PatternOptimizer(InstructionOptimizer):
         if verifiable_rules:
             for rule in verifiable_rules:
                 self._add_rule_internal(rule)
+            optimizer_logger.debug(f"PatternOptimizer initialized with {len(self.rules)} rules")
+            optimizer_logger.debug(f"Allowed root opcodes: {self._allowed_root_opcodes}")
 
     def _add_rule_internal(self, rule) -> bool:
         """Add a rule to this optimizer (internal helper).
@@ -294,7 +297,13 @@ class PatternOptimizer(InstructionOptimizer):
         # Register patterns if the rule has them
         if not hasattr(rule, 'pattern_candidates'):
             return True
-        for pattern in rule.pattern_candidates:
+        try:
+            candidates = rule.pattern_candidates
+            optimizer_logger.debug(f"Rule {rule.name} has {len(candidates)} pattern candidates")
+        except Exception as e:
+            optimizer_logger.error(f"Rule {rule.name} pattern_candidates failed: {e}")
+            return False
+        for pattern in candidates:
             if optimizer_logger.debug_on:
                 optimizer_logger.debug(
                     "[PatternOptimizer] Adding pattern: %s",
@@ -303,7 +312,8 @@ class PatternOptimizer(InstructionOptimizer):
             self.pattern_storage.add_pattern_for_rule(pattern, rule)
             # Collect root opcode for quick opcode pre-filtering
             try:
-                if isinstance(pattern, AstNode) and pattern.opcode is not None:
+                # Use Protocol for hot-reload safety
+                if isinstance(pattern, AstNodeProtocol) and pattern.opcode is not None:
                     self._allowed_root_opcodes.add(int(pattern.opcode))
             except Exception:
                 pass
@@ -326,7 +336,8 @@ class PatternOptimizer(InstructionOptimizer):
                 )
             self.pattern_storage.add_pattern_for_rule(pattern, rule)
             try:
-                if isinstance(pattern, AstNode) and pattern.opcode is not None:
+                # Use Protocol for hot-reload safety
+                if isinstance(pattern, AstNodeProtocol) and pattern.opcode is not None:
                     self._allowed_root_opcodes.add(int(pattern.opcode))
             except Exception:
                 pass

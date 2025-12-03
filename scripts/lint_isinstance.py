@@ -40,8 +40,15 @@ ALLOWLIST = {
     "ABC", "ABCMeta",
     # Typing
     "Protocol",  # Though Protocol itself shouldn't be used this way
+    "Callable", "TypeAliasType",
     # Enum (stable identity)
     "Enum", "IntEnum", "StrEnum", "Flag", "IntFlag",
+    # Logging (stdlib - not hot-reloaded)
+    "Logger", "StreamHandler", "Handler",
+    # Testing (stdlib - not hot-reloaded)
+    "TestSuite", "TestCase",
+    # d810 singletons (use @survives_reload decorator)
+    "D810Logger", "ProjectContext", "NotGiven",
 }
 
 # Suffix patterns that indicate a Protocol (safe)

@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Self
 
 from d810.core import getLogger
 from d810.core.registry import Registrant
-from d810.mba.dsl import SymbolicExpression
+from d810.mba.dsl import SymbolicExpression, SymbolicExpressionProtocol
 
 # Import types only for type checking to avoid circular imports and IDA dependencies
 if TYPE_CHECKING:
@@ -188,9 +188,10 @@ class VerifiableRule(SymbolicRule, Registrant):
             # Skip classes without a valid pattern definition
             # These are typically test base classes that inherit VerifiableRule
             # but don't define PATTERN/REPLACEMENT
+            # Use Protocol for hot-reload safety
             has_pattern = hasattr(rule_cls, "_dsl_pattern") or (
                 "PATTERN" in rule_cls.__dict__
-                and isinstance(rule_cls.__dict__["PATTERN"], SymbolicExpression)
+                and isinstance(rule_cls.__dict__["PATTERN"], SymbolicExpressionProtocol)
             )
             if not has_pattern:
                 logger.debug(f"Skipping class without pattern: {rule_cls.__name__}")
@@ -277,14 +278,16 @@ class VerifiableRule(SymbolicRule, Registrant):
         # IMPORTANT: Use isinstance() instead of hasattr(.., 'node') to avoid
         # triggering IDA imports at class definition time. The .node property
         # lazily imports IDA modules, which would break unit testing without IDA.
+        # Use Protocol for hot-reload safety
         if "PATTERN" in cls.__dict__ and isinstance(
-            cls.__dict__["PATTERN"], SymbolicExpression
+            cls.__dict__["PATTERN"], SymbolicExpressionProtocol
         ):
             cls._dsl_pattern = cls.__dict__["PATTERN"]
             # Keep PATTERN as an alias for backward compatibility
 
+        # Use Protocol for hot-reload safety
         if "REPLACEMENT" in cls.__dict__ and isinstance(
-            cls.__dict__["REPLACEMENT"], SymbolicExpression
+            cls.__dict__["REPLACEMENT"], SymbolicExpressionProtocol
         ):
             cls._dsl_replacement = cls.__dict__["REPLACEMENT"]
             # Keep REPLACEMENT as an alias for backward compatibility

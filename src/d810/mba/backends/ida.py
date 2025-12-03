@@ -17,11 +17,11 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 import ida_hexrays
 
 from d810.core import getLogger
-from d810.expr.ast import AstNode, AstLeaf, AstConstant, minsn_to_ast
+from d810.expr.ast import AstNode, AstLeaf, AstConstant, AstLeafProtocol, minsn_to_ast
 from d810.mba.dsl import SymbolicExpression, SymbolicExpressionProtocol
 from d810.mba.constraints import (
-    ComparisonConstraint,
-    EqualityConstraint,
+    ComparisonConstraintProtocol,
+    EqualityConstraintProtocol,
     is_constraint_expr,
 )
 
@@ -291,7 +291,7 @@ class IDANodeVisitor:
         if constraint is None:
             raise ValueError("bool_to_int operation requires a constraint")
 
-        if isinstance(constraint, ComparisonConstraint):
+        if isinstance(constraint, ComparisonConstraintProtocol):
             left_node = self._visit_constraint_operand(constraint.left)
             right_node = self._visit_constraint_operand(constraint.right)
 
@@ -310,7 +310,7 @@ class IDANodeVisitor:
             # For != and ==, IDA uses SETNZ/SETZ with a single operand (difference)
             if constraint.op_name in ["ne", "eq"]:
                 # Check if comparing to zero
-                if (isinstance(constraint.right, SymbolicExpression)
+                if (isinstance(constraint.right, SymbolicExpressionProtocol)
                     and constraint.right.is_constant()
                     and constraint.right.value == 0):
                     return AstNode(ida_opcode, left_node, None)
@@ -323,13 +323,13 @@ class IDANodeVisitor:
             else:
                 return AstNode(ida_opcode, left_node, right_node)
 
-        if isinstance(constraint, EqualityConstraint):
+        if isinstance(constraint, EqualityConstraintProtocol):
             # x == y → SETZ(x - y)
             left_node = self._visit_constraint_operand(constraint.left)
             right_node = self._visit_constraint_operand(constraint.right)
 
             # Check if comparing to zero
-            if (isinstance(constraint.right, SymbolicExpression)
+            if (isinstance(constraint.right, SymbolicExpressionProtocol)
                 and constraint.right.is_constant()
                 and constraint.right.value == 0):
                 return AstNode(ida_hexrays.m_setz, left_node, None)
@@ -353,7 +353,7 @@ class IDANodeVisitor:
         """
         if operand is None:
             return None
-        if isinstance(operand, SymbolicExpression):
+        if isinstance(operand, SymbolicExpressionProtocol):
             return self.visit(operand)
         if isinstance(operand, int):
             return AstConstant(str(operand), operand)
@@ -572,7 +572,7 @@ class IDAPatternAdapter:
             return None
 
         # Handle AstLeaf candidates specially - they don't have leafs_by_name
-        if isinstance(candidate, AstLeaf):
+        if isinstance(candidate, AstLeafProtocol):
             candidate_for_update = _LeafWrapper(candidate)
             is_ok = repl_pat.update_leafs_mop(candidate_for_update)
         else:

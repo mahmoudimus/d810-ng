@@ -225,17 +225,21 @@ if EGGLOG_AVAILABLE:
             Returns:
                 BitExpr representation, or None if conversion fails.
             """
-            from d810.expr.ast import AstConstant, AstLeaf, AstNode
+            from d810.expr.ast import (
+                AstConstantProtocol,
+                AstLeafProtocol,
+                AstNodeProtocol,
+            )
 
             if ast_node is None:
                 return None
 
-            # Handle leaf nodes (variables)
-            if isinstance(ast_node, (AstLeaf, AstConstant)) or ast_node.is_leaf():
+            # Handle leaf nodes (variables) - use Protocols for hot-reload safety
+            if isinstance(ast_node, (AstLeafProtocol, AstConstantProtocol)) or ast_node.is_leaf():
                 return self._convert_leaf(ast_node)
 
-            # Handle AstNode
-            if isinstance(ast_node, AstNode) or ast_node.is_node():
+            # Handle AstNode - use Protocol for hot-reload safety
+            if isinstance(ast_node, AstNodeProtocol) or ast_node.is_node():
                 return self._convert_node(ast_node)
 
             return None

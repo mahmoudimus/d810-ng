@@ -94,7 +94,7 @@ import typing
 
 import ida_hexrays
 
-from d810.expr.ast import AstBase, AstConstant, AstLeaf, AstNode
+from d810.expr.ast import AstBase, AstConstant, AstConstantProtocol, AstLeaf, AstNode
 
 # Operations where order does not matter (Associative-Commutative ops)
 COMMUTATIVE_OPS = {
@@ -147,14 +147,16 @@ def _is_numeric_constant(node: AstBase | None) -> bool:
     """Check if a node represents a numeric constant."""
     if node is None:
         return False
-    if isinstance(node, AstConstant):
+    # Use Protocol for hot-reload safety
+    if isinstance(node, AstConstantProtocol):
         return node.expected_value is not None or (node.mop is not None and node.mop.t == ida_hexrays.mop_n)
     return False
 
 
 def _get_constant_value(node: AstBase) -> int | None:
     """Get the numeric value of a constant node."""
-    if isinstance(node, AstConstant):
+    # Use Protocol for hot-reload safety
+    if isinstance(node, AstConstantProtocol):
         if node.expected_value is not None:
             return node.expected_value
         if node.mop is not None and node.mop.t == ida_hexrays.mop_n:
