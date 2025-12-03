@@ -225,6 +225,9 @@ def _get_fired_rules(
         summary = stats.to_dict()
         if "rules_fired" in summary:
             fired.update(summary["rules_fired"].keys())
+        # CFG rules are tracked in cfg_rule_usages
+        if "cfg_rule_usages" in summary:
+            fired.update(summary["cfg_rule_usages"].keys())
 
     return fired
 

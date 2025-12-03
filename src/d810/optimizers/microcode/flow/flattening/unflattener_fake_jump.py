@@ -44,12 +44,19 @@ class UnflattenerFakeJump(GenericUnflatteningRule):
                 pred_blk, pred_blk.tail
             )
 
-            father_is_resolvable = all(
-                [father_history.is_resolved() for father_history in pred_histories]
-            )
-            if not father_is_resolvable:
-                return 0
-            pred_values = get_all_possibles_values(pred_histories, [op_compared])
+            # Filter to resolved histories only - unresolved histories are typically
+            # dispatcher back-edges (loops back before finding constant assignments)
+            # which are expected in flattened control flow
+            resolved_histories = [h for h in pred_histories if h.is_resolved()]
+            if len(resolved_histories) == 0:
+                # No resolved paths at all - can't determine values for this predecessor
+                unflat_logger.debug(
+                    "No resolved histories for pred %s, skipping",
+                    pred_serial,
+                )
+                continue  # Try next predecessor instead of failing entirely
+
+            pred_values = get_all_possibles_values(resolved_histories, [op_compared])
             pred_values = [x[0] for x in pred_values]
             if None in pred_values:
                 unflat_logger.info("Some path are not resolved, can't fix jump")
