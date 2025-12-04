@@ -486,11 +486,10 @@ class Z3VerificationVisitor:
             OrConstraintProtocol,
         )
 
-        if isinstance(constraint, EqualityConstraintProtocol):
-            left_z3 = self._expr_to_z3_helper(constraint.left)
-            right_z3 = self._expr_to_z3_helper(constraint.right)
-            return left_z3 == right_z3
-
+        # Check ComparisonConstraintProtocol FIRST - it's more specific
+        # (has op_name) than EqualityConstraintProtocol. Due to structural
+        # typing, ComparisonConstraint matches both protocols since it has
+        # left/right attributes.
         if isinstance(constraint, ComparisonConstraintProtocol):
             left_z3 = self._expr_to_z3_helper(constraint.left)
             right_z3 = self._expr_to_z3_helper(constraint.right)
@@ -508,6 +507,11 @@ class Z3VerificationVisitor:
                     return z3.UGE(left_z3, right_z3)
                 case _:
                     raise ValueError(f"Unsupported comparison operator: {constraint.op_name}")
+
+        if isinstance(constraint, EqualityConstraintProtocol):
+            left_z3 = self._expr_to_z3_helper(constraint.left)
+            right_z3 = self._expr_to_z3_helper(constraint.right)
+            return left_z3 == right_z3
 
         if isinstance(constraint, AndConstraintProtocol):
             left_bool = self._constraint_to_z3(constraint.left)
@@ -850,12 +854,11 @@ def constraint_to_z3(constraint, z3_vars: dict[str, z3.BitVecRef]) -> z3.BoolRef
         NotConstraintProtocol,
     )
 
-    if isinstance(constraint, EqualityConstraintProtocol):
-        left_z3 = _constraint_expr_to_z3(constraint.left, z3_vars)
-        right_z3 = _constraint_expr_to_z3(constraint.right, z3_vars)
-        return left_z3 == right_z3
-
-    elif isinstance(constraint, ComparisonConstraintProtocol):
+    # Check ComparisonConstraintProtocol FIRST - it's more specific
+    # (has op_name) than EqualityConstraintProtocol. Due to structural
+    # typing, ComparisonConstraint matches both protocols since it has
+    # left/right attributes.
+    if isinstance(constraint, ComparisonConstraintProtocol):
         left_z3 = _constraint_expr_to_z3(constraint.left, z3_vars)
         right_z3 = _constraint_expr_to_z3(constraint.right, z3_vars)
 
@@ -872,6 +875,11 @@ def constraint_to_z3(constraint, z3_vars: dict[str, z3.BitVecRef]) -> z3.BoolRef
                 return z3.UGE(left_z3, right_z3)
             case _:
                 raise ValueError(f"Unknown comparison: {constraint.op_name}")
+
+    elif isinstance(constraint, EqualityConstraintProtocol):
+        left_z3 = _constraint_expr_to_z3(constraint.left, z3_vars)
+        right_z3 = _constraint_expr_to_z3(constraint.right, z3_vars)
+        return left_z3 == right_z3
 
     elif isinstance(constraint, AndConstraintProtocol):
         left_z3 = constraint_to_z3(constraint.left, z3_vars)
@@ -914,6 +922,40 @@ def _constraint_expr_to_z3(expr, z3_vars: dict[str, z3.BitVecRef]) -> z3.BitVecR
     raise ValueError(f"Cannot convert {type(expr).__name__} to Z3: expected SymbolicExpression")
 
 
+def _collect_constraint_names(constraint, names: set) -> None:
+    """Recursively collect variable/constant names from a ConstraintExpr.
+
+    Args:
+        constraint: A ConstraintExpr to traverse (EqualityConstraint,
+                   ComparisonConstraint, AndConstraint, etc.)
+        names: Set to add discovered names to.
+    """
+    from d810.mba.constraints import (
+        AndConstraintProtocol,
+        ComparisonConstraintProtocol,
+        EqualityConstraintProtocol,
+        NotConstraintProtocol,
+        OrConstraintProtocol,
+    )
+
+    if constraint is None:
+        return
+
+    # Binary constraints with left/right expressions
+    if isinstance(constraint, (EqualityConstraintProtocol, ComparisonConstraintProtocol)):
+        _collect_symbolic_names(constraint.left, names)
+        _collect_symbolic_names(constraint.right, names)
+
+    # Logical AND/OR with left/right constraints
+    elif isinstance(constraint, (AndConstraintProtocol, OrConstraintProtocol)):
+        _collect_constraint_names(constraint.left, names)
+        _collect_constraint_names(constraint.right, names)
+
+    # Logical NOT with single operand
+    elif isinstance(constraint, NotConstraintProtocol):
+        _collect_constraint_names(constraint.operand, names)
+
+
 def _collect_symbolic_names(expr, names: set) -> None:
     """Recursively collect variable and constant names from a SymbolicExpression.
 
@@ -934,6 +976,10 @@ def _collect_symbolic_names(expr, names: set) -> None:
     else:
         _collect_symbolic_names(expr.left, names)
         _collect_symbolic_names(expr.right, names)
+
+    # Handle bool_to_int expressions that store variables in expr.constraint
+    if hasattr(expr, 'constraint') and expr.constraint is not None:
+        _collect_constraint_names(expr.constraint, names)
 
 
 def _extract_constraints(rule, z3_vars: dict) -> list:
