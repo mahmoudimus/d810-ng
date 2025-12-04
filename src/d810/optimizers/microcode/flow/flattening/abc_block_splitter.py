@@ -95,14 +95,18 @@ class ConditionalStateResolver:
         Analyze a block for ABC patterns and apply in-place fix.
 
         Returns number of patterns fixed.
-
-        NOTE: Currently disabled - ConditionalStateResolver doesn't handle the
-        actual ABC patterns in the test suite (which are dispatcher patterns
-        handled by UnflattenerFakeJump, not arithmetic state patterns).
         """
-        # DISABLED: This resolver looks for "state = x OP magic" patterns
-        # but the ABC test cases use standard dispatcher patterns
-        return 0
+        pattern = self._find_abc_pattern(block)
+        if pattern is None:
+            return 0
+
+        logger.debug(
+            "ConditionalStateResolver: Found ABC pattern in block %d, "
+            "magic=%d, opcode=%d",
+            block.serial, pattern.cnst, pattern.opcode
+        )
+
+        return self._apply_inplace(block, pattern)
 
     def _find_abc_pattern(self, block: ida_hexrays.mblock_t) -> ABCPatternInfo | None:
         """Find ABC pattern in block. Returns info or None."""
