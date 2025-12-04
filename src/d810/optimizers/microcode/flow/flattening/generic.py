@@ -65,7 +65,10 @@ from d810.optimizers.microcode.flow.flattening.utils import (
 )
 from d810.core.registry import EventEmitter
 from d810.hexrays.deferred_modifier import DeferredGraphModifier, GraphModification
-from d810.optimizers.microcode.flow.flattening.abc_block_splitter import ABCBlockSplitter
+from d810.optimizers.microcode.flow.flattening.abc_block_splitter import (
+    ABCBlockSplitter,
+    ABCInPlaceHandler,
+)
 from d810.optimizers.microcode.flow.flattening.loop_prover import (
     SingleIterationLoopTracker,
     prove_single_iteration,
@@ -1393,30 +1396,29 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
         dispatcher_entry_block,
         dispatcher_info: GenericDispatcherInfo,
     ):
-        """Fix dispatcher fathers by splitting blocks with ABC patterns.
+        """Fix dispatcher fathers with ABC patterns using in-place transformation.
 
-        This method uses ABCBlockSplitter for deferred CFG modifications:
+        This method uses ABCInPlaceHandler for direct target resolution:
         1. Collect all blocks to analyze from father histories
-        2. Analyze each block for ABC patterns (constants in 1010000-1011999 range)
-        3. Apply all splits atomically after analysis is complete
-        4. Recursively handle newly created blocks
+        2. For each ABC pattern (state = x + magic where magic in 1010000-1011999):
+           - Resolve both possible targets via dispatcher emulation
+           - Create conditional jump directly to targets
+        3. No new blocks are created - avoids insert_block() issues
 
-        This is safer than the previous approach which modified CFG during iteration.
+        This is the "directed graph" approach that avoids IDA internal state corruption.
         """
         father_histories = self.get_dispatcher_father_histories(
             dispatcher_father, dispatcher_entry_block, dispatcher_info
         )
 
-        # Use ABCBlockSplitter for deferred CFG modifications
-        splitter = ABCBlockSplitter(self.mba)
+        # Use ABCInPlaceHandler for direct target resolution (no new blocks)
+        handler = ABCInPlaceHandler(self.mba, dispatcher_info)
 
-        # Analysis phase: collect all blocks that need splitting
+        total_n = 0
+        # Process each block in the father histories
         for father_history in father_histories:
             for block in father_history.block_path:
-                splitter.analyze_block(block)
-
-        # Apply phase: perform all splits atomically (handles recursion internally)
-        total_n = splitter.apply()
+                total_n += handler.analyze_and_apply(block)
 
         return total_n
 

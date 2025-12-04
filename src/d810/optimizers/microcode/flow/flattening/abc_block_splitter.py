@@ -1,25 +1,33 @@
 """
 ABC Block Splitter - Deferred block creation for ABC pattern handling.
 
-This module provides a safer approach to the ABC (Arithmetic/Bitwise/Constant)
-pattern handling in control flow unflattening. Instead of creating blocks
-during instruction iteration (which is risky), it:
+This module provides approaches for handling ABC (Arithmetic/Bitwise/Constant)
+patterns in control flow unflattening:
 
-1. Collects all split operations needed in an analysis pass
-2. Applies all splits in a controlled order
-3. Recursively processes newly created blocks
+1. ABCBlockSplitter (legacy, disabled): Creates new blocks via insert_block()
+   - Causes IDA mba.verify() failures due to internal state corruption
+
+2. ABCInPlaceHandler (new): Resolves targets directly without new blocks
+   - Detects ABC patterns: state = x + magic (where magic in 1010000-1011999)
+   - Resolves both possible targets (x=0 and x!=0) via dispatcher emulation
+   - Creates conditional jump in-place: jnz x, 0, target1; goto target0
+   - Avoids insert_block() entirely - "directed graph" approach
 
 This replaces the inline father_patcher_abc_create_blocks approach.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import ida_hexrays
 
 from d810.core import getLogger
-from d810.hexrays.cfg_utils import safe_verify
+from d810.hexrays.cfg_utils import safe_verify, change_1way_block_successor
 from d810.hexrays.hexrays_helpers import dup_mop
+
+if TYPE_CHECKING:
+    from d810.optimizers.microcode.flow.flattening.generic import GenericDispatcherInfo
 
 logger = getLogger("D810.abc_splitter")
 
@@ -38,6 +46,252 @@ class BlockSplitOperation:
     # Storing live minsn_t pointers during analysis causes stale pointer bugs
     # when other CFG passes modify the graph before apply() runs.
     # Instead, we collect instructions fresh at apply time.
+
+
+@dataclass
+class ABCPatternInfo:
+    """Info about an ABC pattern found in a block."""
+    block_serial: int
+    instruction_ea: int
+    cnst: int  # Magic constant
+    condition_mop: ida_hexrays.mop_t  # The x in "state = x + magic"
+    opcode: int  # m_add, m_sub, m_or, m_xor
+    state_mop: ida_hexrays.mop_t  # The destination (state variable)
+
+
+@dataclass
+class ABCInPlaceHandler:
+    """
+    In-place ABC pattern handler - resolves targets without creating blocks.
+
+    This is the "directed graph" approach: instead of creating new blocks
+    with constant state values, we resolve the targets directly and create
+    a conditional jump.
+
+    For pattern: state = x + magic
+    - If x == 0: state = magic -> resolve target0
+    - If x != 0: state = magic+1 -> resolve target1
+    - Replace block with: jnz x, 0, target1; goto target0
+
+    Usage:
+        handler = ABCInPlaceHandler(mba, dispatcher_info)
+        for block in blocks_to_analyze:
+            handler.analyze_and_apply(block)
+    """
+
+    mba: ida_hexrays.mba_t
+    dispatcher_info: GenericDispatcherInfo
+
+    # Magic number range for ABC patterns
+    ABC_CONST_MIN: int = 1010000
+    ABC_CONST_MAX: int = 1011999
+
+    def analyze_and_apply(self, block: ida_hexrays.mblock_t) -> int:
+        """
+        Analyze a block for ABC patterns and apply in-place fix.
+
+        Returns number of patterns fixed.
+        """
+        pattern = self._find_abc_pattern(block)
+        if pattern is None:
+            return 0
+
+        return self._apply_inplace(block, pattern)
+
+    def _find_abc_pattern(self, block: ida_hexrays.mblock_t) -> ABCPatternInfo | None:
+        """Find ABC pattern in block. Returns info or None."""
+        curr_inst = block.head
+        while curr_inst is not None:
+            result = self._check_instruction_for_abc(curr_inst)
+            if result is not None:
+                cnst, condition_mop, state_mop, opcode = result
+                if self.ABC_CONST_MIN < cnst < self.ABC_CONST_MAX:
+                    return ABCPatternInfo(
+                        block_serial=block.serial,
+                        instruction_ea=curr_inst.ea,
+                        cnst=cnst,
+                        condition_mop=condition_mop,
+                        opcode=opcode,
+                        state_mop=state_mop,
+                    )
+            curr_inst = curr_inst.next
+        return None
+
+    def _check_instruction_for_abc(
+        self, inst: ida_hexrays.minsn_t
+    ) -> tuple[int, ida_hexrays.mop_t, ida_hexrays.mop_t, int] | None:
+        """
+        Check if instruction is ABC pattern.
+
+        Returns (magic_const, condition_mop, state_mop, opcode) or None.
+        """
+        if inst.opcode not in [ida_hexrays.m_add, ida_hexrays.m_sub,
+                                ida_hexrays.m_or, ida_hexrays.m_xor]:
+            return None
+
+        # Pattern: state = x op magic  OR  state = magic op x
+        cnst = None
+        condition_mop = None
+
+        if inst.r.t == ida_hexrays.mop_n:  # Right operand is constant
+            cnst = inst.r.signed_value()
+            condition_mop = dup_mop(inst.l)
+        elif inst.l.t == ida_hexrays.mop_n:  # Left operand is constant
+            cnst = inst.l.signed_value()
+            condition_mop = dup_mop(inst.r)
+
+        if cnst is None or condition_mop is None:
+            return None
+
+        state_mop = dup_mop(inst.d)
+        return (cnst, condition_mop, state_mop, inst.opcode)
+
+    def _calculate_state_values(self, pattern: ABCPatternInfo) -> tuple[int, int]:
+        """Calculate state values for x=0 and x=1."""
+        magic = pattern.cnst
+        opcode = pattern.opcode
+
+        if opcode == ida_hexrays.m_add:
+            return (magic + 0, magic + 1)
+        elif opcode == ida_hexrays.m_sub:
+            return (magic - 0, magic - 1)
+        elif opcode == ida_hexrays.m_or:
+            return (magic | 0, magic | 1)
+        elif opcode == ida_hexrays.m_xor:
+            return (magic ^ 0, magic ^ 1)
+        else:
+            return (magic, magic)
+
+    def _resolve_target_for_state(self, state_value: int) -> ida_hexrays.mblock_t | None:
+        """Resolve dispatcher target for a given state value."""
+        from d810.hexrays.microcode_interpreter import (
+            MicroCodeInterpreter, MicroCodeEnvironment
+        )
+
+        microcode_interpreter = MicroCodeInterpreter(symbolic_mode=False)
+        microcode_environment = MicroCodeEnvironment()
+
+        # Set up state variable with the given value
+        for init_mop in self.dispatcher_info.entry_block.use_before_def_list:
+            microcode_environment.define(init_mop, state_value)
+
+        # Emulate dispatcher
+        cur_blk = self.dispatcher_info.entry_block.blk
+        cur_ins = cur_blk.head
+
+        max_iterations = 100
+        for _ in range(max_iterations):
+            if not self.dispatcher_info.should_emulation_continue(cur_blk):
+                return cur_blk
+
+            is_ok = microcode_interpreter.eval_instruction(
+                cur_blk, cur_ins, microcode_environment
+            )
+            if not is_ok:
+                return None
+
+            cur_blk = microcode_environment.next_blk
+            cur_ins = microcode_environment.next_ins
+
+        return None
+
+    def _apply_inplace(
+        self, block: ida_hexrays.mblock_t, pattern: ABCPatternInfo
+    ) -> int:
+        """Apply in-place transformation: create conditional jump to targets."""
+        state0, state1 = self._calculate_state_values(pattern)
+
+        logger.info(
+            "ABC in-place: block %d, magic=%d, states=(%d, %d)",
+            block.serial, pattern.cnst, state0, state1
+        )
+
+        # Resolve targets for both state values
+        target0 = self._resolve_target_for_state(state0)
+        target1 = self._resolve_target_for_state(state1)
+
+        if target0 is None or target1 is None:
+            logger.warning(
+                "ABC in-place: Could not resolve targets for block %d (state0=%d->%s, state1=%d->%s)",
+                block.serial, state0, target0, state1, target1
+            )
+            return 0
+
+        if target0.serial == target1.serial:
+            # Both states lead to same target - just redirect
+            logger.info(
+                "ABC in-place: block %d -> same target %d",
+                block.serial, target0.serial
+            )
+            change_1way_block_successor(block, target0.serial)
+            return 1
+
+        logger.info(
+            "ABC in-place: block %d -> targets (%d, %d)",
+            block.serial, target0.serial, target1.serial
+        )
+
+        # Create conditional jump: jnz condition_mop, 0, target1; goto target0
+        ea = pattern.instruction_ea
+
+        # Remove instructions from ABC pattern onwards (including goto)
+        curr_inst = block.head
+        while curr_inst is not None:
+            if curr_inst.ea == pattern.instruction_ea:
+                break
+            curr_inst = curr_inst.next
+
+        if curr_inst is None:
+            logger.warning("ABC in-place: pattern instruction not found")
+            return 0
+
+        # Remove from pattern instruction to end
+        to_remove = []
+        while curr_inst is not None:
+            to_remove.append(curr_inst)
+            curr_inst = curr_inst.next
+
+        for inst in to_remove:
+            block.remove_from_block(inst)
+
+        # Add conditional jump: jnz condition, 0, target1
+        jnz_inst = ida_hexrays.minsn_t(ea)
+        jnz_inst.opcode = ida_hexrays.m_jnz
+        jnz_inst.l = pattern.condition_mop
+        jnz_inst.r = ida_hexrays.mop_t()
+        jnz_inst.r.make_number(0, pattern.condition_mop.size, ea)
+        jnz_inst.d = ida_hexrays.mop_t()
+        jnz_inst.d.make_blkref(target1.serial)
+        block.insert_into_block(jnz_inst, block.tail)
+
+        # Update block type and successors
+        block.type = ida_hexrays.BLT_2WAY
+
+        # Clear old successors
+        old_succs = list(block.succset)
+        for old_succ in old_succs:
+            old_blk = self.mba.get_mblock(old_succ)
+            old_blk.predset._del(block.serial)
+            block.succset._del(old_succ)
+
+        # Add new successors: target0 (fallthrough) and target1 (jump)
+        block.succset.add_unique(target0.serial)
+        block.succset.add_unique(target1.serial)
+        target0.predset.add_unique(block.serial)
+        target1.predset.add_unique(block.serial)
+
+        block.mark_lists_dirty()
+        target0.mark_lists_dirty()
+        target1.mark_lists_dirty()
+
+        self.mba.mark_chains_dirty()
+
+        logger.info(
+            "ABC in-place: block %d transformed to 2-way: jnz -> %d, fallthrough -> %d",
+            block.serial, target1.serial, target0.serial
+        )
+
+        return 1
 
 
 @dataclass
