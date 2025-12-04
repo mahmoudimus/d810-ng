@@ -250,6 +250,7 @@ ABC_F6_CASES = [
     DeobfuscationCase(
         function="abc_f6_sub_dispatch",
         description="ABC pattern using SUB with F6xxx constants",
+        # Uses example_libobfuscated_no_fixprecedessor.json which HAS UnflattenerFakeJump
         project="example_libobfuscated_no_fixprecedessor.json",
         obfuscated_contains=["0xF6"],
         expected_code="""
@@ -278,11 +279,19 @@ ABC_F6_CASES = [
     DeobfuscationCase(
         function="abc_f6_or_dispatch",
         description="ABC pattern with OR operations on state variables",
+        # Uses example_libobfuscated_no_fixprecedessor.json which HAS UnflattenerFakeJump
         project="example_libobfuscated_no_fixprecedessor.json",
         obfuscated_contains=["0xF6"],
-        # NOTE: Full deobfuscation to `a1 | 0xFF` not yet working; just verify
-        # UnflattenerFakeJump rule fires and code changes
+        expected_code="""
+            __int64 __fastcall abc_f6_or_dispatch(int a1)
+            {
+                return a1 | 0xFFu;
+            }
+        """,
+        # Accept minor variations in type suffix and parameter type
+        acceptable_patterns=["a1 | 0xFF", "a1 | 0xFFu"],
         must_change=True,
+        # From results.toml: UnflattenerFakeJump (2 uses, 5 patches)
         required_rules=["UnflattenerFakeJump"],
     ),
     DeobfuscationCase(
@@ -537,8 +546,8 @@ HODUR_CASES = [
             "Hodur/1.0",  # String literal that should be preserved
         ],
         must_change=True,
-        # From results.toml: HodurUnflattener is the correct rule for Hodur patterns
-        # CstSimplificationRule16 (1), PatternOptimizer (1)
+        # From results.toml: The config example_hodur.json uses HodurUnflattener
+        # (not UnflattenerFakeJump which is used in other configs)
         required_rules=["HodurUnflattener"],
         expected_rules=["CstSimplificationRule16"],
     ),
@@ -591,15 +600,29 @@ OLLVM_CASES = [
     DeobfuscationCase(
         function="test_function_ollvm_fla_bcf_sub",
         description="O-LLVM FLA+BCF+SUB combined obfuscation",
+        # Uses example_libobfuscated_no_fixprecedessor.json which HAS UnflattenerFakeJump
         project="example_libobfuscated_no_fixprecedessor.json",
         obfuscated_contains=["while"],
-        # NOTE: Full deobfuscation not yet working - opaque predicates remain.
-        # Expected to find "secret" string and resolve FLA+BCF+SUB patterns.
-        # Current status: BCF opaque predicates like ((x*(x-1))&1)==0 not removed.
-        # For now, just verify the code changes and some rules fire.
+        # Full expected deobfuscated code from results.toml (base64+gzip encoded)
+        expected_code=_decode_expected(_OLLVM_FLA_BCF_SUB_EXPECTED),
+        # Deobfuscated should have fewer while loops and cleaner flow
+        # Accept either PDB-resolved names (printf_1, scanf_0) or plain names (printf, scanf)
+        deobfuscated_contains=["secret"],  # String literal that must be preserved
+        acceptable_patterns=[
+            "printf", "scanf", "strncmp",  # Plain names (no PDB)
+            "printf_1", "scanf_0", "strncmp_0",  # PDB-resolved names
+            "Please enter password",  # String literal
+        ],
         must_change=True,
-        # Don't require specific rules until deobfuscation is fixed
-        # required_rules=["UnflattenerFakeJump"],
+        # From results.toml: PatternOptimizer (71), ChainOptimizer (5), many rules
+        # Only require the core unflattening rule - other rules vary by environment
+        required_rules=["UnflattenerFakeJump"],
+        expected_rules=[
+            "JumpFixer",
+            "PredOdd1",
+            "ArithmeticChain",
+            "AndBnot_FactorRule_2",
+        ],
     ),
 ]
 
