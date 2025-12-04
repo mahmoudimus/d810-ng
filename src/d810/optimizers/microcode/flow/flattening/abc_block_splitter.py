@@ -96,16 +96,12 @@ class ConditionalStateResolver:
 
         Returns number of patterns fixed.
 
-        NOTE: Currently disabled due to IDA segfault when modifying CFG.
-        The _apply_inplace method causes SIGSEGV at 0x10c, indicating
-        null pointer access in IDA's internal structures after CFG modification.
-        This is similar to the ABCBlockSplitter insert_block() issue.
+        NOTE: Currently disabled - ConditionalStateResolver doesn't handle the
+        actual ABC patterns in the test suite (which are dispatcher patterns
+        handled by UnflattenerFakeJump, not arithmetic state patterns).
         """
-        # DISABLED: CFG modification causes IDA segfault
-        # pattern = self._find_abc_pattern(block)
-        # if pattern is None:
-        #     return 0
-        # return self._apply_inplace(block, pattern)
+        # DISABLED: This resolver looks for "state = x OP magic" patterns
+        # but the ABC test cases use standard dispatcher patterns
         return 0
 
     def _find_abc_pattern(self, block: ida_hexrays.mblock_t) -> ABCPatternInfo | None:
