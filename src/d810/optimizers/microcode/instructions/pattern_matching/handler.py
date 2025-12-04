@@ -1,7 +1,6 @@
 import abc
 import dataclasses
 import itertools
-import logging
 import typing
 
 import ida_hexrays
@@ -15,8 +14,8 @@ from d810.optimizers.microcode.instructions.handler import (
     InstructionOptimizer,
 )
 
-optimizer_logger = getLogger("D810.optimizer", logging.DEBUG)
-pattern_search_logger = getLogger("D810.pattern_search", logging.DEBUG)
+optimizer_logger = getLogger("D810.optimizer")
+pattern_search_logger = getLogger("D810.pattern_search")
 
 if typing.TYPE_CHECKING:
     from d810.core import OptimizationStatistics

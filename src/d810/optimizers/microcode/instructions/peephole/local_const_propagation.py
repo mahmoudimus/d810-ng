@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import logging
-
 import ida_hexrays
 
 from d810.core import typing
@@ -11,7 +9,7 @@ from d810.optimizers.microcode.instructions.peephole.handler import (
     PeepholeSimplificationRule,
 )
 
-logger = getLogger(__name__, default_level=logging.DEBUG)
+logger = getLogger(__name__)
 
 
 class LocalizedConstantPropagationRule(PeepholeSimplificationRule):

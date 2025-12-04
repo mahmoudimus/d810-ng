@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import functools
-import logging
 import typing
 
 import ida_hexrays
@@ -16,7 +15,7 @@ from d810.optimizers.microcode.instructions.peephole.handler import (
     PeepholeSimplificationRule,
 )
 
-logger = getLogger(__name__, logging.DEBUG)
+logger = getLogger(__name__)
 
 
 def example(msg: str) -> typing.Callable:
