@@ -3,16 +3,25 @@
 These tests verify that the services actually work against compiled
 control-flow flattened binaries, not just mocks.
 
-Test Functions (from libobfuscated_test.dylib):
+Test Functions (from libobfuscated binary):
 - abc_xor_dispatch: Simple CFF with XOR-based state transitions
 - abc_or_dispatch: Simple CFF with OR-based state transitions
 - nested_simple: Nested dispatcher pattern
 - nested_deep: Deeply nested dispatcher (3 levels)
+
+Usage:
+    # Default platform-appropriate binary
+    pytest tests/system/optimizers/microcode/flow/flattening/test_services_integration.py -v
+
+    # Override with specific binary
+    D810_TEST_BINARY=libobfuscated.dll pytest tests/system/.../test_services_integration.py -v
 """
 
 from __future__ import annotations
 
 import logging
+import os
+import platform
 from typing import TYPE_CHECKING
 
 import pytest
@@ -34,6 +43,21 @@ if TYPE_CHECKING:
     from ida_hexrays import mba_t
 
 logger = logging.getLogger(__name__)
+
+
+def _get_default_binary() -> str:
+    """Get default binary name based on platform, with env var override.
+
+    Returns:
+        Binary name from D810_TEST_BINARY env var if set,
+        otherwise platform-appropriate default.
+    """
+    # Allow override via environment variable
+    override = os.environ.get("D810_TEST_BINARY")
+    if override:
+        return override
+    # Default: platform-appropriate binary
+    return "libobfuscated.dylib" if platform.system() == "Darwin" else "libobfuscated.dll"
 
 
 def make_test_context(mba: "mba_t") -> OptimizationContext:
@@ -93,7 +117,8 @@ class TestOLLVMDispatcherFinderIntegration:
     in real obfuscated code.
     """
 
-    binary_name = "libobfuscated_test.dylib"
+    # Use platform-appropriate binary (can be overridden via D810_TEST_BINARY env var)
+    binary_name = _get_default_binary()
 
     def test_find_dispatcher_abc_xor(self, ida_database):
         """Test finding dispatcher in abc_xor_dispatch function.
@@ -215,7 +240,8 @@ class TestPathEmulatorIntegration:
     in real obfuscated code.
     """
 
-    binary_name = "libobfuscated_test.dylib"
+    # Use platform-appropriate binary (can be overridden via D810_TEST_BINARY env var)
+    binary_name = _get_default_binary()
 
     def test_resolve_target_basic(self, ida_database):
         """Test resolving a dispatcher target from a predecessor block."""
@@ -303,7 +329,8 @@ class TestCFGPatcherIntegration:
     Note: These tests are more careful as they modify the mba.
     """
 
-    binary_name = "libobfuscated_test.dylib"
+    # Use platform-appropriate binary (can be overridden via D810_TEST_BINARY env var)
+    binary_name = _get_default_binary()
 
     def test_redirect_edge_basic(self, ida_database):
         """Test basic edge redirection."""
@@ -375,7 +402,8 @@ class TestServicesEndToEnd:
     Tests the full pipeline: find dispatcher -> resolve targets -> patch CFG
     """
 
-    binary_name = "libobfuscated_test.dylib"
+    # Use platform-appropriate binary (can be overridden via D810_TEST_BINARY env var)
+    binary_name = _get_default_binary()
 
     def test_full_unflattening_pipeline(self, ida_database):
         """Test the complete unflattening workflow without applying changes."""

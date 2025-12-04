@@ -1,7 +1,18 @@
 """Integration test for ProjectContext rule filtering API."""
+import os
+import platform
+
 import pytest
 import idaapi
 import idc
+
+
+def _get_default_binary() -> str:
+    """Get default binary name based on platform, with env var override."""
+    override = os.environ.get("D810_TEST_BINARY")
+    if override:
+        return override
+    return "libobfuscated.dylib" if platform.system() == "Darwin" else "libobfuscated.dll"
 
 
 def get_func_ea(name: str) -> int:
@@ -15,7 +26,7 @@ def get_func_ea(name: str) -> int:
 class TestProjectContextIntegration:
     """Integration tests for ProjectContext rule filtering."""
 
-    binary_name = "libobfuscated.dylib"
+    binary_name = _get_default_binary()
 
     def test_remove_rule_changes_output(
         self,

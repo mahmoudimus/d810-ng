@@ -5,12 +5,22 @@ deobfuscation process.
 """
 
 import logging
+import os
+import platform
 from collections import defaultdict
 
 import pytest
 
 import idaapi
 import idc
+
+
+def _get_default_binary() -> str:
+    """Get default binary name based on platform, with env var override."""
+    override = os.environ.get("D810_TEST_BINARY")
+    if override:
+        return override
+    return "libobfuscated.dylib" if platform.system() == "Darwin" else "libobfuscated.dll"
 
 # Configure detailed logging
 logging.basicConfig(level=logging.DEBUG)
@@ -144,7 +154,7 @@ def _decompile_and_track(func_name, d810_state_all_rules, pseudocode_to_string):
 class TestRuleTracking:
     """Test class for rule tracking - requires binary_name for ida_database fixture."""
 
-    binary_name = "libobfuscated.dylib"
+    binary_name = _get_default_binary()
 
     def test_xor_pattern_optimization(self, d810_state_all_rules, pseudocode_to_string):
         """Test that XOR pattern is optimized by DSL rules."""

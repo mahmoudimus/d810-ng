@@ -17,12 +17,21 @@ Capturing expectations (run once to establish baseline):
     pytest tests/system/test_unflattening_characterization.py --capture-stats
 """
 
+import os
 import platform
 
 import pytest
 
 import idaapi
 import idc
+
+
+def _get_default_binary() -> str:
+    """Get default binary name based on platform, with env var override."""
+    override = os.environ.get("D810_TEST_BINARY")
+    if override:
+        return override
+    return "libobfuscated.dylib" if platform.system() == "Darwin" else "libobfuscated.dll"
 
 
 def get_func_ea(name: str) -> int:
@@ -50,9 +59,7 @@ class TestABCPatternCharacterization:
     GenericDispatcherUnflatteningRule.
     """
 
-    binary_name = (
-        "libobfuscated.dylib" if platform.system() == "Darwin" else "libobfuscated.dll"
-    )
+    binary_name = _get_default_binary()
 
     def test_abc_xor_dispatch(
         self,
@@ -213,9 +220,7 @@ class TestNestedDispatcherCharacterization:
     - get_shared_internal_blocks() identification
     """
 
-    binary_name = (
-        "libobfuscated.dylib" if platform.system() == "Darwin" else "libobfuscated.dll"
-    )
+    binary_name = _get_default_binary()
 
     def test_nested_simple(
         self,
@@ -419,9 +424,7 @@ class TestABCF6ConstantsCharacterization:
     See: src/d810/optimizers/microcode/flow/flattening/generic.py:919
     """
 
-    binary_name = (
-        "libobfuscated.dylib" if platform.system() == "Darwin" else "libobfuscated.dll"
-    )
+    binary_name = _get_default_binary()
 
     def test_abc_f6_add_dispatch(
         self,
@@ -716,9 +719,7 @@ class TestApproovFlatteningCharacterization:
     See: src/d810/optimizers/microcode/flow/flattening/unflattener_badwhile_loop.py
     """
 
-    binary_name = (
-        "libobfuscated.dylib" if platform.system() == "Darwin" else "libobfuscated.dll"
-    )
+    binary_name = _get_default_binary()
 
     def test_approov_real_pattern(
         self,
@@ -880,9 +881,7 @@ class TestExceptionPathCharacterization:
     - Unresolvable indirect state transitions
     """
 
-    binary_name = (
-        "libobfuscated.dylib" if platform.system() == "Darwin" else "libobfuscated.dll"
-    )
+    binary_name = _get_default_binary()
 
     def test_unresolvable_external(
         self,

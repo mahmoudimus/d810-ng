@@ -4,11 +4,21 @@ This script shows how to use the test capture system both manually
 and via the pytest plugin.
 """
 
+import os
+import platform
 from pathlib import Path
 import tempfile
 
 # Manual usage example
 from tests.system.test_capture import TestResultCapture, TestResultQuery
+
+
+def _get_default_binary() -> str:
+    """Get default binary name based on platform, with env var override."""
+    override = os.environ.get("D810_TEST_BINARY")
+    if override:
+        return override
+    return "libobfuscated.dylib" if platform.system() == "Darwin" else "libobfuscated.dll"
 
 
 def example_manual_capture():
@@ -40,7 +50,7 @@ def example_manual_capture():
                     "cfg_rule_usages": {},
                 },
                 passed=True,
-                binary_name="libobfuscated.dylib",
+                binary_name=_get_default_binary(),
             )
 
             # Simulate test result 2
@@ -59,10 +69,10 @@ def example_manual_capture():
                     "cfg_rule_usages": {},
                 },
                 passed=True,
-                binary_name="libobfuscated.dylib",
+                binary_name=_get_default_binary(),
             )
 
-            print("✓ Captured 2 test results\n")
+            print("Captured 2 test results\n")
 
         # Query the results
         with TestResultQuery(db_path) as query:
