@@ -224,39 +224,27 @@ class ABCBlockSplitter:
 
     def apply(self) -> int:
         """
-        Apply all pending block splits with iterative re-analysis.
+        Apply all pending block splits.
 
-        This method applies splits in passes to handle newly created blocks:
-        1. Apply all pending splits
-        2. Analyze newly created blocks
-        3. If new patterns found, repeat from step 1
+        NOTE: Block insertion via insert_block() causes IDA mba.verify() failures
+        due to internal state corruption. This is tracked in bead d810ng-8me.
 
-        Returns the total number of splits applied across all passes.
+        Alternative approaches being considered:
+        1. Edge-only rewiring (no new blocks)
+        2. In-place conditional select instead of block split
+        3. Deferred batch insertion with single verify
 
-        NOTE: This uses an iterative approach instead of recursion to prevent
-        stack overflow and make the control flow more explicit.
+        Returns 0 until a working approach is implemented.
         """
         if not self.pending_splits:
             return 0
 
-        # TEMPORARY: Disable ABC splitter due to IDA mba.verify() failures
-        # The CFG looks correct via dstr() but verify() raises "Unknown exception"
-        # This may be related to internal IDA state that's not being updated properly
-        # when using insert_block() - see bead d810ng-pie for investigation
-        #
-        # Root cause: When insert_block() is called, IDA updates pred/succ sets and
-        # instruction operands in EXISTING blocks. However, some internal state is
-        # not being updated properly, causing mba.verify() to fail even though
-        # the CFG appears correct when inspected via dstr().
-        #
-        # Proper fix will require understanding IDA's internal block state management
-        # or using a different approach (e.g., block cloning instead of insertion).
-        if self.pending_splits:
-            logger.warning(
-                "ABC splitter disabled: %d pending splits skipped (verify() issue)",
-                len(self.pending_splits)
-            )
-            self.pending_splits.clear()
+        # Log pending work for debugging, but don't apply
+        logger.debug(
+            "ABC splitter: %d pending splits (disabled due to verify failure)",
+            len(self.pending_splits)
+        )
+        self.pending_splits.clear()
         return 0
 
     def _apply_single_split(
