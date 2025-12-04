@@ -7,7 +7,7 @@ patterns in control flow unflattening:
 1. ABCBlockSplitter (legacy, disabled): Creates new blocks via insert_block()
    - Causes IDA mba.verify() failures due to internal state corruption
 
-2. ABCInPlaceHandler (new): Resolves targets directly without new blocks
+2. ConditionalStateResolver (new): Resolves targets directly without new blocks
    - Detects ABC patterns: state = x + magic (where magic in 1010000-1011999)
    - Resolves both possible targets (x=0 and x!=0) via dispatcher emulation
    - Creates conditional jump in-place: jnz x, 0, target1; goto target0
@@ -60,23 +60,27 @@ class ABCPatternInfo:
 
 
 @dataclass
-class ABCInPlaceHandler:
+class ConditionalStateResolver:
     """
-    In-place ABC pattern handler - resolves targets without creating blocks.
+    Resolves conditional state patterns directly to targets without new blocks.
 
-    This is the "directed graph" approach: instead of creating new blocks
-    with constant state values, we resolve the targets directly and create
-    a conditional jump.
+    Detects patterns where state is computed from a binary condition:
+        state = x OP magic_constant  (where OP is add/sub/or/xor)
 
-    For pattern: state = x + magic
-    - If x == 0: state = magic -> resolve target0
-    - If x != 0: state = magic+1 -> resolve target1
-    - Replace block with: jnz x, 0, target1; goto target0
+    Instead of creating intermediate blocks, resolves both possible outcomes
+    (x=0 and x=1) via dispatcher emulation and creates a direct conditional jump.
+
+    Example transformation:
+        Before: state = x + 1010123; goto dispatcher
+        After:  jnz x, 0, target_for_1010124; goto target_for_1010123
+
+    This "directed graph" approach avoids insert_block() which causes IDA
+    mba.verify() failures due to internal state corruption.
 
     Usage:
-        handler = ABCInPlaceHandler(mba, dispatcher_info)
+        resolver = ConditionalStateResolver(mba, dispatcher_info)
         for block in blocks_to_analyze:
-            handler.analyze_and_apply(block)
+            resolver.analyze_and_apply(block)
     """
 
     mba: ida_hexrays.mba_t

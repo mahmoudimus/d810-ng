@@ -67,7 +67,7 @@ from d810.core.registry import EventEmitter
 from d810.hexrays.deferred_modifier import DeferredGraphModifier, GraphModification
 from d810.optimizers.microcode.flow.flattening.abc_block_splitter import (
     ABCBlockSplitter,
-    ABCInPlaceHandler,
+    ConditionalStateResolver,
 )
 from d810.optimizers.microcode.flow.flattening.loop_prover import (
     SingleIterationLoopTracker,
@@ -1398,7 +1398,7 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
     ):
         """Fix dispatcher fathers with ABC patterns using in-place transformation.
 
-        This method uses ABCInPlaceHandler for direct target resolution:
+        This method uses ConditionalStateResolver for direct target resolution:
         1. Collect all blocks to analyze from father histories
         2. For each ABC pattern (state = x + magic where magic in 1010000-1011999):
            - Resolve both possible targets via dispatcher emulation
@@ -1411,8 +1411,8 @@ class GenericDispatcherUnflatteningRule(GenericUnflatteningRule):
             dispatcher_father, dispatcher_entry_block, dispatcher_info
         )
 
-        # Use ABCInPlaceHandler for direct target resolution (no new blocks)
-        handler = ABCInPlaceHandler(self.mba, dispatcher_info)
+        # Use ConditionalStateResolver for direct target resolution (no new blocks)
+        handler = ConditionalStateResolver(self.mba, dispatcher_info)
 
         total_n = 0
         # Process each block in the father histories
