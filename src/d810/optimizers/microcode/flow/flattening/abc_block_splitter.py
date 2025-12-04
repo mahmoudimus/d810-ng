@@ -239,48 +239,25 @@ class ABCBlockSplitter:
         if not self.pending_splits:
             return 0
 
-        total_applied = 0
-        pass_num = 0
-
-        # Iterative approach: keep processing until no new splits are found
-        while self.pending_splits:
-            pass_num += 1
-            current_batch_size = len(self.pending_splits)
-            logger.info(
-                "ABC splitter pass %d: applying %d block splits",
-                pass_num, current_batch_size
+        # TEMPORARY: Disable ABC splitter due to IDA mba.verify() failures
+        # The CFG looks correct via dstr() but verify() raises "Unknown exception"
+        # This may be related to internal IDA state that's not being updated properly
+        # when using insert_block() - see bead d810ng-pie for investigation
+        #
+        # Root cause: When insert_block() is called, IDA updates pred/succ sets and
+        # instruction operands in EXISTING blocks. However, some internal state is
+        # not being updated properly, causing mba.verify() to fail even though
+        # the CFG appears correct when inspected via dstr().
+        #
+        # Proper fix will require understanding IDA's internal block state management
+        # or using a different approach (e.g., block cloning instead of insertion).
+        if self.pending_splits:
+            logger.warning(
+                "ABC splitter disabled: %d pending splits skipped (verify() issue)",
+                len(self.pending_splits)
             )
-
-            newly_created_blocks: list[ida_hexrays.mblock_t] = []
-
-            # Apply all splits in current batch
-            for split_op in self.pending_splits:
-                try:
-                    new_blocks = self._apply_single_split(split_op)
-                    if new_blocks:
-                        newly_created_blocks.extend(new_blocks)
-                        total_applied += 1
-                except Exception as e:
-                    logger.error("Failed to apply split for block %d: %s",
-                               split_op.block_serial, e)
-
-            # Clear pending after applying this batch
             self.pending_splits.clear()
-
-            # Analyze newly created blocks to find more patterns
-            if newly_created_blocks:
-                logger.debug(
-                    "Analyzing %d newly created blocks for ABC patterns",
-                    len(newly_created_blocks)
-                )
-                for new_block in newly_created_blocks:
-                    self.analyze_block(new_block)
-
-            # Loop continues if new patterns were found during analysis
-
-        logger.info("ABC splitter completed: %d total splits in %d passes",
-                   total_applied, pass_num)
-        return total_applied
+        return 0
 
     def _apply_single_split(
         self,
@@ -328,13 +305,25 @@ class ABCBlockSplitter:
         if dispatcher_father.tail is not None and dispatcher_father.tail.opcode == ida_hexrays.m_goto:
             dispatcher_father.remove_from_block(dispatcher_father.tail)
 
-        # Calculate new block serials
-        new_id0_serial = dispatcher_father.serial + 1
-        new_id1_serial = dispatcher_father.serial + 2
+        # Insert new blocks at the END of the mba to avoid shifting issues
+        # Inserting in the middle causes IDA internal state corruption
+        end_serial = self.mba.qty - 1  # Before exit block
 
-        # Create new blocks
-        new_block0 = self.mba.insert_block(new_id0_serial)
-        new_block1 = self.mba.insert_block(new_id1_serial)
+        logger.info("=== INSERTING AT END (before exit block %d) ===", end_serial)
+        logger.info("dispatcher_father.serial=%d, succset=%s",
+                   dispatcher_father.serial, list(dispatcher_father.succset))
+
+        # Create new blocks at the end (before exit block)
+        new_block0 = self.mba.insert_block(end_serial)
+        new_id0_serial = new_block0.serial
+
+        logger.info("After first insert: new_block0.serial=%d", new_id0_serial)
+
+        new_block1 = self.mba.insert_block(end_serial + 1)  # Next position (previous position shifted)
+        new_id1_serial = new_block1.serial
+
+        logger.info("After second insert: new_block1.serial=%d", new_id1_serial)
+        logger.info("dispatcher_father.succset=%s (after inserts)", list(dispatcher_father.succset))
 
         # Calculate constants based on opcode
         block0_const, block1_const = self._calculate_block_constants(
@@ -343,6 +332,7 @@ class ABCBlockSplitter:
 
         # Get successor info
         childs_goto_serial = dispatcher_father.succset[0]
+        logger.info("childs_goto_serial=%d (original successor)", childs_goto_serial)
 
         # Copy instructions to both new blocks
         ea = split_op.instruction_ea
@@ -415,6 +405,15 @@ class ABCBlockSplitter:
         )
 
         self.mba.mark_chains_dirty()
+
+        # Log CFG state before verify
+        logger.info("=== CFG STATE BEFORE VERIFY ===")
+        for i in range(self.mba.qty):
+            blk = self.mba.get_mblock(i)
+            tail_str = blk.tail.dstr() if blk.tail else "None"
+            logger.info("Block %d: type=%d, preds=%s, succs=%s, tail=%s",
+                       i, blk.type, list(blk.predset), list(blk.succset), tail_str)
+
         safe_verify(
             self.mba,
             f"ABCBlockSplitter.apply_single_split block {split_op.block_serial}",
