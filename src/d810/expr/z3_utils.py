@@ -419,6 +419,9 @@ def z3_check_mop_equality(
 
 _Z3_NEQ_CACHE: Dict[Tuple[Tuple[int, int, int|str], Tuple[int, int, int|str]], bool] = {}
 
+_Z3_ALWAYS_ZERO_CACHE: Dict[Tuple[int, int, int|str], bool] = {}
+_Z3_ALWAYS_NONZERO_CACHE: Dict[Tuple[int, int, int|str], bool] = {}
+
 
 @requires_z3_installed
 def z3_check_mop_inequality(
@@ -490,6 +493,363 @@ def z3_check_mop_inequality(
     _solver.pop()
     _Z3_NEQ_CACHE[cache_key] = is_unequal
     return is_unequal
+
+
+def _resolve_mop_to_ast_via_tracker(
+    mop: ida_hexrays.mop_t,
+    blk: ida_hexrays.mblock_t,
+    ins: ida_hexrays.minsn_t,
+) -> "AstNode | AstLeaf | None":
+    """Use MopTracker to find the instruction that defines mop, return its AST.
+
+    This function is used to resolve register/stack variables to their defining
+    expressions. For example, if we have:
+        eax.4 = (x.4 * (x.4 - 1.4)) & 1.4
+        setz eax.4, 0.4, cf.1
+
+    When analyzing the setz instruction, eax.4 is just a register (mop_r), but
+    by tracking backward we can find that it's actually the expression
+    (x * (x-1)) & 1, which we can then prove is always 0.
+
+    Args:
+        mop: The mop_t to resolve (typically a register or stack variable)
+        blk: The block containing the instruction
+        ins: The instruction where mop is used
+
+    Returns:
+        The AST of the defining instruction's RHS, or None if not found
+    """
+    # Only track register/stack variables - other types already have full AST info
+    if not IDA_AVAILABLE:
+        return None
+
+    if mop.t not in (ida_hexrays.mop_r, ida_hexrays.mop_S):
+        return None
+
+    try:
+        from d810.hexrays.tracker import MopTracker
+    except ImportError:
+        logger.debug("_resolve_mop_to_ast_via_tracker: MopTracker not available")
+        return None
+
+    # Create tracker for this mop with limited scope (block-local only)
+    # max_nb_block=1 ensures we only search within the current block
+    # max_path=1 limits to a single path (no branching)
+    try:
+        MopTracker.reset()  # Reset global path counter
+        tracker = MopTracker([mop], max_nb_block=1, max_path=1)
+        histories = tracker.search_backward(blk, ins)
+    except Exception as e:
+        logger.debug("_resolve_mop_to_ast_via_tracker: Tracker failed: %s", e)
+        return None
+
+    if not histories:
+        logger.debug("_resolve_mop_to_ast_via_tracker: No history found for %s",
+                     format_mop_t(mop))
+        return None
+
+    # Get the first (and only) history
+    history = histories[0]
+
+    # Look for the defining instruction in the history
+    # The history contains BlockInfo objects with instruction lists
+    for blk_info in history.history:
+        for def_ins in blk_info.ins_list:
+            # Check if this instruction defines our mop
+            # The defining instruction writes to our mop as its destination
+            if def_ins.d is not None and def_ins.d.t == mop.t:
+                # For registers, check if it's the same register
+                if mop.t == ida_hexrays.mop_r and def_ins.d.r == mop.r:
+                    # Build AST from the instruction's source operands
+                    ast = minsn_to_ast(def_ins)
+                    if logger.debug_on:
+                        logger.debug(
+                            "_resolve_mop_to_ast_via_tracker: Resolved %s to %s from %s",
+                            format_mop_t(mop), ast, format_minsn_t(def_ins)
+                        )
+                    return ast
+                # For stack variables, compare the stack offset
+                elif mop.t == ida_hexrays.mop_S:
+                    try:
+                        if def_ins.d.s.off == mop.s.off:
+                            ast = minsn_to_ast(def_ins)
+                            if logger.debug_on:
+                                logger.debug(
+                                    "_resolve_mop_to_ast_via_tracker: Resolved %s to %s from %s",
+                                    format_mop_t(mop), ast, format_minsn_t(def_ins)
+                                )
+                            return ast
+                    except AttributeError:
+                        pass
+
+    logger.debug("_resolve_mop_to_ast_via_tracker: No defining instruction found for %s",
+                 format_mop_t(mop))
+    return None
+
+
+def _recursively_resolve_ast(
+    ast: "AstNode | AstLeaf | None",
+    blk: "ida_hexrays.mblock_t",
+    ins: "ida_hexrays.minsn_t",
+    depth: int = 0,
+    max_depth: int = 10,
+) -> "AstNode | AstLeaf | None":
+    """Recursively resolve register/stack leaves in an AST to their defining expressions.
+
+    This function handles multi-instruction expressions like:
+        t1 = sub(x, 1)
+        t2 = mul(t1, x)
+        t3 = and(t2, 1)
+        setz(t3, 0)
+
+    Without recursive resolution, we'd only get `and(t2, 1)` where `t2` is still
+    a register. With recursive resolution, we get the full expression:
+        `and(mul(sub(x, 1), x), 1)` which Z3 can prove is always 0.
+
+    Args:
+        ast: The AST to resolve
+        blk: Current block for backward search
+        ins: Current instruction for backward search
+        depth: Current recursion depth
+        max_depth: Maximum recursion depth to prevent infinite loops
+
+    Returns:
+        AST with register/stack leaves replaced by their defining expressions
+    """
+    if depth >= max_depth:
+        return ast
+
+    if ast is None:
+        return None
+
+    if not IDA_AVAILABLE:
+        return ast
+
+    # If it's a leaf with a register/stack mop, try to resolve it
+    if ast.is_leaf():
+        ast_leaf = typing.cast(AstLeaf, ast)
+        if ast_leaf.mop is not None and ast_leaf.mop.t in (ida_hexrays.mop_r, ida_hexrays.mop_S):
+            resolved = _resolve_mop_to_ast_via_tracker(ast_leaf.mop, blk, ins)
+            if resolved is not None and resolved is not ast:
+                # Recursively resolve the new AST
+                return _recursively_resolve_ast(resolved, blk, ins, depth + 1, max_depth)
+        return ast
+
+    # For non-leaf nodes, recursively resolve children
+    ast_node = typing.cast(AstNode, ast)
+
+    new_left = _recursively_resolve_ast(ast_node.left, blk, ins, depth, max_depth) if ast_node.left else None
+    new_right = _recursively_resolve_ast(ast_node.right, blk, ins, depth, max_depth) if ast_node.right else None
+
+    # If children changed, create new AST node
+    if new_left is not ast_node.left or new_right is not ast_node.right:
+        # Create a new AstNode with the same opcode but resolved children
+        new_ast = AstNode(ast_node.opcode, new_left, new_right)
+        new_ast.mop = ast_node.mop  # Preserve original mop info
+        new_ast.dest_size = ast_node.dest_size
+        new_ast.ea = ast_node.ea
+        if logger.debug_on:
+            logger.debug(
+                "_recursively_resolve_ast: Rebuilt AST node: %s -> %s",
+                ast_node, new_ast
+            )
+        return new_ast
+
+    return ast
+
+
+@requires_z3_installed
+def z3_check_always_zero(
+    mop: ida_hexrays.mop_t,
+    blk: ida_hexrays.mblock_t | None = None,
+    ins: ida_hexrays.minsn_t | None = None,
+) -> bool:
+    """Prove that mop evaluates to 0 for ALL possible inputs.
+
+    Used to detect opaque predicates like (x * (x-1)) & 1 which is always 0.
+
+    If mop is a register/stack variable and blk/ins are provided, uses MopTracker
+    to find the defining expression and prove that is always zero.
+
+    Args:
+        mop: The microcode operand to analyze.
+        blk: Optional block containing the instruction (for backward tracking).
+        ins: Optional instruction where mop is used (for backward tracking).
+
+    Returns:
+        True if proven always zero, False otherwise.
+    """
+    if mop is None:
+        return False
+    # Validate SWIG object
+    if not hasattr(mop, 't') or not hasattr(mop, 'size'):
+        logger.warning("z3_check_always_zero: mop is invalid or freed SWIG object")
+        return False
+
+    # Check cache first
+    try:
+        cache_key = (int(mop.t), int(mop.size), structural_mop_hash(mop, 0))
+    except Exception:
+        cache_key = (int(mop.t), int(mop.size), mop.dstr())
+
+    cached = _Z3_ALWAYS_ZERO_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    # First try direct AST conversion
+    ast = mop_to_ast(mop)
+
+    # If mop is a simple var (register/stack) and we have context, try to find its definition
+    if ast is None or (hasattr(ast, 'is_leaf') and ast.is_leaf() and
+                       mop.t in (ida_hexrays.mop_r, ida_hexrays.mop_S)):
+        if blk is not None and ins is not None:
+            resolved_ast = _resolve_mop_to_ast_via_tracker(mop, blk, ins)
+            if resolved_ast is not None:
+                ast = resolved_ast
+                if logger.debug_on:
+                    logger.debug(
+                        "z3_check_always_zero: Resolved %s via tracker to AST: %s",
+                        format_mop_t(mop), ast
+                    )
+
+    # Recursively resolve any register/stack leaves in the AST
+    if ast is not None and blk is not None and ins is not None:
+        ast = _recursively_resolve_ast(ast, blk, ins)
+        if logger.debug_on:
+            logger.debug(
+                "z3_check_always_zero: After recursive resolution: %s",
+                ast
+            )
+
+    if ast is None:
+        _Z3_ALWAYS_ZERO_CACHE[cache_key] = False
+        return False
+
+    leaf_list = ast.get_leaf_list()
+    create_z3_vars(leaf_list)
+
+    try:
+        z3_expr = ast_to_z3_expression(ast)
+    except Exception as e:
+        logger.debug("z3_check_always_zero: Failed to convert to Z3: %s", e)
+        _Z3_ALWAYS_ZERO_CACHE[cache_key] = False
+        return False
+
+    if z3_expr is None:
+        _Z3_ALWAYS_ZERO_CACHE[cache_key] = False
+        return False
+
+    solver = get_solver()
+    solver.push()
+    try:
+        # Try to find ANY input where expr != 0
+        # If unsat, expr is always 0
+        solver.add(z3_expr != z3.BitVecVal(0, z3_expr.size()))
+        result = solver.check() == z3.unsat
+    except Exception as e:
+        logger.debug("z3_check_always_zero: Z3 solver error: %s", e)
+        result = False
+    finally:
+        solver.pop()
+
+    _Z3_ALWAYS_ZERO_CACHE[cache_key] = result
+    return result
+
+
+@requires_z3_installed
+def z3_check_always_nonzero(
+    mop: ida_hexrays.mop_t,
+    blk: ida_hexrays.mblock_t | None = None,
+    ins: ida_hexrays.minsn_t | None = None,
+) -> bool:
+    """Prove that mop evaluates to non-zero for ALL possible inputs.
+
+    If mop is a register/stack variable and blk/ins are provided, uses MopTracker
+    to find the defining expression and prove that is always nonzero.
+
+    Args:
+        mop: The microcode operand to analyze.
+        blk: Optional block containing the instruction (for backward tracking).
+        ins: Optional instruction where mop is used (for backward tracking).
+
+    Returns:
+        True if proven always nonzero, False otherwise.
+    """
+    if mop is None:
+        return False
+    # Validate SWIG object
+    if not hasattr(mop, 't') or not hasattr(mop, 'size'):
+        logger.warning("z3_check_always_nonzero: mop is invalid or freed SWIG object")
+        return False
+
+    # Check cache first
+    try:
+        cache_key = (int(mop.t), int(mop.size), structural_mop_hash(mop, 0))
+    except Exception:
+        cache_key = (int(mop.t), int(mop.size), mop.dstr())
+
+    cached = _Z3_ALWAYS_NONZERO_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    # First try direct AST conversion
+    ast = mop_to_ast(mop)
+
+    # If mop is a simple var (register/stack) and we have context, try to find its definition
+    if ast is None or (hasattr(ast, 'is_leaf') and ast.is_leaf() and
+                       mop.t in (ida_hexrays.mop_r, ida_hexrays.mop_S)):
+        if blk is not None and ins is not None:
+            resolved_ast = _resolve_mop_to_ast_via_tracker(mop, blk, ins)
+            if resolved_ast is not None:
+                ast = resolved_ast
+                if logger.debug_on:
+                    logger.debug(
+                        "z3_check_always_nonzero: Resolved %s via tracker to AST: %s",
+                        format_mop_t(mop), ast
+                    )
+
+    # Recursively resolve any register/stack leaves in the AST
+    if ast is not None and blk is not None and ins is not None:
+        ast = _recursively_resolve_ast(ast, blk, ins)
+        if logger.debug_on:
+            logger.debug(
+                "z3_check_always_nonzero: After recursive resolution: %s",
+                ast
+            )
+
+    if ast is None:
+        _Z3_ALWAYS_NONZERO_CACHE[cache_key] = False
+        return False
+
+    leaf_list = ast.get_leaf_list()
+    create_z3_vars(leaf_list)
+
+    try:
+        z3_expr = ast_to_z3_expression(ast)
+    except Exception as e:
+        logger.debug("z3_check_always_nonzero: Failed to convert to Z3: %s", e)
+        _Z3_ALWAYS_NONZERO_CACHE[cache_key] = False
+        return False
+
+    if z3_expr is None:
+        _Z3_ALWAYS_NONZERO_CACHE[cache_key] = False
+        return False
+
+    solver = get_solver()
+    solver.push()
+    try:
+        # Try to find ANY input where expr == 0
+        # If unsat, expr is always nonzero
+        solver.add(z3_expr == z3.BitVecVal(0, z3_expr.size()))
+        result = solver.check() == z3.unsat
+    except Exception as e:
+        logger.debug("z3_check_always_nonzero: Z3 solver error: %s", e)
+        result = False
+    finally:
+        solver.pop()
+
+    _Z3_ALWAYS_NONZERO_CACHE[cache_key] = result
+    return result
 
 
 @requires_z3_installed

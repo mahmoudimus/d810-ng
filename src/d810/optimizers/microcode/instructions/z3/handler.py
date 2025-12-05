@@ -1,4 +1,5 @@
 import abc
+import typing
 
 import ida_hexrays
 
@@ -10,6 +11,18 @@ from d810.optimizers.microcode.instructions.handler import (
 
 
 class Z3Rule(GenericPatternRule):
+    """Base class for Z3-based optimization rules.
+
+    Z3 rules can prove properties about expressions (e.g., always zero, always equal)
+    using Z3 theorem proving. They have access to the current block and instruction
+    context for backward tracking of register/stack variable definitions.
+    """
+
+    def __init__(self):
+        super().__init__()
+        # Context for backward tracking (set during check_and_replace)
+        self._current_blk: ida_hexrays.mblock_t | None = None
+        self._current_ins: ida_hexrays.minsn_t | None = None
 
     @property
     @abc.abstractmethod
@@ -20,6 +33,21 @@ class Z3Rule(GenericPatternRule):
     @abc.abstractmethod
     def REPLACEMENT_PATTERN(self) -> AstNode:
         """Return the replacement pattern."""
+
+    @typing.override
+    def check_and_replace(
+        self, blk: ida_hexrays.mblock_t, instruction: ida_hexrays.minsn_t
+    ) -> ida_hexrays.minsn_t | None:
+        """Override to store context for backward tracking."""
+        # Store context so check_candidate can access blk/ins for MopTracker
+        self._current_blk = blk
+        self._current_ins = instruction
+        try:
+            return super().check_and_replace(blk, instruction)
+        finally:
+            # Clear context after use
+            self._current_blk = None
+            self._current_ins = None
 
 
 class Z3Optimizer(InstructionOptimizer):
