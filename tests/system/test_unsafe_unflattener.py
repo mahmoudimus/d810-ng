@@ -353,8 +353,9 @@ class TestUnflattenerSafetyCheckRegression:
             pytest.skip(f"Function 'hodur_func' not found in binary")
 
         with d810_state() as state:
-            # Use full libobfuscated project (all rules enabled)
-            project_name = "example_libobfuscated.json"
+            # Use example_hodur.json - hodur_func uses pure state assignments
+            # (state = CONST) which HodurUnflattener is purpose-built for
+            project_name = "example_hodur.json"
             try:
                 project_index = state.project_manager.index(project_name)
                 state.load_project(project_index)
@@ -386,12 +387,25 @@ class TestUnflattenerSafetyCheckRegression:
 
             # Check that some rules fired (d810 is working)
             stats_dict = state.stats.to_dict()
-            total_applications = sum(stats_dict.get("rule_counts", {}).values())
+            # Block/CFG rules (like HodurUnflattener) are tracked in cfg_rule_usages
+            cfg_usages = stats_dict.get("cfg_rule_usages", {})
+            # Count total patches from all CFG rules
+            total_cfg_patches = sum(
+                sum(patches) for patches in cfg_usages.values()
+            )
+            # Also count instruction rule matches
+            instruction_matches = stats_dict.get("instruction_rule_matches", {})
+            total_instruction_matches = sum(instruction_matches.values())
+            total_applications = total_cfg_patches + total_instruction_matches
 
             print(f"\n=== hodur_func Regression Test ===")
             print(f"Code before length: {len(code_before)}")
             print(f"Code after length: {len(code_after)}")
+            print(f"CFG rule patches: {total_cfg_patches}")
+            print(f"Instruction rule matches: {total_instruction_matches}")
             print(f"Total rule applications: {total_applications}")
+            if cfg_usages:
+                print(f"CFG rules that fired: {list(cfg_usages.keys())}")
 
             # The safety check should not have prevented all unflattening
             assert total_applications > 0, (
