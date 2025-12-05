@@ -286,6 +286,8 @@ class GraphModification:
     final_target: int | None = None
     # For BLOCK_CREATE_WITH_REDIRECT: whether target is 0-way
     is_0_way: bool = False
+    # Rule priority for conflict resolution (higher = wins conflicts)
+    rule_priority: int = 0
 
 
 @dataclass
@@ -348,16 +350,31 @@ class DeferredGraphModifier:
         block_serial: int,
         new_target: int,
         description: str = "",
+        rule_priority: int = 0,
     ) -> None:
-        """Queue a change to an unconditional goto's destination."""
+        """Queue a change to an unconditional goto's destination.
+
+        Args:
+            block_serial: Serial number of the block to modify
+            new_target: New goto target block serial
+            description: Description for logging
+            rule_priority: Priority for conflict resolution (higher = wins).
+                           Use 100 for proven constant analysis,
+                           50 for path-based analysis,
+                           0 for default/fallback rules.
+        """
         self.modifications.append(GraphModification(
             mod_type=ModificationType.BLOCK_GOTO_CHANGE,
             block_serial=block_serial,
             new_target=new_target,
             priority=10,  # High priority - do block changes first
             description=description or f"goto {block_serial} -> {new_target}",
+            rule_priority=rule_priority,
         ))
-        logger.debug("Queued goto change: block %d -> %d", block_serial, new_target)
+        logger.debug(
+            "Queued goto change: block %d -> %d (rule_priority=%d)",
+            block_serial, new_target, rule_priority
+        )
 
     def queue_conditional_target_change(
         self,
@@ -513,28 +530,41 @@ class DeferredGraphModifier:
 
             unique_modifications.append(mod)
 
-        # Detect conflicting modifications for the same block
+        # Detect and resolve conflicting modifications for the same block
         for block_serial, mods in block_modifications.items():
             if len(mods) > 1:
                 # Check if they're the same type with different targets (conflict)
-                type_targets = [(m.mod_type, m.new_target) for m in mods]
                 unique_types = set(m.mod_type for m in mods)
 
-                # Same type, different targets = conflict
+                # Same type, different targets = conflict - resolve by rule_priority
                 for mod_type in unique_types:
                     same_type_mods = [m for m in mods if m.mod_type == mod_type]
                     if len(same_type_mods) > 1:
                         targets = [m.new_target for m in same_type_mods]
                         if len(set(targets)) > 1:
+                            # CONFLICT: Multiple modifications with different targets
+                            # Resolve by keeping only the highest rule_priority modification
+                            winner = max(same_type_mods, key=lambda m: m.rule_priority)
+                            losers = [m for m in same_type_mods if m != winner]
+
                             logger.warning(
-                                "CONFLICT: Block %d has %d %s modifications with different targets: %s",
-                                block_serial, len(same_type_mods), mod_type.name, targets
+                                "CONFLICT RESOLVED: Block %d - keeping priority=%d (target=%d), "
+                                "discarding %s",
+                                block_serial,
+                                winner.rule_priority,
+                                winner.new_target,
+                                [(m.rule_priority, m.new_target) for m in losers]
                             )
+
+                            # Remove losers from unique_modifications
+                            for loser in losers:
+                                if loser in unique_modifications:
+                                    unique_modifications.remove(loser)
 
         removed_count = original_count - len(unique_modifications)
         if removed_count > 0:
             logger.info(
-                "Coalesced modifications: removed %d duplicates (%d -> %d)",
+                "Coalesced modifications: removed %d duplicates/conflicts (%d -> %d)",
                 removed_count, original_count, len(unique_modifications)
             )
 

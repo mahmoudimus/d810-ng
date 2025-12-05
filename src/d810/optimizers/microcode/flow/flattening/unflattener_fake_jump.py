@@ -58,13 +58,24 @@ class UnflattenerFakeJump(GenericUnflatteningRule):
                 )
                 continue  # Try next predecessor instead of failing entirely
 
-            # SAFETY CHECK: If unresolved paths outnumber resolved paths, bail out
-            # Z3 analysis shows ignoring unresolved paths is unsafe when they could
+            # SAFETY CHECK: If too many unresolved paths, consider skipping.
+            # Z3 analysis shows ignoring unresolved paths can be unsafe when they could
             # have different state values leading to different jump outcomes.
-            # Conservative heuristic: only trust resolved paths when they're the majority.
-            if unresolved_count > len(resolved_histories):
+            #
+            # However, for OLLVM FLA patterns:
+            # - Many paths are unresolved due to nested loop back-edges
+            # - These back-edges don't set state values, so they don't affect jump direction
+            # - The resolved paths still correctly determine if jump is always/never taken
+            #
+            # Relaxed heuristic: Skip only when unresolved massively outnumber resolved
+            # (10x threshold) AND we have very few resolved paths (< 3). This handles:
+            # - Simple cases: few paths, strict check (original behavior)
+            # - OLLVM FLA: many resolved paths, relax ratio requirement
+            few_resolved = len(resolved_histories) < 3
+            extreme_ratio = unresolved_count > 10 * len(resolved_histories)
+            if few_resolved and extreme_ratio:
                 unflat_logger.warning(
-                    "Pred %s has more unresolved (%d) than resolved (%d) paths - "
+                    "Pred %s has extreme unresolved:resolved ratio (%d vs %d) with few resolved - "
                     "unsafe to ignore unresolved, skipping",
                     pred_serial,
                     unresolved_count,
