@@ -35,8 +35,6 @@ try:
 except ImportError:
     EGGLOG_AVAILABLE = False
 
-import ida_hexrays
-
 
 def check_egglog_available() -> bool:
     """Check if egglog is installed and available."""
@@ -44,6 +42,13 @@ def check_egglog_available() -> bool:
 
 
 if EGGLOG_AVAILABLE:
+    # Import ida_hexrays only when egglog is available and we're in IDA
+    try:
+        import ida_hexrays
+    except ImportError:
+        # Not in IDA environment - ida_hexrays not needed for pure pattern analysis
+        ida_hexrays = None  # type: ignore
+
     # Define the expression class at module level (egglog v12+ API)
     class BitExpr(Expr):
         """Bitwise expression type for MBA patterns.
@@ -152,6 +157,13 @@ if EGGLOG_AVAILABLE:
                 rewrite(-(-x)).to(x),
             )
 
+            # XOR-NOT equivalence (handles inverse rules like BnotXor/CstSimpl)
+            # Mathematical identity: x ^ ~y == ~(x ^ y)
+            self.egraph.register(
+                rewrite(x ^ (~y)).to(~(x ^ y)),
+                rewrite(~(x ^ y)).to(x ^ (~y)),
+            )
+
             # Store variables for later use
             self._rule_vars = (x, y, z)
 
@@ -181,32 +193,39 @@ if EGGLOG_AVAILABLE:
             return BitExpr(value)
 
     # IDA opcode to BitExpr operation mapping
-    _OPCODE_TO_BITEXPR_BINARY = {
-        ida_hexrays.m_add: lambda l, r: l + r,
-        ida_hexrays.m_sub: lambda l, r: l - r,
-        ida_hexrays.m_mul: lambda l, r: l * r,
-        ida_hexrays.m_and: lambda l, r: l & r,
-        ida_hexrays.m_or: lambda l, r: l | r,
-        ida_hexrays.m_xor: lambda l, r: l ^ r,
-    }
+    # Only populated when ida_hexrays is available (inside IDA)
+    if ida_hexrays is not None:
+        _OPCODE_TO_BITEXPR_BINARY = {
+            ida_hexrays.m_add: lambda l, r: l + r,
+            ida_hexrays.m_sub: lambda l, r: l - r,
+            ida_hexrays.m_mul: lambda l, r: l * r,
+            ida_hexrays.m_and: lambda l, r: l & r,
+            ida_hexrays.m_or: lambda l, r: l | r,
+            ida_hexrays.m_xor: lambda l, r: l ^ r,
+        }
 
-    _OPCODE_TO_BITEXPR_UNARY = {
-        ida_hexrays.m_neg: lambda x: -x,
-        ida_hexrays.m_bnot: lambda x: ~x,
-    }
+        _OPCODE_TO_BITEXPR_UNARY = {
+            ida_hexrays.m_neg: lambda x: -x,
+            ida_hexrays.m_bnot: lambda x: ~x,
+        }
 
-    # BitExpr operation to IDA opcode mapping (for extraction)
-    # Note: These are string representations from egglog
-    _BITEXPR_OP_TO_OPCODE = {
-        "__add__": ida_hexrays.m_add,
-        "__sub__": ida_hexrays.m_sub,
-        "__mul__": ida_hexrays.m_mul,
-        "__and__": ida_hexrays.m_and,
-        "__or__": ida_hexrays.m_or,
-        "__xor__": ida_hexrays.m_xor,
-        "__neg__": ida_hexrays.m_neg,
-        "__invert__": ida_hexrays.m_bnot,
-    }
+        # BitExpr operation to IDA opcode mapping (for extraction)
+        # Note: These are string representations from egglog
+        _BITEXPR_OP_TO_OPCODE = {
+            "__add__": ida_hexrays.m_add,
+            "__sub__": ida_hexrays.m_sub,
+            "__mul__": ida_hexrays.m_mul,
+            "__and__": ida_hexrays.m_and,
+            "__or__": ida_hexrays.m_or,
+            "__xor__": ida_hexrays.m_xor,
+            "__neg__": ida_hexrays.m_neg,
+            "__invert__": ida_hexrays.m_bnot,
+        }
+    else:
+        # Empty mappings when not in IDA
+        _OPCODE_TO_BITEXPR_BINARY = {}
+        _OPCODE_TO_BITEXPR_UNARY = {}
+        _BITEXPR_OP_TO_OPCODE = {}
 
     class AstToBitExprConverter:
         """Converts IDA AstNode to egglog BitExpr."""
@@ -367,6 +386,10 @@ if EGGLOG_AVAILABLE:
                 y = BitExpr.var(y_name)
 
                 # Candidate simplifications (from complex to simple)
+                # Note: ida_hexrays is only used when actually running inside IDA
+                if ida_hexrays is None:
+                    return None
+
                 candidates = [
                     (x | y, ida_hexrays.m_or, "OR"),
                     (x & y, ida_hexrays.m_and, "AND"),
@@ -438,6 +461,13 @@ if EGGLOG_AVAILABLE:
             rewrite(a | b).to(b | a),
             rewrite(a ^ b).to(b ^ a),
             rewrite(a * b).to(b * a),
+        )
+
+        # XOR-NOT equivalence (handles inverse rules like BnotXor/CstSimpl)
+        # Mathematical identity: a ^ ~b == ~(a ^ b)
+        egraph.register(
+            rewrite(a ^ (~b)).to(~(a ^ b)),
+            rewrite(~(a ^ b)).to(a ^ (~b)),
         )
 
         return egraph
