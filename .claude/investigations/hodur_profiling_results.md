@@ -1,0 +1,128 @@
+# Hodur Profiling Results
+
+**Date**: 2024-11-26
+**Target**: `_hodur_func` in `libobfuscated.dylib`
+**Rule**: `FixPredecessorOfConditionalJumpBlock`
+
+## Summary
+
+- **Total time**: 8.3 seconds for 124 changes in 2 passes
+- **Recursive amplification**: 200 initial calls → 22,617 recursive `search_backward` calls (113x)
+- **Object copies**: 1.4M `BlockInfo.get_copy` calls, 22K `MopHistory.get_copy` calls
+
+## Top Bottlenecks (by total time in function)
+
+| Function | Time | Calls | Issue |
+|----------|------|-------|-------|
+| `block_serial_path` | 1.324s | 102,657 | Property recomputed on every access |
+| `MopHistory.get_copy` | 0.763s | 22,617 | Deep copy on every branch |
+| `BlockInfo.get_copy` | 0.553s | 1,385,171 | Called from MopHistory |
+| `minsn_t__print` | 0.405s | 25,388 | IDA formatting for logging |
+| `str.format` | 0.312s | 234,847 | Logging overhead |
+
+## Root Causes
+
+### 1. Path Explosion (Primary)
+`search_backward` recurses at every multi-predecessor block. With 15 predecessors at the dispatcher, this creates exponential paths:
+- 200 initial calls from `sort_predecessors`
+- 22,617 total recursive calls
+- Each call creates a full copy of the tracker state
+
+### 2. Excessive Copying
+Every branch creates deep copies:
+```python
+def get_copy(self) -> MopHistory:
+    new_mop_history.history = [x.get_copy() for x in self.history]  # O(n) per branch
+```
+
+### 3. Property Recomputation
+`block_serial_path` is a property that creates a new list on every access:
+```python
+@property
+def block_serial_path(self) -> list[int]:
+    return [blk.serial for blk in self.block_path]  # Called 102K times!
+```
+
+### 4. Logging Overhead
+~0.8s spent formatting strings for logging that may not even be displayed.
+
+## Recommended Optimizations
+
+### Quick Wins (Low effort, high impact)
+1. **Cache `block_serial_path`** - invalidate on mutation
+2. **Lazy logging** - use `logger.debug_on` guard before formatting
+3. **Cache predecessor analysis results** - `(blk_serial, state_var) → values`
+
+### Medium Effort
+4. **Copy-on-write for MopHistory** - share history until mutation
+5. **Immutable BlockInfo** - use tuples instead of mutable lists
+6. **Result memoization** - `@functools.lru_cache` on `get_all_possibles_values`
+
+### Algorithmic Improvements
+7. **Dominator-based pruning** - skip paths that can't affect the state variable
+8. **Abstract interpretation** - merge paths early, avoid concrete enumeration
+9. **Incremental emulation** - checkpoint at branch points
+
+## Implemented Optimizations
+
+### Phase 1: V2 Rule with Predecessor Caching (1.5x speedup)
+- Created `fix_pred_cond_jump_block_v2.py` with `PredecessorAnalysisCache`
+- Added lazy logging to avoid formatting overhead
+- Reduced time from 8.3s → ~5.5s
+
+### Phase 2: MopHistory Serial Caching (1.3x speedup - measured!)
+- Added `_serial_cache` and `_serial_set_cache` to `MopHistory` class
+- `block_serial_path` property now cached (was 102K calls creating new lists)
+- Added `block_serial_set` property for O(1) membership testing
+- Added `contains_block_serial()` method replacing O(n) `in` check
+- Cache invalidated on `insert_block_in_path` and `replace_block_in_path`
+- Cache copied during `get_copy()` for structural sharing
+
+**Measured Results (Nov 26):**
+- Total time: 8.3s → 6.2s (25% faster overall)
+- `block_serial_path`: 1.32s → 0.48s (64% reduction)
+- New `block_serial_set` + `contains_block_serial`: 0.55s for O(1) lookup
+
+### Phase 3: Immutable BlockInfo with Structural Sharing (IMPLEMENTED!)
+**Measured Results (Nov 26):**
+- Total time: 6.2s → 5.43s (12% faster, 35% faster than original 8.3s)
+- `MopHistory.get_copy`: 0.76s → 0.455s (40% reduction)
+- `BlockInfo.get_copy`: 0.55s → ~0s (eliminated - returns self, immutable)
+- `block_serial_path`: 0.475s (cached, 64% reduction from 1.32s)
+
+**Implementation:**
+- Made `BlockInfo.ins_list` a tuple instead of list (immutable)
+- Added `with_prepended_ins()`, `with_appended_ins()`, `with_new_blk()` methods for copy-on-write
+- `MopHistory.get_copy()` now does shallow copy of history list (BlockInfo objects are shared)
+- Mutations create new BlockInfo objects via copy-on-write methods
+
+**Remaining bottlenecks:**
+- Generator expressions for serial cache: 0.39s combined
+- `MicroCodeEnvironment.get_copy`: 0.28s
+- `minsn_t__print`: 0.24s (reduced from 0.40s via lazy logging)
+
+### Phase 5: Lazy Logging Guards (IMPLEMENTED!)
+**Measured Results (Nov 26):**
+- Total time: 5.43s → 3.5s (35% faster, 58% faster than original 8.3s)
+- `_execute_microcode`: 1.36s → 0.52s (62% reduction)
+- `minsn_t__print`: 0.40s → 0.24s (40% reduction)
+- `str.format`: eliminated from hot path
+
+**Implementation:**
+- Added `if logger.debug_on:` guards before all expensive formatting in tracker.py
+- Key areas: `_execute_microcode`, `search_backward`, `update_history`
+- Uses `d810.core.logging.LevelFlag` for O(1) level check
+
+### Phase 3 prototype: Extracted Components (In `tracker_components.py`)
+- `ImmutableBlockInfo`: frozen dataclass for copy-free sharing
+- `CachedBlockPath`: cached serials with O(1) membership
+- `MopSet`: hash-based mop lookup
+
+## Files Generated
+
+- `/tmp/hodur_profile.html` - Pyinstrument flame graph
+- `/tmp/hodur_cprofile.prof` - cProfile binary stats (use `snakeviz` to view)
+- `scripts/profile_unflattening.py` - Profiling script
+- `scripts/profile_unflattening_v2.py` - V1 vs V2 comparison script
+- `src/d810/hexrays/tracker_components.py` - Extracted optimized components
+- `src/d810/optimizers/microcode/flow/flattening/fix_pred_cond_jump_block_v2.py` - Optimized V2 rule

@@ -3,9 +3,9 @@ import abc
 import ida_hexrays
 import idc
 
-from d810.conf.loggers import getLogger
+from d810.core import getLogger
 from d810.optimizers.microcode.handler import DEFAULT_FLOW_MATURITIES, OptimizationRule
-from d810.registry import Registrant
+from d810.core import Registrant
 
 logger = getLogger("D810.optimizer")
 

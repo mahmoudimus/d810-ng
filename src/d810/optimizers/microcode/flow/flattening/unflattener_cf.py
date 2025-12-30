@@ -12,9 +12,9 @@ import ida_lines
 import ida_pro
 import ida_xref
 
-from d810.conf.loggers import getLogger
+from d810.core import getLogger
 from d810.hexrays.cfg_utils import safe_verify
-from d810.hexrays.hexrays_formatters import format_minsn_t
+from d810.hexrays.hexrays_formatters import format_minsn_t, format_mop_t
 from d810.hexrays.hexrays_helpers import MicrocodeHelper, MicroInstruction, MicroOperand
 from d810.optimizers.microcode.flow.handler import FlowOptimizationRule
 
@@ -413,7 +413,7 @@ def extract_jcc_parts(
         if pred1.tail.d.t != ida_hexrays.mop_b:
             logger.info(
                 "extract_jcc_parts: block was jcc, but destination was %s, not mop_b"
-                % (MicrocodeHelper.get_mopt_name(pred1.tail.d.t))
+                % (MicrocodeHelper.ida_hexrays.ida_hexrays.get_mopt_name(pred1.tail.d.t))
             )
             return False, None, -1, -1
         ends_with_jcc = pred1
@@ -678,13 +678,14 @@ class switch_state_collector_t(ida_hexrays.minsn_visitor_t):
             for msin in reversed(self.xdu_map):
                 dest = msin.destination_operand
                 src = msin.left_operand
-                logger.debug(
-                    "%s, %s, %s, %s",
-                    msin,
-                    hex(msin.ea),
-                    dest.dstr() if dest else "None",
-                    src.dstr() if src else "None",
-                )
+                if logger.debug_on:
+                    logger.debug(
+                        "%s, %s, %s, %s",
+                        msin,
+                        hex(msin.ea),
+                        dest.dstr() if dest else "None",
+                        src.dstr() if src else "None",
+                    )
                 if dest and dest.equal_mops(idx_mop, ida_hexrays.EQ_IGNSIZE):
                     state_var = src
                     break
@@ -1155,7 +1156,8 @@ class cf_flatten_info_t:
             self.plugin.white_list.append(ea)
 
         op_max = switch_tbl_collector.switches[0].state_var
-        logger.info(f"Comparison variable = {op_max.dstr()}")
+        if op_max and logger.debug_on:
+            logger.debug("Comparison variable = %s", op_max.dstr())
         # op_max is our "comparison" variable used in the control flow switch.
         # if op_max.size < 4:
         #     self.report_error(f"Comparison variable {op_max.dstr()} is too narrow\n")
@@ -1166,7 +1168,7 @@ class cf_flatten_info_t:
         # control flow switch.
         ok, self.mb_first, self.first, self.dispatch = get_first_block(mba)
         if not ok:
-            logger.error(f"Failed determining the first block")
+            logger.error("Failed determining the first block")
             return False
 
         assert self.mb_first
@@ -1189,7 +1191,8 @@ class cf_flatten_info_t:
         # Was the comparison variable assigned a number in the first block?
         found = False
         for sas in fbe.seen_assignments:
-            logger.info(f"sas[0] = {sas[0].dstr()}")
+            if logger.debug_on:
+                logger.debug("sas[0] = %s", sas[0].dstr())
             if sas[0].equal_mops(op_max, ida_hexrays.EQ_IGNSIZE):
                 found = True
                 break
@@ -1265,7 +1268,10 @@ class cf_flatten_info_t:
             ):
                 continue
             assert swi.cases is not None
-            logger.info(f"[+] Found jump-table for {op_max.dstr()}, importing cases")
+            if logger.debug_on:
+                logger.debug(
+                    "[+] Found jump-table for %s, importing cases", op_max.dstr()
+                )
             num_imported = 0
 
             vals: ida_xref.casevec_t = swi.cases.values  # casevec_t of the keys
@@ -1347,9 +1353,12 @@ class assign_searcher_t(ida_hexrays.minsn_visitor_t):
         ida_hexrays.minsn_visitor_t.__init__(self)
         self.op = op
         self.dispatcher_reg = dispatcher_reg
-        logger.info(
-            f"Initiated assign_searcher_t, op = {self.op.dstr()}, dispatcher_reg = {self.dispatcher_reg.dstr()}"
-        )
+        if logger.debug_on:
+            logger.debug(
+                "Initiated assign_searcher_t, op = %s, dispatcher_reg = %s",
+                self.op.dstr(),
+                self.dispatcher_reg.dstr(),
+            )
         self.jz_target_block = -1
         self.hits = []
         self.assign_infos = []
@@ -1971,7 +1980,7 @@ class cf_unflattener_t:
                 op_copy = self.deferred_erasures_local[-1].op_copy
                 m = self.deferred_erasures_local[-1].ins_mov
                 self.report(
-                    f"Block {disp_pred} did not define assign a number to assigned var; assigned {MicrocodeHelper.get_mopt_name(m.l.t)} instead"
+                    f"Block {disp_pred} did not define assign a number to assigned var; assigned {MicrocodeHelper.ida_hexrays.ida_hexrays.get_mopt_name(m.l.t)} instead"
                 )
 
                 # Call the function that handles the case of a conditional assignment

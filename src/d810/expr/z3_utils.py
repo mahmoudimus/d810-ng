@@ -1,9 +1,96 @@
+"""IDA-specific Z3 utilities for microcode verification.
+
+This module provides Z3 verification for IDA Pro microcode (AstNode, mop_t, minsn_t).
+It is used at RUNTIME during deobfuscation to verify transformations are correct.
+
+=============================================================================
+ARCHITECTURE: Two Z3 Modules in d810
+=============================================================================
+
+There are TWO separate Z3 utility modules in d810, serving different purposes:
+
+1. d810.mba.backends.z3 (PURE - no IDA)
+   --------------------------------------
+   Purpose: Verify optimization rules using pure symbolic expressions.
+   Input:   d810.mba.dsl.SymbolicExpression (platform-independent DSL)
+   Use:     Unit tests, CI, TDD rule development, mathematical verification
+
+   Key exports:
+   - Z3VerificationVisitor: Converts SymbolicExpression → Z3 BitVec
+   - prove_equivalence(): Prove two SymbolicExpressions are equivalent
+   - verify_rule(): Verify a rule's PATTERN equals its REPLACEMENT
+
+2. THIS FILE: d810.expr.z3_utils (IDA-SPECIFIC)
+   ---------------------------------------------
+   Purpose: Z3 verification of actual IDA microcode during deobfuscation.
+   Input:   d810.expr.ast.AstNode (wraps IDA mop_t/minsn_t)
+   Use:     Runtime verification inside IDA Pro plugin
+
+   Key exports:
+   - ast_to_z3_expression(): Converts AstNode → Z3 BitVec
+   - z3_check_mop_equality(): Check if two mop_t are semantically equivalent
+   - z3_check_mop_inequality(): Check if two mop_t are NOT equivalent
+   - log_z3_instructions(): Debug logging for Z3 verification
+
+=============================================================================
+WHY TWO MODULES?
+=============================================================================
+
+The separation enables:
+1. Unit testing rules WITHOUT IDA Pro license
+2. CI/CD pipeline verification (GitHub Actions)
+3. TDD workflow: write rule → verify with Z3 → integrate with IDA
+4. Clear dependency boundaries (mba/ never imports IDA modules)
+
+If you need to verify a SymbolicExpression (from d810.mba.dsl), use:
+    from d810.mba.backends.z3 import prove_equivalence
+
+If you need to verify actual IDA microcode (AstNode/mop_t), use this module:
+    from d810.expr.z3_utils import z3_check_mop_equality
+
+=============================================================================
+TODO: Refactor to Visitor Pattern
+=============================================================================
+
+This module is technical debt. It uses procedural functions (ast_to_z3_expression,
+z3_prove_equivalence, etc.) instead of a clean visitor pattern like
+Z3VerificationVisitor in mba/backends/z3.py.
+
+The ideal architecture would be:
+
+    class AstNodeZ3Visitor:
+        '''Visitor that converts AstNode to Z3 for IDA microcode verification.'''
+        def visit(self, node: AstNode) -> z3.BitVecRef: ...
+
+This would:
+1. Mirror the clean design of Z3VerificationVisitor
+2. Make the code more maintainable and testable
+3. Allow easier extension for new opcodes
+4. Consolidate the scattered ast_to_z3_expression logic
+
+Low priority since this code works and is only used at runtime inside IDA.
+=============================================================================
+"""
+
 import functools
 import typing
+from typing import Dict, Tuple
 
-import ida_hexrays
+# Check if IDA is available
+try:
+    import ida_hexrays
+    IDA_AVAILABLE = True
+except ImportError:
+    IDA_AVAILABLE = False
+    # Mock IDA types for function signatures only
+    class _MockIDAHexrays:  # type: ignore
+        class mop_t:
+            pass
+        class minsn_t:
+            pass
+    ida_hexrays = _MockIDAHexrays()
 
-from d810.conf.loggers import getLogger
+from d810.core import getLogger
 from d810.errors import D810Z3Exception
 from d810.expr.ast import AstLeaf, AstNode, minsn_to_ast, mop_to_ast
 from d810.hexrays.hexrays_formatters import (
@@ -11,7 +98,7 @@ from d810.hexrays.hexrays_formatters import (
     format_mop_t,
     opcode_to_string,
 )
-from d810.hexrays.hexrays_helpers import get_mop_index
+from d810.hexrays.hexrays_helpers import get_mop_index, structural_mop_hash
 
 logger = getLogger(__name__)
 z3_file_logger = getLogger("D810.z3_test")
@@ -49,7 +136,18 @@ def requires_z3_installed(func: typing.Callable[..., typing.Any]):
 @requires_z3_installed
 @functools.lru_cache(maxsize=1)
 def get_solver() -> z3.Solver:
-    return z3.Solver()
+    s = z3.Solver()
+    # Bound solver work to prevent pathological slowdowns in hot paths.
+    # 50ms per query is generally enough for our simple equalities and keeps
+    # total time bounded in large functions.
+    try:
+        p = z3.ParamsRef()
+        p.set("timeout", 50)  # milliseconds
+        s.set(params=p)
+    except Exception:
+        # Older z3 versions or API quirks – ignore and keep default settings.
+        pass
+    return s
 
 
 @requires_z3_installed
@@ -84,6 +182,11 @@ def ast_to_z3_expression(ast: AstNode | AstLeaf | None, use_bitvecval=False):
     if ast.is_leaf():
         ast = typing.cast(AstLeaf, ast)
         if ast.is_constant():
+            # Check if this is a pattern-matching constant with z3_var assigned
+            # (e.g., Const("c_1") without concrete value)
+            if hasattr(ast, 'z3_var') and ast.z3_var is not None:
+                return ast.z3_var  # Use symbolic Z3 variable
+            # Concrete constant (e.g., Const("ONE", 1))
             return z3.BitVecVal(ast.value, 32)
         return ast.z3_var
 
@@ -174,7 +277,7 @@ def ast_to_z3_expression(ast: AstNode | AstLeaf | None, use_bitvecval=False):
             val = left  # BitVec(32)
             is_negative = val < z3.BitVecVal(
                 0, 32
-            )  # ordinary “<” is signed-less-than in Z3Py
+            )  # ordinary "<" is signed-less-than in Z3Py
             return z3.If(is_negative, z3.BitVecVal(1, 32), z3.BitVecVal(0, 32))
         case ida_hexrays.m_xdu | ida_hexrays.m_xds:
             # Extend or keep the same width; in our simplified model we just forward.
@@ -205,11 +308,10 @@ def ast_to_z3_expression(ast: AstNode | AstLeaf | None, use_bitvecval=False):
                 )
             return extracted
         case _:
-            raise D810Z3Exception(
-                "Z3 evaluation: Unknown opcode {0} for {1}".format(
-                    opcode_to_string(ast.opcode), ast
-                )
-            )
+            # Gracefully fail on unknown opcode; avoid type issues in logging
+            op = getattr(ast, "opcode", None)
+            op_str = opcode_to_string(int(op)) if isinstance(op, int) else str(op)
+            raise D810Z3Exception(f"Z3 evaluation: Unknown opcode {op_str} for {ast}")
 
 
 @requires_z3_installed
@@ -234,6 +336,10 @@ def mop_list_to_z3_expression_list(mop_list: list[ida_hexrays.mop_t]):
     return [ast_to_z3_expression(ast) for ast in ast_list]
 
 
+# Module-level memoization for Z3 checks
+_Z3_EQ_CACHE: Dict[Tuple[Tuple[int, int, int|str], Tuple[int, int, int|str]], bool] = {}
+
+
 @requires_z3_installed
 def z3_check_mop_equality(
     mop1: ida_hexrays.mop_t | None,
@@ -241,6 +347,14 @@ def z3_check_mop_equality(
     solver: z3.Solver | None = None,
 ) -> bool:
     if mop1 is None or mop2 is None:
+        return False
+    # Validate SWIG objects before accessing their attributes
+    # Invalid/freed SWIG objects will not have essential attributes
+    if not hasattr(mop1, 't') or not hasattr(mop1, 'size'):
+        logger.warning("z3_check_mop_equality: mop1 is invalid or freed SWIG object")
+        return False
+    if not hasattr(mop2, 't') or not hasattr(mop2, 'size'):
+        logger.warning("z3_check_mop_equality: mop2 is invalid or freed SWIG object")
         return False
     # TODO(w00tzenheimer): should we use this?
     # # Quick positives when both operands share type/size.
@@ -259,16 +373,31 @@ def z3_check_mop_equality(
     # If quick checks didn't decide, fall back to Z3 even when types differ.
     if logger.debug_on:
         logger.debug(
-            "z3_check_mop_equality: mop1.t: %s, mop2.t: %s",
+            "z3_check_mop_equality: mop1: %s, mop2: %s",
             format_mop_t(mop1),
             format_mop_t(mop2),
         )
         logger.debug(
-            "z3_check_mop_equality: mop1.dstr(): %s, mop2.dstr(): %s",
+            "z3_check_mop_equality:\n\tmop1.dstr(): %s\n\tmop2.dstr(): %s\n\thashes: %016X vs %016X",
             mop1.dstr(),
             mop2.dstr(),
+            structural_mop_hash(mop1, 0),
+            structural_mop_hash(mop2, 0),
         )
-    # If pre-filters don't apply, fall back to Z3.
+    # If pre-filters don't apply, fall back to Z3 with a memoized check keyed by
+    # a cheap representation of the operands.
+    try:
+        k1 = (int(mop1.t), int(mop1.size), structural_mop_hash(mop1, 0))
+        k2 = (int(mop2.t), int(mop2.size), structural_mop_hash(mop2, 0))
+    except Exception:
+        k1 = (int(mop1.t), int(mop1.size), mop1.dstr())
+        k2 = (int(mop2.t), int(mop2.size), mop2.dstr())
+    if k2 < k1:
+        k1, k2 = k2, k1
+    cache_key = (k1, k2)
+    cached = _Z3_EQ_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
     exprs = mop_list_to_z3_expression_list([mop1, mop2])
     if len(exprs) != 2:
         return False
@@ -277,15 +406,12 @@ def z3_check_mop_equality(
     _solver.push()
     _solver.add(z3.Not(z3_mop1 == z3_mop2))
     is_equal = _solver.check() == z3.unsat
-    if logger.debug_on:
-        logger.debug(
-            "z3_mop1: %s, z3_mop2: %s, z3_check_mop_equality: is_equal: %s",
-            z3_mop1,
-            z3_mop2,
-            is_equal,
-        )
     _solver.pop()
+    _Z3_EQ_CACHE[cache_key] = is_equal
     return is_equal
+
+
+_Z3_NEQ_CACHE: Dict[Tuple[Tuple[int, int, int|str], Tuple[int, int, int|str]], bool] = {}
 
 
 @requires_z3_installed
@@ -295,6 +421,14 @@ def z3_check_mop_inequality(
     solver: z3.Solver | None = None,
 ) -> bool:
     if mop1 is None or mop2 is None:
+        return True
+    # Validate SWIG objects before accessing their attributes
+    # Invalid/freed SWIG objects will not have essential attributes
+    if not hasattr(mop1, 't') or not hasattr(mop1, 'size'):
+        logger.warning("z3_check_mop_inequality: mop1 is invalid or freed SWIG object")
+        return True
+    if not hasattr(mop2, 't') or not hasattr(mop2, 'size'):
+        logger.warning("z3_check_mop_inequality: mop2 is invalid or freed SWIG object")
         return True
     # TODO(w00tzenheimer): should we use this?
     # if mop1.t == mop2.t and mop1.size == mop2.size:
@@ -312,16 +446,33 @@ def z3_check_mop_inequality(
     # Otherwise fall back to Z3 (also handles differing types).
     if logger.debug_on:
         logger.debug(
-            "z3_check_mop_inequality: mop1.t: %s, mop2.t: %s",
+            "z3_check_mop_inequality: mop1: %s, mop2: %s",
             format_mop_t(mop1),
             format_mop_t(mop2),
         )
         logger.debug(
-            "z3_check_mop_inequality: mop1.dstr(): %s, mop2.dstr(): %s",
+            "z3_check_mop_inequality:\n\tmop1.dstr(): %s\n\tmop2.dstr(): %s\n\thashes: %016X vs %016X",
             mop1.dstr(),
             mop2.dstr(),
+            structural_mop_hash(mop1, 0),
+            structural_mop_hash(mop2, 0),
         )
-    # If pre-filters don't apply, fall back to Z3.
+    # If pre-filters don't apply, fall back to Z3 with a memoized check keyed by
+    # a cheap representation of the operands.
+    try:
+        k1 = (int(mop1.t), int(mop1.size), structural_mop_hash(mop1, 0))
+        k2 = (int(mop2.t), int(mop2.size), structural_mop_hash(mop2, 0))
+    except Exception:
+        k1 = (int(mop1.t), int(mop1.size), mop1.dstr())
+        k2 = (int(mop2.t), int(mop2.size), mop2.dstr())
+    if k2 < k1:
+        k1, k2 = k2, k1
+    if k2 < k1:
+        k1, k2 = k2, k1
+    cache_key = (k1, k2)
+    cached = _Z3_NEQ_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
     exprs = mop_list_to_z3_expression_list([mop1, mop2])
     if len(exprs) != 2:
         return True
@@ -330,14 +481,8 @@ def z3_check_mop_inequality(
     _solver.push()
     _solver.add(z3_mop1 == z3_mop2)
     is_unequal = _solver.check() == z3.unsat
-    if logger.debug_on:
-        logger.debug(
-            "z3_check_mop_inequality: z3_mop1 ( %s ) != z3_mop2 ( %s ) ? is_unequal: %s",
-            z3_mop1,
-            z3_mop2,
-            is_unequal,
-        )
     _solver.pop()
+    _Z3_NEQ_CACHE[cache_key] = is_unequal
     return is_unequal
 
 
@@ -389,3 +534,125 @@ def log_z3_instructions(
     removed_xdu = "{0}".format(new_mba_tree).replace("xdu", "")
     z3_file_logger.info("new_expr = {0}".format(removed_xdu))
     z3_file_logger.info("prove(original_expr == new_expr)\n")
+
+
+@requires_z3_installed
+def z3_prove_equivalence(
+    pattern_ast: AstNode | AstLeaf,
+    replacement_ast: AstNode | AstLeaf,
+    z3_vars: dict[str, typing.Any] | None = None,
+    constraints: list[typing.Any] | None = None,
+    bit_width: int = 32,
+) -> tuple[bool, dict[str, int] | None]:
+    """Prove that two AST patterns are semantically equivalent using Z3.
+
+    This function creates Z3 symbolic variables for each unique variable in the
+    patterns, converts both patterns to Z3 expressions, and attempts to prove
+    that they are equivalent for all possible variable values (subject to any
+    provided constraints).
+
+    Args:
+        pattern_ast: The first AST pattern (typically the pattern to match).
+        replacement_ast: The second AST pattern (typically the replacement).
+        z3_vars: Optional pre-created Z3 variables mapping names to Z3 BitVec objects.
+                 If None, variables will be created automatically.
+        constraints: Optional list of Z3 constraint expressions that must hold for
+                     the equivalence to be valid. For example, [c2 == ~c1] to indicate
+                     that constant c2 must be the bitwise NOT of constant c1.
+        bit_width: The bit width for symbolic variables (default 32).
+
+    Returns:
+        A tuple of (is_equivalent, counterexample):
+        - is_equivalent: True if the patterns are proven equivalent, False otherwise.
+        - counterexample: If not equivalent, a dict mapping variable names to values
+                         that demonstrate the difference. None if equivalent.
+
+    Example:
+        >>> from d810.expr.ast import AstNode, AstLeaf
+        >>> from ida_hexrays import m_add, m_sub, m_xor, m_or, m_and
+        >>> # Pattern: (x | y) - (x & y)
+        >>> pattern = AstNode(m_sub,
+        ...     AstNode(m_or, AstLeaf("x"), AstLeaf("y")),
+        ...     AstNode(m_and, AstLeaf("x"), AstLeaf("y")))
+        >>> # Replacement: x ^ y
+        >>> replacement = AstNode(m_xor, AstLeaf("x"), AstLeaf("y"))
+        >>> is_equiv, counter = z3_prove_equivalence(pattern, replacement)
+        >>> assert is_equiv  # These are mathematically equivalent
+    """
+    # Get all leaf nodes from both patterns to find variables
+    pattern_leaves = pattern_ast.get_leaf_list()
+    replacement_leaves = replacement_ast.get_leaf_list()
+    all_leaves = pattern_leaves + replacement_leaves
+
+    # If z3_vars not provided, create them
+    if z3_vars is None:
+        # Extract unique variable names (excluding constants)
+        var_names = set()
+        for leaf in all_leaves:
+            if not leaf.is_constant() and hasattr(leaf, 'name'):
+                var_names.add(leaf.name)
+
+        # Create Z3 BitVec for each variable
+        z3_vars = {name: z3.BitVec(name, bit_width) for name in sorted(var_names)}
+
+        # Map the z3_vars to the leaves for conversion
+        for leaf in all_leaves:
+            if not leaf.is_constant() and hasattr(leaf, 'name') and leaf.name in z3_vars:
+                leaf.z3_var = z3_vars[leaf.name]
+                leaf.z3_var_name = leaf.name
+    else:
+        # Use provided z3_vars (includes both variables and pattern-matching constants)
+        for leaf in all_leaves:
+            if not hasattr(leaf, 'name'):
+                continue
+
+            # Assign z3_var to regular variables
+            if not leaf.is_constant() and leaf.name in z3_vars:
+                leaf.z3_var = z3_vars[leaf.name]
+                leaf.z3_var_name = leaf.name
+            # Also assign z3_var to pattern-matching constants (symbolic constants)
+            elif leaf.is_constant() and leaf.name in z3_vars:
+                # Pattern-matching constant like Const("c_1") - treat as symbolic
+                if hasattr(leaf, 'expected_value') and leaf.expected_value is None:
+                    leaf.z3_var = z3_vars[leaf.name]
+                    leaf.z3_var_name = leaf.name
+
+    # Convert both AST patterns to Z3 expressions
+    try:
+        pattern_z3 = ast_to_z3_expression(pattern_ast)
+        replacement_z3 = ast_to_z3_expression(replacement_ast)
+    except Exception as e:
+        logger.error(
+            "Failed to convert AST to Z3 expression: %s",
+            e,
+            exc_info=True,
+        )
+        return False, None
+
+    # Create a solver and add constraints if any
+    solver = z3.Solver()
+    if constraints:
+        for constraint in constraints:
+            solver.add(constraint)
+
+    # To prove equivalence, we check if NOT(pattern == replacement) is unsatisfiable
+    # If it's unsatisfiable, then pattern == replacement for all valid inputs
+    solver.add(z3.Not(pattern_z3 == replacement_z3))
+
+    result = solver.check()
+
+    if result == z3.unsat:
+        # Patterns are equivalent
+        return True, None
+    elif result == z3.sat:
+        # Patterns are NOT equivalent, get counterexample
+        model = solver.model()
+        counterexample = {}
+        for var_name, var in z3_vars.items():
+            if model[var] is not None:
+                counterexample[var_name] = model[var].as_long()
+        return False, counterexample
+    else:
+        # Unknown result (timeout, etc.)
+        logger.warning("Z3 returned unknown result for equivalence check")
+        return False, None
