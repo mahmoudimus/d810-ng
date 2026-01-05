@@ -147,3 +147,4 @@ Rolf Rolles for the huge work he has done with his [HexRaysDeob plugin](https://
 Dennis Elser for the [genmc plugin](https://github.com/patois/genmc) plugin which was very helpful for debugging D-810 errors.
 
 A special thank you to [Boris Batteux](https://gitlab.com/borisbatteux) for this great plugin!
+# CI/CD with IDA Pro

@@ -389,3 +389,115 @@ def log_z3_instructions(
     removed_xdu = "{0}".format(new_mba_tree).replace("xdu", "")
     z3_file_logger.info("new_expr = {0}".format(removed_xdu))
     z3_file_logger.info("prove(original_expr == new_expr)\n")
+
+
+@requires_z3_installed
+def z3_prove_equivalence(
+    pattern_ast: AstNode | AstLeaf,
+    replacement_ast: AstNode | AstLeaf,
+    z3_vars: dict[str, typing.Any] | None = None,
+    constraints: list[typing.Any] | None = None,
+    bit_width: int = 32,
+) -> tuple[bool, dict[str, int] | None]:
+    """Prove that two AST patterns are semantically equivalent using Z3.
+
+    This function creates Z3 symbolic variables for each unique variable in the
+    patterns, converts both patterns to Z3 expressions, and attempts to prove
+    that they are equivalent for all possible variable values (subject to any
+    provided constraints).
+
+    Args:
+        pattern_ast: The first AST pattern (typically the pattern to match).
+        replacement_ast: The second AST pattern (typically the replacement).
+        z3_vars: Optional pre-created Z3 variables mapping names to Z3 BitVec objects.
+                 If None, variables will be created automatically.
+        constraints: Optional list of Z3 constraint expressions that must hold for
+                     the equivalence to be valid. For example, [c2 == ~c1] to indicate
+                     that constant c2 must be the bitwise NOT of constant c1.
+        bit_width: The bit width for symbolic variables (default 32).
+
+    Returns:
+        A tuple of (is_equivalent, counterexample):
+        - is_equivalent: True if the patterns are proven equivalent, False otherwise.
+        - counterexample: If not equivalent, a dict mapping variable names to values
+                         that demonstrate the difference. None if equivalent.
+
+    Example:
+        >>> from d810.expr.ast import AstNode, AstLeaf
+        >>> from ida_hexrays import m_add, m_sub, m_xor, m_or, m_and
+        >>> # Pattern: (x | y) - (x & y)
+        >>> pattern = AstNode(m_sub,
+        ...     AstNode(m_or, AstLeaf("x"), AstLeaf("y")),
+        ...     AstNode(m_and, AstLeaf("x"), AstLeaf("y")))
+        >>> # Replacement: x ^ y
+        >>> replacement = AstNode(m_xor, AstLeaf("x"), AstLeaf("y"))
+        >>> is_equiv, counter = z3_prove_equivalence(pattern, replacement)
+        >>> assert is_equiv  # These are mathematically equivalent
+    """
+    # Get all leaf nodes from both patterns to find variables
+    pattern_leaves = pattern_ast.get_leaf_list()
+    replacement_leaves = replacement_ast.get_leaf_list()
+    all_leaves = pattern_leaves + replacement_leaves
+
+    # If z3_vars not provided, create them
+    if z3_vars is None:
+        # Extract unique variable names (excluding constants)
+        var_names = set()
+        for leaf in all_leaves:
+            if not leaf.is_constant() and hasattr(leaf, 'name'):
+                var_names.add(leaf.name)
+
+        # Create Z3 BitVec for each variable
+        z3_vars = {name: z3.BitVec(name, bit_width) for name in sorted(var_names)}
+
+        # Map the z3_vars to the leaves for conversion
+        for leaf in all_leaves:
+            if not leaf.is_constant() and hasattr(leaf, 'name') and leaf.name in z3_vars:
+                leaf.z3_var = z3_vars[leaf.name]
+                leaf.z3_var_name = leaf.name
+    else:
+        # Use provided z3_vars
+        for leaf in all_leaves:
+            if not leaf.is_constant() and hasattr(leaf, 'name') and leaf.name in z3_vars:
+                leaf.z3_var = z3_vars[leaf.name]
+                leaf.z3_var_name = leaf.name
+
+    # Convert both AST patterns to Z3 expressions
+    try:
+        pattern_z3 = ast_to_z3_expression(pattern_ast)
+        replacement_z3 = ast_to_z3_expression(replacement_ast)
+    except Exception as e:
+        logger.error(
+            "Failed to convert AST to Z3 expression: %s",
+            e,
+            exc_info=True,
+        )
+        return False, None
+
+    # Create a solver and add constraints if any
+    solver = z3.Solver()
+    if constraints:
+        for constraint in constraints:
+            solver.add(constraint)
+
+    # To prove equivalence, we check if NOT(pattern == replacement) is unsatisfiable
+    # If it's unsatisfiable, then pattern == replacement for all valid inputs
+    solver.add(z3.Not(pattern_z3 == replacement_z3))
+
+    result = solver.check()
+
+    if result == z3.unsat:
+        # Patterns are equivalent
+        return True, None
+    elif result == z3.sat:
+        # Patterns are NOT equivalent, get counterexample
+        model = solver.model()
+        counterexample = {}
+        for var_name, var in z3_vars.items():
+            if model[var] is not None:
+                counterexample[var_name] = model[var].as_long()
+        return False, counterexample
+    else:
+        # Unknown result (timeout, etc.)
+        logger.warning("Z3 returned unknown result for equivalence check")
+        return False, None

@@ -20,7 +20,12 @@ from d810.optimizers.microcode.instructions.handler import InstructionOptimizati
 from d810.project_manager import ProjectManager
 from d810.registry import EventEmitter
 from d810.singleton import SingletonMeta
-from d810.ui.ida_ui import D810GUI
+
+# Import GUI only when needed (not in headless/test mode)
+try:
+    from d810.ui.ida_ui import D810GUI
+except (ImportError, NotImplementedError):
+    D810GUI = None  # type: ignore
 
 try:
     import pyinstrument  # type: ignore
@@ -69,6 +74,18 @@ class D810Manager:
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(self.profiler.output_html())
             return output_path
+
+    def set_profiling_hooks(self, pre_hook=None, post_hook=None) -> None:
+        """Set profiling hooks for tracking optimization passes.
+
+        Args:
+            pre_hook: Called before each optimization pass
+            post_hook: Called after each optimization pass
+        """
+        # Store hooks for use during optimization passes
+        # These can be used by tests or other monitoring code
+        self.pre_pass_hook = pre_hook
+        self.post_pass_hook = post_hook
 
     def start(self):
         if self._started:
@@ -300,7 +317,7 @@ class D810State(metaclass=SingletonMeta):
             logger.warning("No project configurations available; plugin is idle.")
             self._is_loaded = False
 
-        if gui and self._is_loaded:
+        if gui and self._is_loaded and D810GUI is not None:
             self.gui = D810GUI(self)
             self.gui.show_windows()
 
